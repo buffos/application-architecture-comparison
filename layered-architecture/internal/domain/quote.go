@@ -7,15 +7,26 @@ import (
 )
 
 const QuoteStatusDraft = "Draft"
+const QuoteStatusSubmitted = "Submitted"
 
 var quoteSequence uint64
 
 var ErrQuoteNotFound = errors.New("quote not found")
+var ErrQuoteAlreadySubmitted = errors.New("quote is already submitted")
+var ErrQuoteLineProductRequired = errors.New("product name is required")
+var ErrQuoteLineQuantityInvalid = errors.New("quantity must be positive")
+var ErrQuoteCannotSubmitWithoutLines = errors.New("quote must have at least one line before submission")
+
+type QuoteLine struct {
+	ProductName string
+	Quantity    int
+}
 
 type Quote struct {
 	ID         string
 	CustomerID string
 	Status     string
+	Lines      []QuoteLine
 }
 
 func NewDraftQuote(customerID string) (Quote, error) {
@@ -30,4 +41,39 @@ func NewDraftQuote(customerID string) (Quote, error) {
 		CustomerID: customerID,
 		Status:     QuoteStatusDraft,
 	}, nil
+}
+
+func (q *Quote) AddLine(productName string, quantity int) error {
+	if q.Status != QuoteStatusDraft {
+		return ErrQuoteAlreadySubmitted
+	}
+
+	if productName == "" {
+		return ErrQuoteLineProductRequired
+	}
+
+	if quantity <= 0 {
+		return ErrQuoteLineQuantityInvalid
+	}
+
+	q.Lines = append(q.Lines, QuoteLine{
+		ProductName: productName,
+		Quantity:    quantity,
+	})
+
+	return nil
+}
+
+func (q *Quote) Submit() error {
+	if q.Status != QuoteStatusDraft {
+		return ErrQuoteAlreadySubmitted
+	}
+
+	if len(q.Lines) == 0 {
+		return ErrQuoteCannotSubmitWithoutLines
+	}
+
+	q.Status = QuoteStatusSubmitted
+
+	return nil
 }
