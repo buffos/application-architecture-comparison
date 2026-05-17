@@ -94,6 +94,31 @@ func (h QuoteHandler) RunDemo() (string, error) {
 		return "", err
 	}
 
+	cancelledQuote, err := h.quoteService.CreateDraftQuote(customer.ID)
+	if err != nil {
+		return "", err
+	}
+
+	cancelledQuoteWithLine, err := h.quoteService.AddQuoteLine(cancelledQuote.ID, product.SKU, 1)
+	if err != nil {
+		return "", err
+	}
+
+	cancelledQuoteReady, err := h.quoteService.SubmitQuote(cancelledQuote.ID)
+	if err != nil {
+		return "", err
+	}
+
+	cancelledOrder, err := h.orderService.ConvertQuoteToOrder(cancelledQuote.ID)
+	if err != nil {
+		return "", err
+	}
+
+	cancelledOrder, err = h.orderService.CancelOrder(cancelledOrder.ID)
+	if err != nil {
+		return "", err
+	}
+
 	lines := []string{
 		fmt.Sprintf("created customer: id=%s tier=%s paymentTerms=%s", customer.ID, customer.Tier, customer.PaymentTerms),
 		fmt.Sprintf("created product: sku=%s name=%s category=%s", product.SKU, product.Name, product.Category),
@@ -107,6 +132,10 @@ func (h QuoteHandler) RunDemo() (string, error) {
 		fmt.Sprintf("captured payment: id=%s status=%s payment=%s", paidOrder.ID, paidOrder.Status, paidOrder.PaymentStatus),
 		fmt.Sprintf("created shipment: id=%s order=%s status=%s lines=%d", shipment.ID, shipment.OrderID, shipment.Status, len(shipment.Lines)),
 		fmt.Sprintf("loaded order: id=%s customer=%s lines=%d status=%s payment=%s", loadedOrder.ID, loadedOrder.CustomerID, len(loadedOrder.Lines), loadedOrder.Status, loadedOrder.PaymentStatus),
+		fmt.Sprintf("created cancellation quote: id=%s status=%s", cancelledQuote.ID, cancelledQuote.Status),
+		fmt.Sprintf("added cancellation quote line: id=%s lines=%d status=%s", cancelledQuoteWithLine.ID, len(cancelledQuoteWithLine.Lines), cancelledQuoteWithLine.Status),
+		fmt.Sprintf("submitted cancellation quote: id=%s status=%s", cancelledQuoteReady.ID, cancelledQuoteReady.Status),
+		fmt.Sprintf("cancelled order: id=%s status=%s payment=%s", cancelledOrder.ID, cancelledOrder.Status, cancelledOrder.PaymentStatus),
 	}
 
 	return strings.Join(lines, "\n"), nil

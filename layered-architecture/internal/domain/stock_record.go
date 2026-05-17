@@ -69,3 +69,16 @@ func (s *StockRecord) ConsumeReserved(quantity int) error {
 	s.OnHand -= quantity
 	return nil
 }
+
+func (s *StockRecord) ReleaseReserved(quantity int) error {
+	if quantity <= 0 {
+		return ErrStockQuantityInvalid
+	}
+
+	if s.Reserved < quantity {
+		return ErrInsufficientStock
+	}
+
+	s.Reserved -= quantity
+	return nil
+}

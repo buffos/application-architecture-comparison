@@ -71,3 +71,35 @@ func (s OrderService) ConvertQuoteToOrder(quoteID string) (domain.Order, error) 
 func (s OrderService) GetOrder(id string) (domain.Order, error) {
 	return s.orderRepo.FindByID(id)
 }
+
+func (s OrderService) CancelOrder(id string) (domain.Order, error) {
+	order, err := s.orderRepo.FindByID(id)
+	if err != nil {
+		return domain.Order{}, err
+	}
+
+	if err := order.Cancel(); err != nil {
+		return domain.Order{}, err
+	}
+
+	for _, line := range order.Lines {
+		stock, err := s.stockRepo.FindBySKU(line.SKU)
+		if err != nil {
+			return domain.Order{}, err
+		}
+
+		if err := stock.ReleaseReserved(line.Quantity); err != nil {
+			return domain.Order{}, err
+		}
+
+		if err := s.stockRepo.Save(stock); err != nil {
+			return domain.Order{}, err
+		}
+	}
+
+	if err := s.orderRepo.Save(order); err != nil {
+		return domain.Order{}, err
+	}
+
+	return order, nil
+}
