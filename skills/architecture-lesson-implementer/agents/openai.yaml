@@ -1,0 +1,4 @@
+interface:
+  display_name: "Architecture Lesson Implementer"
+  short_description: "Teach then implement one architecture lesson"
+  default_prompt: "Use $architecture-lesson-implementer to create the next lesson for one architecture, explain the theory briefly, draw a mermaid diagram when helpful, and then implement that lesson."

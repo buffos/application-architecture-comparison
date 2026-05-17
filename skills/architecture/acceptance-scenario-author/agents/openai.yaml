@@ -1,0 +1,4 @@
+interface:
+  display_name: "Acceptance Scenario Author"
+  short_description: "Turn requirements into stable behavior scenarios"
+  default_prompt: "Use $acceptance-scenario-author to derive canonical acceptance scenarios from a PRD and related design artifacts."

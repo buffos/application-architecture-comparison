@@ -1,0 +1,4 @@
+interface:
+  display_name: "Reference Docs to Issues"
+  short_description: "Turn specs into actionable local issues"
+  default_prompt: "Use $reference-docs-to-issues to convert a PRD and canonical reference documents into dependency-aware local issue files."

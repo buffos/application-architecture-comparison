@@ -1,0 +1,4 @@
+interface:
+  display_name: "Requirements Gap Analyzer"
+  short_description: "Find missing decisions in product specs"
+  default_prompt: "Use $requirements-gap-analyzer to inspect discovery notes or specs, identify missing or contradictory requirements, and produce the next best questions to unblock drafting or implementation."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Requirements Discovery Interviewer"
+  short_description: "Turn vague app ideas into specs"
+  default_prompt: "Use this skill to interrogate an underspecified application idea until it is concrete enough for a PRD and canonical design artifacts."

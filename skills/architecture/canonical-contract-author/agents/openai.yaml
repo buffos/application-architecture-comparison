@@ -1,0 +1,4 @@
+interface:
+  display_name: "Canonical Contract Author"
+  short_description: "Turn use cases into external contracts"
+  default_prompt: "Use $canonical-contract-author to derive a canonical API and CLI contract from a PRD, domain model, and use-case model."

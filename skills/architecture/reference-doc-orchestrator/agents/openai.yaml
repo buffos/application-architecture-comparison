@@ -1,0 +1,4 @@
+interface:
+  display_name: "Reference Doc Orchestrator"
+  short_description: "Coordinate the full reference-doc pipeline"
+  default_prompt: "Use $reference-doc-orchestrator to drive discovery, produce the core reference documents, and route the work through review before implementation starts."

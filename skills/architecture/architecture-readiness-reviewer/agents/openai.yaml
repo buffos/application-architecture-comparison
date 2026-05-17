@@ -1,0 +1,4 @@
+interface:
+  display_name: "Architecture Readiness Reviewer"
+  short_description: "Review specs before implementation starts"
+  default_prompt: "Use $architecture-readiness-reviewer to review a PRD and canonical design documents for consistency, gaps, and implementation readiness."

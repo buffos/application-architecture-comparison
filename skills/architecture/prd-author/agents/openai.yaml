@@ -1,0 +1,4 @@
+interface:
+  display_name: "PRD Author"
+  short_description: "Turn discovery into strong product requirements"
+  default_prompt: "Use $prd-author to turn discovery notes into a high-quality PRD with clear scope, workflows, rules, and acceptance scenarios."

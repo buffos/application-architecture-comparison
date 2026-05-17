@@ -1,0 +1,4 @@
+interface:
+  display_name: "Process Reference Issue"
+  short_description: "Implement the next artifact-grounded issue"
+  default_prompt: "Use $process-reference-issue to select or process a local issue grounded in the reference documents, implement it, and update the issue registry safely."

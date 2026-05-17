@@ -1,0 +1,4 @@
+interface:
+  display_name: "Canonical Domain Modeler"
+  short_description: "Turn requirements into a domain model"
+  default_prompt: "Use $canonical-domain-modeler to derive a canonical domain model from a PRD or structured requirements."

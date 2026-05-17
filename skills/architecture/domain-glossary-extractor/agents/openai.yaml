@@ -1,0 +1,4 @@
+interface:
+  display_name: "Domain Glossary Extractor"
+  short_description: "Normalize business vocabulary before modeling"
+  default_prompt: "Use $domain-glossary-extractor to extract, normalize, and stabilize the domain vocabulary from discovery notes, a PRD, or other requirements artifacts."

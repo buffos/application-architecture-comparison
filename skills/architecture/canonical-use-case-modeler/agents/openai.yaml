@@ -1,0 +1,4 @@
+interface:
+  display_name: "Canonical Use-Case Modeler"
+  short_description: "Turn domain models into use-case contracts"
+  default_prompt: "Use $canonical-use-case-modeler to derive canonical application services, commands, and queries from a PRD and domain model."
