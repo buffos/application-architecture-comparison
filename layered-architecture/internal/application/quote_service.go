@@ -62,7 +62,7 @@ func (s QuoteService) AddQuoteLine(id string, sku string, quantity int) (domain.
 		return domain.Quote{}, domain.ErrProductUnavailable
 	}
 
-	if err := quote.AddLine(product.SKU, product.Name, quantity); err != nil {
+	if err := quote.AddLine(product.SKU, product.Category, product.Name, quantity); err != nil {
 		return domain.Quote{}, err
 	}
 
@@ -80,6 +80,40 @@ func (s QuoteService) SubmitQuote(id string) (domain.Quote, error) {
 	}
 
 	if err := quote.Submit(); err != nil {
+		return domain.Quote{}, err
+	}
+
+	if err := s.repo.Save(quote); err != nil {
+		return domain.Quote{}, err
+	}
+
+	return quote, nil
+}
+
+func (s QuoteService) ApproveQuote(id string) (domain.Quote, error) {
+	quote, err := s.repo.FindByID(id)
+	if err != nil {
+		return domain.Quote{}, err
+	}
+
+	if err := quote.Approve(); err != nil {
+		return domain.Quote{}, err
+	}
+
+	if err := s.repo.Save(quote); err != nil {
+		return domain.Quote{}, err
+	}
+
+	return quote, nil
+}
+
+func (s QuoteService) RejectQuote(id string) (domain.Quote, error) {
+	quote, err := s.repo.FindByID(id)
+	if err != nil {
+		return domain.Quote{}, err
+	}
+
+	if err := quote.Reject(); err != nil {
 		return domain.Quote{}, err
 	}
 

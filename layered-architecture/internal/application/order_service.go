@@ -27,6 +27,10 @@ func (s OrderService) ConvertQuoteToOrder(quoteID string) (domain.Order, error) 
 		return domain.Order{}, err
 	}
 
+	if quote.Status != domain.QuoteStatusApproved {
+		return domain.Order{}, domain.ErrQuoteNotApproved
+	}
+
 	stocks := make([]domain.StockRecord, 0, len(quote.Lines))
 	for _, line := range quote.Lines {
 		stock, err := s.stockRepo.FindBySKU(line.SKU)

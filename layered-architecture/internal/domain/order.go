@@ -11,7 +11,7 @@ const OrderStatusReadyForPayment = "ReadyForPayment"
 var orderSequence uint64
 
 var ErrOrderNotFound = errors.New("order not found")
-var ErrQuoteNotSubmitted = errors.New("quote must be submitted before conversion")
+var ErrQuoteNotConvertible = errors.New("quote must be approved before conversion")
 
 type OrderLine struct {
 	SKU                 string
@@ -28,8 +28,8 @@ type Order struct {
 }
 
 func NewOrderFromQuote(quote Quote) (Order, error) {
-	if quote.Status != QuoteStatusSubmitted {
-		return Order{}, ErrQuoteNotSubmitted
+	if quote.Status != QuoteStatusApproved {
+		return Order{}, ErrQuoteNotConvertible
 	}
 
 	id := atomic.AddUint64(&orderSequence, 1)

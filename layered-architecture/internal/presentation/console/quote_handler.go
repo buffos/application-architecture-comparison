@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"layered-architecture/internal/application"
+	"layered-architecture/internal/domain"
 )
 
 type QuoteHandler struct {
@@ -56,6 +57,14 @@ func (h QuoteHandler) RunDemo() (string, error) {
 		return "", err
 	}
 
+	quoteReadyForConversion := submittedQuote
+	if submittedQuote.Status == domain.QuoteStatusPendingApproval {
+		quoteReadyForConversion, err = h.quoteService.ApproveQuote(createdQuote.ID)
+		if err != nil {
+			return "", err
+		}
+	}
+
 	loadedQuote, err := h.quoteService.GetQuote(createdQuote.ID)
 	if err != nil {
 		return "", err
@@ -78,6 +87,7 @@ func (h QuoteHandler) RunDemo() (string, error) {
 		fmt.Sprintf("created draft quote: id=%s customer=%s status=%s", createdQuote.ID, createdQuote.CustomerID, createdQuote.Status),
 		fmt.Sprintf("added quote line: id=%s sku=%s name=%s lines=%d status=%s", quoteWithLine.ID, quoteWithLine.Lines[0].SKU, quoteWithLine.Lines[0].ProductNameSnapshot, len(quoteWithLine.Lines), quoteWithLine.Status),
 		fmt.Sprintf("submitted quote: id=%s lines=%d status=%s", submittedQuote.ID, len(submittedQuote.Lines), submittedQuote.Status),
+		fmt.Sprintf("quote ready for conversion: id=%s status=%s", quoteReadyForConversion.ID, quoteReadyForConversion.Status),
 		fmt.Sprintf("loaded quote: id=%s customer=%s status=%s", loadedQuote.ID, loadedQuote.CustomerID, loadedQuote.Status),
 		fmt.Sprintf("converted order: id=%s sourceQuote=%s status=%s", order.ID, order.SourceQuoteID, order.Status),
 		fmt.Sprintf("loaded order: id=%s customer=%s lines=%d status=%s", loadedOrder.ID, loadedOrder.CustomerID, len(loadedOrder.Lines), loadedOrder.Status),
