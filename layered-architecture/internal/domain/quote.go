@@ -18,8 +18,9 @@ var ErrQuoteLineQuantityInvalid = errors.New("quantity must be positive")
 var ErrQuoteCannotSubmitWithoutLines = errors.New("quote must have at least one line before submission")
 
 type QuoteLine struct {
-	ProductName string
-	Quantity    int
+	SKU                 string
+	ProductNameSnapshot string
+	Quantity            int
 }
 
 type Quote struct {
@@ -43,9 +44,13 @@ func NewDraftQuote(customerID string) (Quote, error) {
 	}, nil
 }
 
-func (q *Quote) AddLine(productName string, quantity int) error {
+func (q *Quote) AddLine(sku string, productName string, quantity int) error {
 	if q.Status != QuoteStatusDraft {
 		return ErrQuoteAlreadySubmitted
+	}
+
+	if sku == "" {
+		return ErrProductSKURequired
 	}
 
 	if productName == "" {
@@ -57,8 +62,9 @@ func (q *Quote) AddLine(productName string, quantity int) error {
 	}
 
 	q.Lines = append(q.Lines, QuoteLine{
-		ProductName: productName,
-		Quantity:    quantity,
+		SKU:                 sku,
+		ProductNameSnapshot: productName,
+		Quantity:            quantity,
 	})
 
 	return nil

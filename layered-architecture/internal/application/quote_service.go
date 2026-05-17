@@ -8,14 +8,29 @@ type QuoteRepository interface {
 }
 
 type QuoteService struct {
-	repo QuoteRepository
+	repo         QuoteRepository
+	customerRepo CustomerRepository
+	productRepo  ProductRepository
 }
 
-func NewQuoteService(repo QuoteRepository) QuoteService {
-	return QuoteService{repo: repo}
+func NewQuoteService(repo QuoteRepository, customerRepo CustomerRepository, productRepo ProductRepository) QuoteService {
+	return QuoteService{
+		repo:         repo,
+		customerRepo: customerRepo,
+		productRepo:  productRepo,
+	}
 }
 
 func (s QuoteService) CreateDraftQuote(customerID string) (domain.Quote, error) {
+	customer, err := s.customerRepo.FindByID(customerID)
+	if err != nil {
+		return domain.Quote{}, err
+	}
+
+	if !customer.Active {
+		return domain.Quote{}, domain.ErrCustomerInactive
+	}
+
 	quote, err := domain.NewDraftQuote(customerID)
 	if err != nil {
 		return domain.Quote{}, err
@@ -32,13 +47,22 @@ func (s QuoteService) GetQuote(id string) (domain.Quote, error) {
 	return s.repo.FindByID(id)
 }
 
-func (s QuoteService) AddQuoteLine(id string, productName string, quantity int) (domain.Quote, error) {
+func (s QuoteService) AddQuoteLine(id string, sku string, quantity int) (domain.Quote, error) {
 	quote, err := s.repo.FindByID(id)
 	if err != nil {
 		return domain.Quote{}, err
 	}
 
-	if err := quote.AddLine(productName, quantity); err != nil {
+	product, err := s.productRepo.FindBySKU(sku)
+	if err != nil {
+		return domain.Quote{}, err
+	}
+
+	if !product.Available {
+		return domain.Quote{}, domain.ErrProductUnavailable
+	}
+
+	if err := quote.AddLine(product.SKU, product.Name, quantity); err != nil {
 		return domain.Quote{}, err
 	}
 

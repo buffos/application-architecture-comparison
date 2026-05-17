@@ -12,10 +12,18 @@ import (
 
 func TestQuoteHandlerCreateAndGetQuote(t *testing.T) {
 	repo := memory.NewQuoteRepository()
-	service := application.NewQuoteService(repo)
+	customerRepo := memory.NewCustomerRepository()
+	productRepo := memory.NewProductRepository()
+	customerService := application.NewCustomerService(customerRepo)
+	service := application.NewQuoteService(repo, customerRepo, productRepo)
 	handler := NewQuoteHandler(service)
 
-	createRequest := httptest.NewRequest(http.MethodPost, "/quotes", strings.NewReader(`{"customerId":"customer-123"}`))
+	customer, err := customerService.CreateCustomer("Acme Corp", "Preferred", "Invoice30")
+	if err != nil {
+		t.Fatalf("expected customer creation to succeed, got %v", err)
+	}
+
+	createRequest := httptest.NewRequest(http.MethodPost, "/quotes", strings.NewReader(`{"customerId":"`+customer.ID+`"}`))
 	createRecorder := httptest.NewRecorder()
 
 	handler.ServeHTTP(createRecorder, createRequest)
@@ -25,7 +33,7 @@ func TestQuoteHandlerCreateAndGetQuote(t *testing.T) {
 	}
 
 	body := createRecorder.Body.String()
-	if !strings.Contains(body, `"customerId":"customer-123"`) {
+	if !strings.Contains(body, `"customerId":"`+customer.ID+`"`) {
 		t.Fatalf("expected created response to contain customer id, got %s", body)
 	}
 
