@@ -11,6 +11,9 @@ help:
 layered-build:
 	go -C $(LAYERED_DIR) build ./...
 
+layered-test:
+	go -C $(LAYERED_DIR) test ./...
+
 layered-run:
 	go -C $(LAYERED_DIR) run ./cmd/quote-demo
 
