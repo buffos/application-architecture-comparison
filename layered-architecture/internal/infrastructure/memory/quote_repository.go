@@ -25,3 +25,15 @@ func (r *QuoteRepository) Save(quote domain.Quote) error {
 
 	return nil
 }
+
+func (r *QuoteRepository) FindByID(id string) (domain.Quote, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	quote, ok := r.quotes[id]
+	if !ok {
+		return domain.Quote{}, domain.ErrQuoteNotFound
+	}
+
+	return quote, nil
+}

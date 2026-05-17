@@ -10,6 +10,8 @@ const QuoteStatusDraft = "Draft"
 
 var quoteSequence uint64
 
+var ErrQuoteNotFound = errors.New("quote not found")
+
 type Quote struct {
 	ID         string
 	CustomerID string

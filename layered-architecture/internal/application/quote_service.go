@@ -4,6 +4,7 @@ import "layered-architecture/internal/domain"
 
 type QuoteRepository interface {
 	Save(quote domain.Quote) error
+	FindByID(id string) (domain.Quote, error)
 }
 
 type QuoteService struct {
@@ -25,4 +26,8 @@ func (s QuoteService) CreateDraftQuote(customerID string) (domain.Quote, error) 
 	}
 
 	return quote, nil
+}
+
+func (s QuoteService) GetQuote(id string) (domain.Quote, error) {
+	return s.repo.FindByID(id)
 }
