@@ -13,11 +13,15 @@ func main() {
 	customerRepo := memory.NewCustomerRepository()
 	productRepo := memory.NewProductRepository()
 	quoteRepo := memory.NewQuoteRepository()
+	stockRepo := memory.NewStockRecordRepository()
+	orderRepo := memory.NewOrderRepository()
 
 	customerService := application.NewCustomerService(customerRepo)
 	catalogService := application.NewCatalogService(productRepo)
+	inventoryService := application.NewInventoryService(productRepo, stockRepo)
 	quoteService := application.NewQuoteService(quoteRepo, customerRepo, productRepo)
-	handler := console.NewQuoteHandler(customerService, catalogService, quoteService)
+	orderService := application.NewOrderService(orderRepo, quoteRepo, stockRepo)
+	handler := console.NewQuoteHandler(customerService, catalogService, inventoryService, quoteService, orderService)
 
 	output, err := handler.RunDemo()
 	if err != nil {
