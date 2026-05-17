@@ -9,20 +9,24 @@ import (
 )
 
 type QuoteHandler struct {
-	customerService  application.CustomerService
-	catalogService   application.CatalogService
-	inventoryService application.InventoryService
-	quoteService     application.QuoteService
-	orderService     application.OrderService
+	customerService    application.CustomerService
+	catalogService     application.CatalogService
+	inventoryService   application.InventoryService
+	quoteService       application.QuoteService
+	orderService       application.OrderService
+	paymentService     application.PaymentService
+	fulfillmentService application.FulfillmentService
 }
 
-func NewQuoteHandler(customerService application.CustomerService, catalogService application.CatalogService, inventoryService application.InventoryService, quoteService application.QuoteService, orderService application.OrderService) QuoteHandler {
+func NewQuoteHandler(customerService application.CustomerService, catalogService application.CatalogService, inventoryService application.InventoryService, quoteService application.QuoteService, orderService application.OrderService, paymentService application.PaymentService, fulfillmentService application.FulfillmentService) QuoteHandler {
 	return QuoteHandler{
-		customerService:  customerService,
-		catalogService:   catalogService,
-		inventoryService: inventoryService,
-		quoteService:     quoteService,
-		orderService:     orderService,
+		customerService:    customerService,
+		catalogService:     catalogService,
+		inventoryService:   inventoryService,
+		quoteService:       quoteService,
+		orderService:       orderService,
+		paymentService:     paymentService,
+		fulfillmentService: fulfillmentService,
 	}
 }
 
@@ -75,6 +79,16 @@ func (h QuoteHandler) RunDemo() (string, error) {
 		return "", err
 	}
 
+	paidOrder, err := h.paymentService.CapturePayment(order.ID)
+	if err != nil {
+		return "", err
+	}
+
+	shipment, err := h.fulfillmentService.CreateShipment(order.ID)
+	if err != nil {
+		return "", err
+	}
+
 	loadedOrder, err := h.orderService.GetOrder(order.ID)
 	if err != nil {
 		return "", err
@@ -89,8 +103,10 @@ func (h QuoteHandler) RunDemo() (string, error) {
 		fmt.Sprintf("submitted quote: id=%s lines=%d status=%s", submittedQuote.ID, len(submittedQuote.Lines), submittedQuote.Status),
 		fmt.Sprintf("quote ready for conversion: id=%s status=%s", quoteReadyForConversion.ID, quoteReadyForConversion.Status),
 		fmt.Sprintf("loaded quote: id=%s customer=%s status=%s", loadedQuote.ID, loadedQuote.CustomerID, loadedQuote.Status),
-		fmt.Sprintf("converted order: id=%s sourceQuote=%s status=%s", order.ID, order.SourceQuoteID, order.Status),
-		fmt.Sprintf("loaded order: id=%s customer=%s lines=%d status=%s", loadedOrder.ID, loadedOrder.CustomerID, len(loadedOrder.Lines), loadedOrder.Status),
+		fmt.Sprintf("converted order: id=%s sourceQuote=%s status=%s payment=%s", order.ID, order.SourceQuoteID, order.Status, order.PaymentStatus),
+		fmt.Sprintf("captured payment: id=%s status=%s payment=%s", paidOrder.ID, paidOrder.Status, paidOrder.PaymentStatus),
+		fmt.Sprintf("created shipment: id=%s order=%s status=%s lines=%d", shipment.ID, shipment.OrderID, shipment.Status, len(shipment.Lines)),
+		fmt.Sprintf("loaded order: id=%s customer=%s lines=%d status=%s payment=%s", loadedOrder.ID, loadedOrder.CustomerID, len(loadedOrder.Lines), loadedOrder.Status, loadedOrder.PaymentStatus),
 	}
 
 	return strings.Join(lines, "\n"), nil
