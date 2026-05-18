@@ -12,7 +12,8 @@ import (
 func main() {
 	repo := memory.NewQuoteRepository()
 	createQuote := application.NewCreateDraftQuoteUseCase(repo)
-	handler := cli.NewQuoteHandler(createQuote)
+	getQuote := application.NewGetQuoteUseCase(repo)
+	handler := cli.NewQuoteHandler(createQuote, getQuote)
 
 	output, err := handler.RunDemo()
 	if err != nil {

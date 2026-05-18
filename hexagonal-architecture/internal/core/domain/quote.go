@@ -11,6 +11,7 @@ const QuoteStatusDraft = "Draft"
 var quoteSequence uint64
 
 var ErrCustomerIDRequired = errors.New("customer id is required")
+var ErrQuoteNotFound = errors.New("quote not found")
 
 type Quote struct {
 	ID         string
