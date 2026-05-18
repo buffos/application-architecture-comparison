@@ -8,12 +8,18 @@ import (
 
 	"hexagonal-architecture/internal/adapters/repository/memory"
 	"hexagonal-architecture/internal/core/application"
+	"hexagonal-architecture/internal/core/domain"
 )
 
 func TestQuoteHandlerCreatesDraftQuote(t *testing.T) {
-	repo := memory.NewQuoteRepository()
-	createQuote := application.NewCreateDraftQuoteUseCase(repo)
-	getQuote := application.NewGetQuoteUseCase(repo)
+	quoteRepo := memory.NewQuoteRepository()
+	customerRepo := memory.NewCustomerRepository()
+	if err := customerRepo.Save(domain.Customer{ID: "customer-123", Active: true}); err != nil {
+		t.Fatalf("expected customer save to succeed, got %v", err)
+	}
+
+	createQuote := application.NewCreateDraftQuoteUseCase(quoteRepo, customerRepo)
+	getQuote := application.NewGetQuoteUseCase(quoteRepo)
 	handler := NewQuoteHandler(createQuote, getQuote)
 
 	request := httptest.NewRequest(http.MethodPost, "/quotes", strings.NewReader(`{"customerId":"customer-123"}`))
