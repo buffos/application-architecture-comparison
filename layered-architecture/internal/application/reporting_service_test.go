@@ -17,13 +17,13 @@ func TestReportingServiceShowsPendingApprovalAndLowStock(t *testing.T) {
 	customerService := NewCustomerService(customerRepo)
 	catalogService := NewCatalogService(productRepo)
 	inventoryService := NewInventoryService(productRepo, stockRepo)
-	quoteService := NewQuoteService(quoteRepo, customerRepo, productRepo)
+	quoteService := NewQuoteService(quoteRepo, customerRepo, productRepo, NoopPricingPluginRegistry{})
 	orderService := NewOrderService(orderRepo, quoteRepo, stockRepo)
 	reportingService := NewReportingQueryService(quoteRepo, orderRepo, stockRepo)
 
 	customer, _ := customerService.CreateCustomer("Acme Corp", "Preferred", "Invoice30")
-	standardProduct, _ := catalogService.CreateProduct("CHAIR-001", "Office Chair", "Standard", true)
-	customProduct, _ := catalogService.CreateProduct("DESK-001", "Executive Desk", "CustomBuild", true)
+	standardProduct, _ := catalogService.CreateProduct("CHAIR-001", "Office Chair", "Standard", 10000, true)
+	customProduct, _ := catalogService.CreateProduct("DESK-001", "Executive Desk", "CustomBuild", 50000, true)
 	_, _ = inventoryService.ReceiveStock(standardProduct.SKU, 2)
 	_, _ = inventoryService.ReceiveStock(customProduct.SKU, 5)
 

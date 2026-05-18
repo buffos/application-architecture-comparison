@@ -9,16 +9,22 @@ type QuoteRepository interface {
 }
 
 type QuoteService struct {
-	repo         QuoteRepository
-	customerRepo CustomerRepository
-	productRepo  ProductRepository
+	repo           QuoteRepository
+	customerRepo   CustomerRepository
+	productRepo    ProductRepository
+	pluginRegistry PricingPluginRegistry
 }
 
-func NewQuoteService(repo QuoteRepository, customerRepo CustomerRepository, productRepo ProductRepository) QuoteService {
+func NewQuoteService(repo QuoteRepository, customerRepo CustomerRepository, productRepo ProductRepository, pluginRegistry PricingPluginRegistry) QuoteService {
+	if pluginRegistry == nil {
+		pluginRegistry = NoopPricingPluginRegistry{}
+	}
+
 	return QuoteService{
-		repo:         repo,
-		customerRepo: customerRepo,
-		productRepo:  productRepo,
+		repo:           repo,
+		customerRepo:   customerRepo,
+		productRepo:    productRepo,
+		pluginRegistry: pluginRegistry,
 	}
 }
 
@@ -63,7 +69,24 @@ func (s QuoteService) AddQuoteLine(id string, sku string, quantity int) (domain.
 		return domain.Quote{}, domain.ErrProductUnavailable
 	}
 
-	if err := quote.AddLine(product.SKU, product.Category, product.Name, quantity); err != nil {
+	adjustedPrice := product.BasePrice
+	adjustments := make([]string, 0)
+	for _, plugin := range s.pluginRegistry.EnabledPricingPlugins() {
+		adjustment, ok := plugin.Adjust(PricingPluginInput{
+			SKU:       product.SKU,
+			Category:  product.Category,
+			Quantity:  quantity,
+			BasePrice: adjustedPrice,
+		})
+		if !ok {
+			continue
+		}
+
+		adjustedPrice = adjustment.AdjustedPrice
+		adjustments = append(adjustments, adjustment.Label)
+	}
+
+	if err := quote.AddLine(product.SKU, product.Category, product.Name, quantity, product.BasePrice, adjustedPrice, adjustments); err != nil {
 		return domain.Quote{}, err
 	}
 

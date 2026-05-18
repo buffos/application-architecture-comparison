@@ -27,6 +27,10 @@ type QuoteLine struct {
 	ProductCategory     string
 	ProductNameSnapshot string
 	Quantity            int
+	BaseUnitPrice       int
+	AdjustedUnitPrice   int
+	LineTotal           int
+	PricingAdjustments  []string
 }
 
 type Quote struct {
@@ -50,7 +54,7 @@ func NewDraftQuote(customerID string) (Quote, error) {
 	}, nil
 }
 
-func (q *Quote) AddLine(sku string, productCategory string, productName string, quantity int) error {
+func (q *Quote) AddLine(sku string, productCategory string, productName string, quantity int, baseUnitPrice int, adjustedUnitPrice int, pricingAdjustments []string) error {
 	if q.Status != QuoteStatusDraft {
 		return ErrQuoteNotEditable
 	}
@@ -67,11 +71,19 @@ func (q *Quote) AddLine(sku string, productCategory string, productName string, 
 		return ErrQuoteLineQuantityInvalid
 	}
 
+	if baseUnitPrice < 0 || adjustedUnitPrice < 0 {
+		return errors.New("quote line price cannot be negative")
+	}
+
 	q.Lines = append(q.Lines, QuoteLine{
 		SKU:                 sku,
 		ProductCategory:     productCategory,
 		ProductNameSnapshot: productName,
 		Quantity:            quantity,
+		BaseUnitPrice:       baseUnitPrice,
+		AdjustedUnitPrice:   adjustedUnitPrice,
+		LineTotal:           adjustedUnitPrice * quantity,
+		PricingAdjustments:  pricingAdjustments,
 	})
 
 	return nil

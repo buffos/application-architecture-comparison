@@ -15,8 +15,8 @@ func NewCatalogService(repo ProductRepository) CatalogService {
 	return CatalogService{repo: repo}
 }
 
-func (s CatalogService) CreateProduct(sku string, name string, category string, available bool) (domain.Product, error) {
-	product, err := domain.NewProduct(sku, name, category, available)
+func (s CatalogService) CreateProduct(sku string, name string, category string, basePrice int, available bool) (domain.Product, error) {
+	product, err := domain.NewProduct(sku, name, category, basePrice, available)
 	if err != nil {
 		return domain.Product{}, err
 	}

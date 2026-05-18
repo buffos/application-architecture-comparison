@@ -17,7 +17,7 @@ func TestConvertQuoteToOrderReservesStock(t *testing.T) {
 	customerService := NewCustomerService(customerRepo)
 	catalogService := NewCatalogService(productRepo)
 	inventoryService := NewInventoryService(productRepo, stockRepo)
-	quoteService := NewQuoteService(quoteRepo, customerRepo, productRepo)
+	quoteService := NewQuoteService(quoteRepo, customerRepo, productRepo, NoopPricingPluginRegistry{})
 	orderService := NewOrderService(orderRepo, quoteRepo, stockRepo)
 
 	customer, err := customerService.CreateCustomer("Acme Corp", "Preferred", "Invoice30")
@@ -25,7 +25,7 @@ func TestConvertQuoteToOrderReservesStock(t *testing.T) {
 		t.Fatalf("expected customer creation to succeed, got %v", err)
 	}
 
-	product, err := catalogService.CreateProduct("CHAIR-001", "Office Chair", "Standard", true)
+	product, err := catalogService.CreateProduct("CHAIR-001", "Office Chair", "Standard", 10000, true)
 	if err != nil {
 		t.Fatalf("expected product creation to succeed, got %v", err)
 	}
@@ -81,7 +81,7 @@ func TestCustomBuildQuoteNeedsApprovalBeforeConversion(t *testing.T) {
 	customerService := NewCustomerService(customerRepo)
 	catalogService := NewCatalogService(productRepo)
 	inventoryService := NewInventoryService(productRepo, stockRepo)
-	quoteService := NewQuoteService(quoteRepo, customerRepo, productRepo)
+	quoteService := NewQuoteService(quoteRepo, customerRepo, productRepo, NoopPricingPluginRegistry{})
 	orderService := NewOrderService(orderRepo, quoteRepo, stockRepo)
 
 	customer, err := customerService.CreateCustomer("Acme Corp", "Preferred", "Invoice30")
@@ -89,7 +89,7 @@ func TestCustomBuildQuoteNeedsApprovalBeforeConversion(t *testing.T) {
 		t.Fatalf("expected customer creation to succeed, got %v", err)
 	}
 
-	product, err := catalogService.CreateProduct("DESK-001", "Executive Desk", "CustomBuild", true)
+	product, err := catalogService.CreateProduct("DESK-001", "Executive Desk", "CustomBuild", 50000, true)
 	if err != nil {
 		t.Fatalf("expected product creation to succeed, got %v", err)
 	}
@@ -150,11 +150,11 @@ func TestConvertQuoteToOrderFailsWhenStockIsInsufficient(t *testing.T) {
 	customerService := NewCustomerService(customerRepo)
 	catalogService := NewCatalogService(productRepo)
 	inventoryService := NewInventoryService(productRepo, stockRepo)
-	quoteService := NewQuoteService(quoteRepo, customerRepo, productRepo)
+	quoteService := NewQuoteService(quoteRepo, customerRepo, productRepo, NoopPricingPluginRegistry{})
 	orderService := NewOrderService(orderRepo, quoteRepo, stockRepo)
 
 	customer, _ := customerService.CreateCustomer("Acme Corp", "Preferred", "Invoice30")
-	product, _ := catalogService.CreateProduct("CHAIR-001", "Office Chair", "Standard", true)
+	product, _ := catalogService.CreateProduct("CHAIR-001", "Office Chair", "Standard", 10000, true)
 	_, _ = inventoryService.ReceiveStock(product.SKU, 1)
 	quote, _ := quoteService.CreateDraftQuote(customer.ID)
 	_, _ = quoteService.AddQuoteLine(quote.ID, product.SKU, 2)

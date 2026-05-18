@@ -13,10 +13,11 @@ type Product struct {
 	SKU       string
 	Name      string
 	Category  string
+	BasePrice int
 	Available bool
 }
 
-func NewProduct(sku string, name string, category string, available bool) (Product, error) {
+func NewProduct(sku string, name string, category string, basePrice int, available bool) (Product, error) {
 	if sku == "" {
 		return Product{}, ErrProductSKURequired
 	}
@@ -29,11 +30,16 @@ func NewProduct(sku string, name string, category string, available bool) (Produ
 		return Product{}, ErrProductCategoryRequired
 	}
 
+	if basePrice < 0 {
+		return Product{}, errors.New("product base price cannot be negative")
+	}
+
 	return Product{
 		ID:        sku,
 		SKU:       sku,
 		Name:      name,
 		Category:  category,
+		BasePrice: basePrice,
 		Available: available,
 	}, nil
 }

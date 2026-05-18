@@ -15,7 +15,7 @@ func TestQuoteHandlerCreateAndGetQuote(t *testing.T) {
 	customerRepo := memory.NewCustomerRepository()
 	productRepo := memory.NewProductRepository()
 	customerService := application.NewCustomerService(customerRepo)
-	service := application.NewQuoteService(repo, customerRepo, productRepo)
+	service := application.NewQuoteService(repo, customerRepo, productRepo, application.NoopPricingPluginRegistry{})
 	handler := NewQuoteHandler(service)
 
 	customer, err := customerService.CreateCustomer("Acme Corp", "Preferred", "Invoice30")

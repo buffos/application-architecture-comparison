@@ -40,7 +40,7 @@ func (h QuoteHandler) RunDemo() (string, error) {
 		return "", err
 	}
 
-	product, err := h.catalogService.CreateProduct("CHAIR-001", "Office Chair", "Standard", true)
+	product, err := h.catalogService.CreateProduct("CHAIR-001", "Office Chair", "Standard", 10000, true)
 	if err != nil {
 		return "", err
 	}
@@ -133,7 +133,7 @@ func (h QuoteHandler) RunDemo() (string, error) {
 		return "", err
 	}
 
-	customBuildProduct, err := h.catalogService.CreateProduct("DESK-001", "Executive Desk", "CustomBuild", true)
+	customBuildProduct, err := h.catalogService.CreateProduct("DESK-001", "Executive Desk", "CustomBuild", 50000, true)
 	if err != nil {
 		return "", err
 	}
@@ -177,7 +177,7 @@ func (h QuoteHandler) RunDemo() (string, error) {
 		fmt.Sprintf("created product: sku=%s name=%s category=%s", product.SKU, product.Name, product.Category),
 		fmt.Sprintf("received stock: sku=%s onHand=%d reserved=%d available=%d", stock.SKU, stock.OnHand, stock.Reserved, stock.Available()),
 		fmt.Sprintf("created draft quote: id=%s customer=%s status=%s", createdQuote.ID, createdQuote.CustomerID, createdQuote.Status),
-		fmt.Sprintf("added quote line: id=%s sku=%s name=%s lines=%d status=%s", quoteWithLine.ID, quoteWithLine.Lines[0].SKU, quoteWithLine.Lines[0].ProductNameSnapshot, len(quoteWithLine.Lines), quoteWithLine.Status),
+		fmt.Sprintf("added quote line: id=%s sku=%s name=%s lines=%d status=%s adjustedPrice=%d adjustments=%d", quoteWithLine.ID, quoteWithLine.Lines[0].SKU, quoteWithLine.Lines[0].ProductNameSnapshot, len(quoteWithLine.Lines), quoteWithLine.Status, quoteWithLine.Lines[0].AdjustedUnitPrice, len(quoteWithLine.Lines[0].PricingAdjustments)),
 		fmt.Sprintf("submitted quote: id=%s lines=%d status=%s", submittedQuote.ID, len(submittedQuote.Lines), submittedQuote.Status),
 		fmt.Sprintf("quote ready for conversion: id=%s status=%s", quoteReadyForConversion.ID, quoteReadyForConversion.Status),
 		fmt.Sprintf("loaded quote: id=%s customer=%s status=%s", loadedQuote.ID, loadedQuote.CustomerID, loadedQuote.Status),

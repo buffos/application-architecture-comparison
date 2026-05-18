@@ -6,6 +6,7 @@ import (
 
 	"layered-architecture/internal/application"
 	"layered-architecture/internal/infrastructure/memory"
+	"layered-architecture/internal/infrastructure/plugins"
 	"layered-architecture/internal/presentation/console"
 )
 
@@ -21,7 +22,10 @@ func main() {
 	customerService := application.NewCustomerService(customerRepo)
 	catalogService := application.NewCatalogService(productRepo)
 	inventoryService := application.NewInventoryService(productRepo, stockRepo)
-	quoteService := application.NewQuoteService(quoteRepo, customerRepo, productRepo)
+	pricingRegistry := plugins.NewStaticPricingPluginRegistry([]application.PricingPlugin{
+		plugins.NewSeasonalDiscountPlugin("seasonal-discount", 10),
+	})
+	quoteService := application.NewQuoteService(quoteRepo, customerRepo, productRepo, pricingRegistry)
 	orderService := application.NewOrderService(orderRepo, quoteRepo, stockRepo)
 	paymentService := application.NewPaymentService(orderRepo)
 	fulfillmentService := application.NewFulfillmentService(orderRepo, stockRepo, shipmentRepo)
