@@ -1,8 +1,8 @@
 # Commit Lesson
 
-feat(layered): complete lesson 001 layered skeleton
+feat(hexagonal): complete lesson 001 hexagonal skeleton
 
 # Add tag
 
-git tag -a layered-001 -m "Layered Architecture Lesson 001"
-git push origin layered-001
+git tag -a hexagonal-001 -m "Hexagonal Architecture Lesson 001"
+git push origin hexagonal-001

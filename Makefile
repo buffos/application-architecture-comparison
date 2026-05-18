@@ -1,4 +1,5 @@
 LAYERED_DIR := layered-architecture
+HEXAGONAL_DIR := hexagonal-architecture
 
 .PHONY: help layered-build layered-run layered-clean
 
@@ -19,3 +20,15 @@ layered-run:
 
 layered-clean:
 	go -C $(LAYERED_DIR) clean
+
+hex-build:
+	go -C $(HEXAGONAL_DIR) build ./...
+
+hex-test:
+	go -C $(HEXAGONAL_DIR) test ./...
+
+hex-run:
+	go -C $(HEXAGONAL_DIR) run ./cmd/quote-demo
+
+hex-clean:
+	go -C $(HEXAGONAL_DIR) clean
