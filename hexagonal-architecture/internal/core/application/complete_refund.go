@@ -1,0 +1,44 @@
+package application
+
+import (
+	"hexagonal-architecture/internal/core/domain"
+	"hexagonal-architecture/internal/core/ports"
+)
+
+type CompleteRefundUseCase struct {
+	returns ports.ReturnRequestRepository
+	refunds ports.RefundGateway
+}
+
+func NewCompleteRefundUseCase(returns ports.ReturnRequestRepository, refunds ports.RefundGateway) CompleteRefundUseCase {
+	return CompleteRefundUseCase{
+		returns: returns,
+		refunds: refunds,
+	}
+}
+
+func (uc CompleteRefundUseCase) Execute(returnRequestID string) (domain.ReturnRequest, error) {
+	request, err := uc.returns.FindByID(returnRequestID)
+	if err != nil {
+		return domain.ReturnRequest{}, err
+	}
+
+	ok, err := uc.refunds.Refund(request)
+	if err != nil {
+		return domain.ReturnRequest{}, err
+	}
+
+	if !ok {
+		return domain.ReturnRequest{}, domain.ErrRefundFailed
+	}
+
+	if err := request.MarkRefunded(); err != nil {
+		return domain.ReturnRequest{}, err
+	}
+
+	if err := uc.returns.Save(request); err != nil {
+		return domain.ReturnRequest{}, err
+	}
+
+	return request, nil
+}
