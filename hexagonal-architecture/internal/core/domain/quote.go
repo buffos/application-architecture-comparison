@@ -7,6 +7,8 @@ import (
 )
 
 const QuoteStatusDraft = "Draft"
+const QuoteStatusPendingApproval = "PendingApproval"
+const QuoteStatusApproved = "Approved"
 
 var quoteSequence uint64
 
@@ -14,6 +16,8 @@ var ErrCustomerIDRequired = errors.New("customer id is required")
 var ErrQuoteNotFound = errors.New("quote not found")
 var ErrQuoteNotEditable = errors.New("quote is not editable")
 var ErrQuoteLineQuantityInvalid = errors.New("quote line quantity must be positive")
+var ErrQuoteCannotSubmitWithoutLines = errors.New("quote must have at least one line before submission")
+var ErrQuoteCannotTransition = errors.New("quote cannot transition from its current status")
 
 type QuoteLine struct {
 	SKU               string
@@ -65,5 +69,32 @@ func (q *Quote) AddLine(product Product, quantity int, adjustedUnitPrice int) er
 		LineTotal:         adjustedUnitPrice * quantity,
 	})
 
+	return nil
+}
+
+func (q *Quote) Submit(requiresApproval bool) error {
+	if q.Status != QuoteStatusDraft {
+		return ErrQuoteCannotTransition
+	}
+
+	if len(q.Lines) == 0 {
+		return ErrQuoteCannotSubmitWithoutLines
+	}
+
+	if requiresApproval {
+		q.Status = QuoteStatusPendingApproval
+		return nil
+	}
+
+	q.Status = QuoteStatusApproved
+	return nil
+}
+
+func (q *Quote) Approve() error {
+	if q.Status != QuoteStatusPendingApproval {
+		return ErrQuoteCannotTransition
+	}
+
+	q.Status = QuoteStatusApproved
 	return nil
 }
