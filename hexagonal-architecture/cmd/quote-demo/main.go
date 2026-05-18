@@ -14,8 +14,12 @@ import (
 
 func main() {
 	quoteRepo := memory.NewQuoteRepository()
+	orderRepo := memory.NewOrderRepository()
 	customerRepo := memory.NewCustomerRepository()
 	productRepo := memory.NewProductRepository()
+	inventory := memory.NewInventoryReservationAdapter(map[string]int{
+		"CHAIR-001": 5,
+	})
 	pricingPolicy := pricing.NewFixedPricingPolicy()
 	approvalPolicy := approval.NewCategoryApprovalPolicy()
 	if err := customerRepo.Save(domain.Customer{ID: "customer-001", Active: true}); err != nil {
@@ -34,8 +38,9 @@ func main() {
 	createQuote := application.NewCreateDraftQuoteUseCase(quoteRepo, customerRepo)
 	addQuoteLine := application.NewAddQuoteLineUseCase(quoteRepo, productRepo, pricingPolicy)
 	submitQuote := application.NewSubmitQuoteUseCase(quoteRepo, approvalPolicy)
+	convertQuote := application.NewConvertQuoteToOrderUseCase(quoteRepo, orderRepo, inventory)
 	getQuote := application.NewGetQuoteUseCase(quoteRepo)
-	handler := cli.NewQuoteHandler(createQuote, addQuoteLine, submitQuote, getQuote)
+	handler := cli.NewQuoteHandler(createQuote, addQuoteLine, submitQuote, convertQuote, getQuote)
 
 	output, err := handler.RunDemo()
 	if err != nil {
