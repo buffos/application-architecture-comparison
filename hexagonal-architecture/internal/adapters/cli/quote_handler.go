@@ -7,14 +7,16 @@ import (
 )
 
 type QuoteHandler struct {
-	createQuote application.CreateDraftQuoteUseCase
-	getQuote    application.GetQuoteUseCase
+	createQuote  application.CreateDraftQuoteUseCase
+	addQuoteLine application.AddQuoteLineUseCase
+	getQuote     application.GetQuoteUseCase
 }
 
-func NewQuoteHandler(createQuote application.CreateDraftQuoteUseCase, getQuote application.GetQuoteUseCase) QuoteHandler {
+func NewQuoteHandler(createQuote application.CreateDraftQuoteUseCase, addQuoteLine application.AddQuoteLineUseCase, getQuote application.GetQuoteUseCase) QuoteHandler {
 	return QuoteHandler{
-		createQuote: createQuote,
-		getQuote:    getQuote,
+		createQuote:  createQuote,
+		addQuoteLine: addQuoteLine,
+		getQuote:     getQuote,
 	}
 }
 
@@ -24,10 +26,15 @@ func (h QuoteHandler) RunDemo() (string, error) {
 		return "", err
 	}
 
+	quoteWithLine, err := h.addQuoteLine.Execute(quote.ID, "CHAIR-001", 2)
+	if err != nil {
+		return "", err
+	}
+
 	loadedQuote, err := h.getQuote.Execute(quote.ID)
 	if err != nil {
 		return "", err
 	}
 
-	return fmt.Sprintf("created draft quote: id=%s customer=%s status=%s\nloaded draft quote: id=%s customer=%s status=%s", quote.ID, quote.CustomerID, quote.Status, loadedQuote.ID, loadedQuote.CustomerID, loadedQuote.Status), nil
+	return fmt.Sprintf("created draft quote: id=%s customer=%s status=%s\nadded quote line: id=%s lines=%d status=%s\nloaded draft quote: id=%s customer=%s lines=%d status=%s", quote.ID, quote.CustomerID, quote.Status, quoteWithLine.ID, len(quoteWithLine.Lines), quoteWithLine.Status, loadedQuote.ID, loadedQuote.CustomerID, len(loadedQuote.Lines), loadedQuote.Status), nil
 }
