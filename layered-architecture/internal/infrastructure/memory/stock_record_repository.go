@@ -36,3 +36,15 @@ func (r *StockRecordRepository) FindBySKU(sku string) (domain.StockRecord, error
 
 	return stock, nil
 }
+
+func (r *StockRecordRepository) List() ([]domain.StockRecord, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	records := make([]domain.StockRecord, 0, len(r.records))
+	for _, record := range r.records {
+		records = append(records, record)
+	}
+
+	return records, nil
+}

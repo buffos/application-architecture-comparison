@@ -10,6 +10,7 @@ const QuoteStatusDraft = "Draft"
 const QuoteStatusPendingApproval = "PendingApproval"
 const QuoteStatusApproved = "Approved"
 const QuoteStatusRejected = "Rejected"
+const QuoteStatusConverted = "Converted"
 
 var quoteSequence uint64
 
@@ -120,5 +121,14 @@ func (q *Quote) Reject() error {
 	}
 
 	q.Status = QuoteStatusRejected
+	return nil
+}
+
+func (q *Quote) MarkConverted() error {
+	if q.Status != QuoteStatusApproved {
+		return ErrQuoteCannotTransition
+	}
+
+	q.Status = QuoteStatusConverted
 	return nil
 }

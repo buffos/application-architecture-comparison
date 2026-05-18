@@ -26,7 +26,8 @@ func main() {
 	paymentService := application.NewPaymentService(orderRepo)
 	fulfillmentService := application.NewFulfillmentService(orderRepo, stockRepo, shipmentRepo)
 	returnService := application.NewReturnService(orderRepo, stockRepo, returnRepo)
-	handler := console.NewQuoteHandler(customerService, catalogService, inventoryService, quoteService, orderService, paymentService, fulfillmentService, returnService)
+	reportingService := application.NewReportingQueryService(quoteRepo, orderRepo, stockRepo)
+	handler := console.NewQuoteHandler(customerService, catalogService, inventoryService, quoteService, orderService, paymentService, fulfillmentService, returnService, reportingService)
 
 	output, err := handler.RunDemo()
 	if err != nil {

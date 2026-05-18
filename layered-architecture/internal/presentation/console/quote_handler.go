@@ -17,9 +17,10 @@ type QuoteHandler struct {
 	paymentService     application.PaymentService
 	fulfillmentService application.FulfillmentService
 	returnService      application.ReturnService
+	reportingService   application.ReportingQueryService
 }
 
-func NewQuoteHandler(customerService application.CustomerService, catalogService application.CatalogService, inventoryService application.InventoryService, quoteService application.QuoteService, orderService application.OrderService, paymentService application.PaymentService, fulfillmentService application.FulfillmentService, returnService application.ReturnService) QuoteHandler {
+func NewQuoteHandler(customerService application.CustomerService, catalogService application.CatalogService, inventoryService application.InventoryService, quoteService application.QuoteService, orderService application.OrderService, paymentService application.PaymentService, fulfillmentService application.FulfillmentService, returnService application.ReturnService, reportingService application.ReportingQueryService) QuoteHandler {
 	return QuoteHandler{
 		customerService:    customerService,
 		catalogService:     catalogService,
@@ -29,6 +30,7 @@ func NewQuoteHandler(customerService application.CustomerService, catalogService
 		paymentService:     paymentService,
 		fulfillmentService: fulfillmentService,
 		returnService:      returnService,
+		reportingService:   reportingService,
 	}
 }
 
@@ -131,6 +133,45 @@ func (h QuoteHandler) RunDemo() (string, error) {
 		return "", err
 	}
 
+	customBuildProduct, err := h.catalogService.CreateProduct("DESK-001", "Executive Desk", "CustomBuild", true)
+	if err != nil {
+		return "", err
+	}
+
+	if _, err := h.inventoryService.ReceiveStock(customBuildProduct.SKU, 4); err != nil {
+		return "", err
+	}
+
+	pendingQuote, err := h.quoteService.CreateDraftQuote(customer.ID)
+	if err != nil {
+		return "", err
+	}
+
+	pendingQuoteWithLine, err := h.quoteService.AddQuoteLine(pendingQuote.ID, customBuildProduct.SKU, 1)
+	if err != nil {
+		return "", err
+	}
+
+	pendingApprovalQuote, err := h.quoteService.SubmitQuote(pendingQuote.ID)
+	if err != nil {
+		return "", err
+	}
+
+	lowStockItems, err := h.reportingService.GetLowStockItems(3)
+	if err != nil {
+		return "", err
+	}
+
+	awaitingApproval, err := h.reportingService.GetOrdersAwaitingApproval()
+	if err != nil {
+		return "", err
+	}
+
+	conversionReport, err := h.reportingService.GetQuoteConversionReport()
+	if err != nil {
+		return "", err
+	}
+
 	lines := []string{
 		fmt.Sprintf("created customer: id=%s tier=%s paymentTerms=%s", customer.ID, customer.Tier, customer.PaymentTerms),
 		fmt.Sprintf("created product: sku=%s name=%s category=%s", product.SKU, product.Name, product.Category),
@@ -150,6 +191,11 @@ func (h QuoteHandler) RunDemo() (string, error) {
 		fmt.Sprintf("added cancellation quote line: id=%s lines=%d status=%s", cancelledQuoteWithLine.ID, len(cancelledQuoteWithLine.Lines), cancelledQuoteWithLine.Status),
 		fmt.Sprintf("submitted cancellation quote: id=%s status=%s", cancelledQuoteReady.ID, cancelledQuoteReady.Status),
 		fmt.Sprintf("cancelled order: id=%s status=%s payment=%s", cancelledOrder.ID, cancelledOrder.Status, cancelledOrder.PaymentStatus),
+		fmt.Sprintf("created custom build product: sku=%s category=%s", customBuildProduct.SKU, customBuildProduct.Category),
+		fmt.Sprintf("created pending approval quote: id=%s status=%s lines=%d", pendingApprovalQuote.ID, pendingApprovalQuote.Status, len(pendingQuoteWithLine.Lines)),
+		fmt.Sprintf("low stock report: items=%d", len(lowStockItems)),
+		fmt.Sprintf("awaiting approval report: quotes=%d", len(awaitingApproval)),
+		fmt.Sprintf("quote conversion report: total=%d converted=%d rate=%.2f", conversionReport.TotalQuotes, conversionReport.ConvertedQuotes, conversionReport.ConversionRate),
 	}
 
 	return strings.Join(lines, "\n"), nil

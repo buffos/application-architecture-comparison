@@ -5,6 +5,7 @@ import "layered-architecture/internal/domain"
 type StockRecordRepository interface {
 	Save(stock domain.StockRecord) error
 	FindBySKU(sku string) (domain.StockRecord, error)
+	List() ([]domain.StockRecord, error)
 }
 
 type InventoryService struct {

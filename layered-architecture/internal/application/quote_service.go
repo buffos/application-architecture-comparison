@@ -5,6 +5,7 @@ import "layered-architecture/internal/domain"
 type QuoteRepository interface {
 	Save(quote domain.Quote) error
 	FindByID(id string) (domain.Quote, error)
+	List() ([]domain.Quote, error)
 }
 
 type QuoteService struct {

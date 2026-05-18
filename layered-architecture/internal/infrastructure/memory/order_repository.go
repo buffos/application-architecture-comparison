@@ -36,3 +36,15 @@ func (r *OrderRepository) FindByID(id string) (domain.Order, error) {
 
 	return order, nil
 }
+
+func (r *OrderRepository) List() ([]domain.Order, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	orders := make([]domain.Order, 0, len(r.orders))
+	for _, order := range r.orders {
+		orders = append(orders, order)
+	}
+
+	return orders, nil
+}

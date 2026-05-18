@@ -37,3 +37,15 @@ func (r *QuoteRepository) FindByID(id string) (domain.Quote, error) {
 
 	return quote, nil
 }
+
+func (r *QuoteRepository) List() ([]domain.Quote, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	quotes := make([]domain.Quote, 0, len(r.quotes))
+	for _, quote := range r.quotes {
+		quotes = append(quotes, quote)
+	}
+
+	return quotes, nil
+}

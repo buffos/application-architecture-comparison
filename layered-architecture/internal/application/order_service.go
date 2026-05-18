@@ -5,6 +5,7 @@ import "layered-architecture/internal/domain"
 type OrderRepository interface {
 	Save(order domain.Order) error
 	FindByID(id string) (domain.Order, error)
+	List() ([]domain.Order, error)
 }
 
 type OrderService struct {
@@ -61,7 +62,15 @@ func (s OrderService) ConvertQuoteToOrder(quoteID string) (domain.Order, error) 
 		return domain.Order{}, err
 	}
 
+	if err := quote.MarkConverted(); err != nil {
+		return domain.Order{}, err
+	}
+
 	if err := s.orderRepo.Save(order); err != nil {
+		return domain.Order{}, err
+	}
+
+	if err := s.quoteRepo.Save(quote); err != nil {
 		return domain.Order{}, err
 	}
 
