@@ -43,6 +43,14 @@ func (a *InventoryReservationAdapter) Consume(lines []domain.ReservationLine) er
 	return nil
 }
 
+func (a *InventoryReservationAdapter) Release(lines []domain.ReservationLine) error {
+	for _, line := range lines {
+		a.available[line.SKU] += line.Quantity
+	}
+
+	return nil
+}
+
 func (a *InventoryReservationAdapter) Available(sku string) int {
 	return a.available[sku]
 }

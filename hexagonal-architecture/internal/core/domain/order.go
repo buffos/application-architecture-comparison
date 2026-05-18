@@ -9,12 +9,14 @@ import (
 const OrderStatusReadyForPayment = "ReadyForPayment"
 const OrderStatusReadyForFulfillment = "ReadyForFulfillment"
 const OrderStatusShipped = "Shipped"
+const OrderStatusCancelled = "Cancelled"
 
 var orderSequence uint64
 
 var ErrOrderNotFound = errors.New("order not found")
 var ErrQuoteNotApproved = errors.New("quote must be approved before conversion")
 var ErrPaymentFailed = errors.New("payment failed")
+var ErrOrderCancellationNotAllowed = errors.New("order cancellation is not allowed after shipment")
 
 type OrderLine struct {
 	SKU               string
@@ -76,5 +78,14 @@ func (o *Order) MarkShipped() error {
 	}
 
 	o.Status = OrderStatusShipped
+	return nil
+}
+
+func (o *Order) Cancel() error {
+	if o.Status == OrderStatusShipped {
+		return ErrOrderCancellationNotAllowed
+	}
+
+	o.Status = OrderStatusCancelled
 	return nil
 }
