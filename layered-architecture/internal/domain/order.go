@@ -21,6 +21,7 @@ var ErrOrderAlreadyShipped = errors.New("order is already shipped")
 
 type OrderLine struct {
 	SKU                 string
+	ProductCategory     string
 	ProductNameSnapshot string
 	Quantity            int
 }
@@ -45,6 +46,7 @@ func NewOrderFromQuote(quote Quote) (Order, error) {
 	for _, line := range quote.Lines {
 		lines = append(lines, OrderLine{
 			SKU:                 line.SKU,
+			ProductCategory:     line.ProductCategory,
 			ProductNameSnapshot: line.ProductNameSnapshot,
 			Quantity:            line.Quantity,
 		})

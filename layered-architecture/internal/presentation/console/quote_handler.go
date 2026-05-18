@@ -16,9 +16,10 @@ type QuoteHandler struct {
 	orderService       application.OrderService
 	paymentService     application.PaymentService
 	fulfillmentService application.FulfillmentService
+	returnService      application.ReturnService
 }
 
-func NewQuoteHandler(customerService application.CustomerService, catalogService application.CatalogService, inventoryService application.InventoryService, quoteService application.QuoteService, orderService application.OrderService, paymentService application.PaymentService, fulfillmentService application.FulfillmentService) QuoteHandler {
+func NewQuoteHandler(customerService application.CustomerService, catalogService application.CatalogService, inventoryService application.InventoryService, quoteService application.QuoteService, orderService application.OrderService, paymentService application.PaymentService, fulfillmentService application.FulfillmentService, returnService application.ReturnService) QuoteHandler {
 	return QuoteHandler{
 		customerService:    customerService,
 		catalogService:     catalogService,
@@ -27,6 +28,7 @@ func NewQuoteHandler(customerService application.CustomerService, catalogService
 		orderService:       orderService,
 		paymentService:     paymentService,
 		fulfillmentService: fulfillmentService,
+		returnService:      returnService,
 	}
 }
 
@@ -89,6 +91,16 @@ func (h QuoteHandler) RunDemo() (string, error) {
 		return "", err
 	}
 
+	returnRequest, err := h.returnService.RequestReturn(order.ID, "Damaged")
+	if err != nil {
+		return "", err
+	}
+
+	acceptedReturn, err := h.returnService.AcceptReturn(returnRequest.ID)
+	if err != nil {
+		return "", err
+	}
+
 	loadedOrder, err := h.orderService.GetOrder(order.ID)
 	if err != nil {
 		return "", err
@@ -131,6 +143,8 @@ func (h QuoteHandler) RunDemo() (string, error) {
 		fmt.Sprintf("converted order: id=%s sourceQuote=%s status=%s payment=%s", order.ID, order.SourceQuoteID, order.Status, order.PaymentStatus),
 		fmt.Sprintf("captured payment: id=%s status=%s payment=%s", paidOrder.ID, paidOrder.Status, paidOrder.PaymentStatus),
 		fmt.Sprintf("created shipment: id=%s order=%s status=%s lines=%d", shipment.ID, shipment.OrderID, shipment.Status, len(shipment.Lines)),
+		fmt.Sprintf("requested return: id=%s order=%s status=%s lines=%d", returnRequest.ID, returnRequest.OrderID, returnRequest.Status, len(returnRequest.Lines)),
+		fmt.Sprintf("accepted return: id=%s status=%s", acceptedReturn.ID, acceptedReturn.Status),
 		fmt.Sprintf("loaded order: id=%s customer=%s lines=%d status=%s payment=%s", loadedOrder.ID, loadedOrder.CustomerID, len(loadedOrder.Lines), loadedOrder.Status, loadedOrder.PaymentStatus),
 		fmt.Sprintf("created cancellation quote: id=%s status=%s", cancelledQuote.ID, cancelledQuote.Status),
 		fmt.Sprintf("added cancellation quote line: id=%s lines=%d status=%s", cancelledQuoteWithLine.ID, len(cancelledQuoteWithLine.Lines), cancelledQuoteWithLine.Status),

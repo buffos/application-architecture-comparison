@@ -16,6 +16,7 @@ func main() {
 	stockRepo := memory.NewStockRecordRepository()
 	orderRepo := memory.NewOrderRepository()
 	shipmentRepo := memory.NewShipmentRepository()
+	returnRepo := memory.NewReturnRequestRepository()
 
 	customerService := application.NewCustomerService(customerRepo)
 	catalogService := application.NewCatalogService(productRepo)
@@ -24,7 +25,8 @@ func main() {
 	orderService := application.NewOrderService(orderRepo, quoteRepo, stockRepo)
 	paymentService := application.NewPaymentService(orderRepo)
 	fulfillmentService := application.NewFulfillmentService(orderRepo, stockRepo, shipmentRepo)
-	handler := console.NewQuoteHandler(customerService, catalogService, inventoryService, quoteService, orderService, paymentService, fulfillmentService)
+	returnService := application.NewReturnService(orderRepo, stockRepo, returnRepo)
+	handler := console.NewQuoteHandler(customerService, catalogService, inventoryService, quoteService, orderService, paymentService, fulfillmentService, returnService)
 
 	output, err := handler.RunDemo()
 	if err != nil {
