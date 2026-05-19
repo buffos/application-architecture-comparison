@@ -38,7 +38,8 @@ func TestReportHandlerReturnsQuoteConversion(t *testing.T) {
 	convertQuote := application.NewConvertQuoteToOrderUseCase(quoteRepo, orderRepo, inventory)
 	reportUseCase := application.NewGetQuoteConversionReportUseCase(quoteRepo, orderRepo)
 	returnRateReport := application.NewGetReturnRateByCategoryReportUseCase(orderRepo, returnRepo)
-	handler := NewReportHandler(reportUseCase, returnRateReport)
+	topDiscountedReport := application.NewGetTopDiscountedProductsReportUseCase(quoteRepo)
+	handler := NewReportHandler(reportUseCase, returnRateReport, topDiscountedReport)
 
 	quote, _ := createQuote.Execute("customer-001")
 	_, _ = addQuoteLine.Execute(quote.ID, "CHAIR-001", 1)
@@ -93,7 +94,8 @@ func TestReportHandlerReturnsReturnRateByCategory(t *testing.T) {
 	acceptReturn := application.NewAcceptReturnUseCase(returnRepo, returnPolicy, idempotency)
 	quoteConversion := application.NewGetQuoteConversionReportUseCase(quoteRepo, orderRepo)
 	returnRateReport := application.NewGetReturnRateByCategoryReportUseCase(orderRepo, returnRepo)
-	handler := NewReportHandler(quoteConversion, returnRateReport)
+	topDiscountedReport := application.NewGetTopDiscountedProductsReportUseCase(quoteRepo)
+	handler := NewReportHandler(quoteConversion, returnRateReport, topDiscountedReport)
 
 	standardQuote, _ := createQuote.Execute("customer-001")
 	_, _ = addQuoteLine.Execute(standardQuote.ID, "CHAIR-001", 2)
@@ -127,4 +129,61 @@ func TestReportHandlerReturnsReturnRateByCategory(t *testing.T) {
 	if !strings.Contains(body, `"returnQuantity":2`) || !strings.Contains(body, `"returnRate":1`) {
 		t.Fatalf("expected returned standard quantity and rate in body, got %s", body)
 	}
+}
+
+func TestReportHandlerReturnsTopDiscountedProducts(t *testing.T) {
+	quoteRepo := memory.NewQuoteRepository()
+	orderRepo := memory.NewOrderRepository()
+	returnRepo := memory.NewReturnRequestRepository()
+	customerRepo := memory.NewCustomerRepository()
+	productRepo := memory.NewProductRepository()
+	pricingPolicy := httpDiscountedPricingPolicy{
+		adjustedBySKU: map[string]int{
+			"CHAIR-001": 9000,
+			"DESK-001":  45000,
+		},
+	}
+
+	_ = customerRepo.Save(domain.Customer{ID: "customer-001", Active: true})
+	_ = productRepo.Save(domain.Product{SKU: "CHAIR-001", Name: "Office Chair", Category: "Standard", BasePrice: 10000, Available: true, ReturnWindowDays: 30})
+	_ = productRepo.Save(domain.Product{SKU: "DESK-001", Name: "Executive Desk", Category: "CustomBuild", BasePrice: 50000, Available: true, ReturnWindowDays: 30})
+
+	createQuote := application.NewCreateDraftQuoteUseCase(quoteRepo, customerRepo)
+	addQuoteLine := application.NewAddQuoteLineUseCase(quoteRepo, productRepo, pricingPolicy)
+	quoteConversion := application.NewGetQuoteConversionReportUseCase(quoteRepo, orderRepo)
+	returnRateReport := application.NewGetReturnRateByCategoryReportUseCase(orderRepo, returnRepo)
+	topDiscountedReport := application.NewGetTopDiscountedProductsReportUseCase(quoteRepo)
+	handler := NewReportHandler(quoteConversion, returnRateReport, topDiscountedReport)
+
+	quote, _ := createQuote.Execute("customer-001")
+	_, _ = addQuoteLine.Execute(quote.ID, "CHAIR-001", 2)
+	_, _ = addQuoteLine.Execute(quote.ID, "DESK-001", 1)
+
+	request := httptest.NewRequest(http.MethodGet, "/reports/top-discounted-products", nil)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
+	}
+
+	body := recorder.Body.String()
+	if !strings.Contains(body, `"sku":"DESK-001"`) || !strings.Contains(body, `"sku":"CHAIR-001"`) {
+		t.Fatalf("expected discounted products in body, got %s", body)
+	}
+	if !strings.Contains(body, `"totalDiscountAmount":5000`) {
+		t.Fatalf("expected top discount amount in body, got %s", body)
+	}
+}
+
+type httpDiscountedPricingPolicy struct {
+	adjustedBySKU map[string]int
+}
+
+func (p httpDiscountedPricingPolicy) Price(product domain.Product, quantity int) (int, error) {
+	if adjusted, ok := p.adjustedBySKU[product.SKU]; ok {
+		return adjusted, nil
+	}
+
+	return product.BasePrice, nil
 }
