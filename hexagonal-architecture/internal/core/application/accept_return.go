@@ -17,7 +17,7 @@ func NewAcceptReturnUseCase(returns ports.ReturnRequestRepository, policy ports.
 	}
 }
 
-func (uc AcceptReturnUseCase) Execute(returnRequestID string) (domain.ReturnRequest, error) {
+func (uc AcceptReturnUseCase) Execute(returnRequestID, reviewedBy string) (domain.ReturnRequest, error) {
 	request, err := uc.returns.FindByID(returnRequestID)
 	if err != nil {
 		return domain.ReturnRequest{}, err
@@ -32,7 +32,7 @@ func (uc AcceptReturnUseCase) Execute(returnRequestID string) (domain.ReturnRequ
 		return domain.ReturnRequest{}, domain.ErrReturnNotEligible
 	}
 
-	if err := request.Accept(); err != nil {
+	if err := request.Accept(reviewedBy); err != nil {
 		return domain.ReturnRequest{}, err
 	}
 

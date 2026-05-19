@@ -19,6 +19,7 @@ var ErrReturnNotEligible = errors.New("return is not eligible")
 var ErrRefundFailed = errors.New("refund failed")
 var ErrReturnRefundNotAllowed = errors.New("return refund is not allowed")
 var ErrReturnReviewNotAllowed = errors.New("return review is not allowed")
+var ErrActorRequired = errors.New("actor is required")
 
 type ReturnLine struct {
 	SKU              string
@@ -32,6 +33,10 @@ type ReturnLine struct {
 type ReturnRequest struct {
 	ID          string
 	OrderID     string
+	RequestedBy string
+	ReviewedBy  string
+	ProcessedBy string
+	ReviewNote  string
 	Reason      string
 	Status      string
 	RequestedAt time.Time
@@ -39,9 +44,12 @@ type ReturnRequest struct {
 	Lines       []ReturnLine
 }
 
-func NewReturnRequest(order Order, reason string, requestedAt time.Time) (ReturnRequest, error) {
+func NewReturnRequest(order Order, reason, requestedBy string, requestedAt time.Time) (ReturnRequest, error) {
 	if order.Status != OrderStatusShipped {
 		return ReturnRequest{}, ErrReturnNotEligible
+	}
+	if requestedBy == "" {
+		return ReturnRequest{}, ErrActorRequired
 	}
 
 	id := atomic.AddUint64(&returnSequence, 1)
@@ -65,6 +73,7 @@ func NewReturnRequest(order Order, reason string, requestedAt time.Time) (Return
 	return ReturnRequest{
 		ID:          fmt.Sprintf("ret-%03d", id),
 		OrderID:     order.ID,
+		RequestedBy: requestedBy,
 		Reason:      reason,
 		Status:      ReturnStatusRequested,
 		RequestedAt: requestedAt,
@@ -73,29 +82,43 @@ func NewReturnRequest(order Order, reason string, requestedAt time.Time) (Return
 	}, nil
 }
 
-func (r *ReturnRequest) Accept() error {
+func (r *ReturnRequest) Accept(reviewedBy string) error {
 	if r.Status != ReturnStatusRequested {
 		return ErrReturnReviewNotAllowed
 	}
+	if reviewedBy == "" {
+		return ErrActorRequired
+	}
 
+	r.ReviewedBy = reviewedBy
+	r.ReviewNote = ""
 	r.Status = ReturnStatusAccepted
 	return nil
 }
 
-func (r *ReturnRequest) Reject() error {
+func (r *ReturnRequest) Reject(reviewedBy, reviewNote string) error {
 	if r.Status != ReturnStatusRequested {
 		return ErrReturnReviewNotAllowed
 	}
+	if reviewedBy == "" {
+		return ErrActorRequired
+	}
 
+	r.ReviewedBy = reviewedBy
+	r.ReviewNote = reviewNote
 	r.Status = ReturnStatusRejected
 	return nil
 }
 
-func (r *ReturnRequest) MarkRefunded() error {
+func (r *ReturnRequest) MarkRefunded(processedBy string) error {
 	if r.Status != ReturnStatusAccepted {
 		return ErrReturnRefundNotAllowed
 	}
+	if processedBy == "" {
+		return ErrActorRequired
+	}
 
+	r.ProcessedBy = processedBy
 	r.Status = ReturnStatusRefunded
 	return nil
 }

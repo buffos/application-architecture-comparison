@@ -13,13 +13,13 @@ func NewRejectReturnUseCase(returns ports.ReturnRequestRepository) RejectReturnU
 	return RejectReturnUseCase{returns: returns}
 }
 
-func (uc RejectReturnUseCase) Execute(returnRequestID string) (domain.ReturnRequest, error) {
+func (uc RejectReturnUseCase) Execute(returnRequestID, reviewedBy, reviewNote string) (domain.ReturnRequest, error) {
 	request, err := uc.returns.FindByID(returnRequestID)
 	if err != nil {
 		return domain.ReturnRequest{}, err
 	}
 
-	if err := request.Reject(); err != nil {
+	if err := request.Reject(reviewedBy, reviewNote); err != nil {
 		return domain.ReturnRequest{}, err
 	}
 

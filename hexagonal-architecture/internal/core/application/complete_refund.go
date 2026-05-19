@@ -19,7 +19,7 @@ func NewCompleteRefundUseCase(returns ports.ReturnRequestRepository, refunds por
 	}
 }
 
-func (uc CompleteRefundUseCase) Execute(returnRequestID string) (domain.ReturnRequest, error) {
+func (uc CompleteRefundUseCase) Execute(returnRequestID, processedBy string) (domain.ReturnRequest, error) {
 	request, err := uc.returns.FindByID(returnRequestID)
 	if err != nil {
 		return domain.ReturnRequest{}, err
@@ -34,7 +34,7 @@ func (uc CompleteRefundUseCase) Execute(returnRequestID string) (domain.ReturnRe
 		return domain.ReturnRequest{}, domain.ErrRefundFailed
 	}
 
-	if err := request.MarkRefunded(); err != nil {
+	if err := request.MarkRefunded(processedBy); err != nil {
 		return domain.ReturnRequest{}, err
 	}
 
