@@ -3,7 +3,8 @@ package memory
 import "hexagonal-architecture/internal/core/domain"
 
 type InventoryReservationAdapter struct {
-	available map[string]int
+	available  map[string]int
+	thresholds map[string]int
 }
 
 func NewInventoryReservationAdapter(initial map[string]int) *InventoryReservationAdapter {
@@ -12,7 +13,10 @@ func NewInventoryReservationAdapter(initial map[string]int) *InventoryReservatio
 		copyMap[sku] = quantity
 	}
 
-	return &InventoryReservationAdapter{available: copyMap}
+	return &InventoryReservationAdapter{
+		available:  copyMap,
+		thresholds: make(map[string]int, len(initial)),
+	}
 }
 
 func (a *InventoryReservationAdapter) Reserve(lines []domain.ReservationLine) error {
@@ -61,4 +65,21 @@ func (a *InventoryReservationAdapter) Restock(lines []domain.ReservationLine) er
 
 func (a *InventoryReservationAdapter) Available(sku string) int {
 	return a.available[sku]
+}
+
+func (a *InventoryReservationAdapter) SetReorderThreshold(sku string, threshold int) {
+	a.thresholds[sku] = threshold
+}
+
+func (a *InventoryReservationAdapter) ListStock() ([]domain.StockRecord, error) {
+	records := make([]domain.StockRecord, 0, len(a.available))
+	for sku, available := range a.available {
+		records = append(records, domain.StockRecord{
+			SKU:              sku,
+			Available:        available,
+			ReorderThreshold: a.thresholds[sku],
+		})
+	}
+
+	return records, nil
 }

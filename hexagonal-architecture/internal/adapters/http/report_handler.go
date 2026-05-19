@@ -11,6 +11,7 @@ type ReportHandler struct {
 	quoteConversion       application.GetQuoteConversionReportUseCase
 	returnRateByCategory  application.GetReturnRateByCategoryReportUseCase
 	topDiscountedProducts application.GetTopDiscountedProductsReportUseCase
+	lowStockItems         application.GetLowStockItemsReportUseCase
 }
 
 type quoteConversionResponse struct {
@@ -43,15 +44,27 @@ type topDiscountedProductRowResponse struct {
 	AverageDiscountRate float64 `json:"averageDiscountRate"`
 }
 
+type lowStockItemsResponse struct {
+	Items []lowStockItemRowResponse `json:"items"`
+}
+
+type lowStockItemRowResponse struct {
+	SKU              string `json:"sku"`
+	Available        int    `json:"available"`
+	ReorderThreshold int    `json:"reorderThreshold"`
+}
+
 func NewReportHandler(
 	quoteConversion application.GetQuoteConversionReportUseCase,
 	returnRateByCategory application.GetReturnRateByCategoryReportUseCase,
 	topDiscountedProducts application.GetTopDiscountedProductsReportUseCase,
+	lowStockItems application.GetLowStockItemsReportUseCase,
 ) ReportHandler {
 	return ReportHandler{
 		quoteConversion:       quoteConversion,
 		returnRateByCategory:  returnRateByCategory,
 		topDiscountedProducts: topDiscountedProducts,
+		lowStockItems:         lowStockItems,
 	}
 }
 
@@ -66,6 +79,10 @@ func (h ReportHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.Method == http.MethodGet && r.URL.Path == "/reports/top-discounted-products" {
 		h.topDiscountedProductsReport(w, r)
+		return
+	}
+	if r.Method == http.MethodGet && r.URL.Path == "/reports/low-stock-items" {
+		h.lowStockItemsReport(w, r)
 		return
 	}
 
@@ -132,4 +149,25 @@ func (h ReportHandler) topDiscountedProductsReport(w http.ResponseWriter, r *htt
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(topDiscountedProductsResponse{Products: rows})
+}
+
+func (h ReportHandler) lowStockItemsReport(w http.ResponseWriter, r *http.Request) {
+	report, err := h.lowStockItems.Execute()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	rows := make([]lowStockItemRowResponse, 0, len(report))
+	for _, row := range report {
+		rows = append(rows, lowStockItemRowResponse{
+			SKU:              row.SKU,
+			Available:        row.Available,
+			ReorderThreshold: row.ReorderThreshold,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(lowStockItemsResponse{Items: rows})
 }

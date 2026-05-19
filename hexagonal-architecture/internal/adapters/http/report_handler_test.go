@@ -39,7 +39,8 @@ func TestReportHandlerReturnsQuoteConversion(t *testing.T) {
 	reportUseCase := application.NewGetQuoteConversionReportUseCase(quoteRepo, orderRepo)
 	returnRateReport := application.NewGetReturnRateByCategoryReportUseCase(orderRepo, returnRepo)
 	topDiscountedReport := application.NewGetTopDiscountedProductsReportUseCase(quoteRepo)
-	handler := NewReportHandler(reportUseCase, returnRateReport, topDiscountedReport)
+	lowStockReport := application.NewGetLowStockItemsReportUseCase(inventory)
+	handler := NewReportHandler(reportUseCase, returnRateReport, topDiscountedReport, lowStockReport)
 
 	quote, _ := createQuote.Execute("customer-001")
 	_, _ = addQuoteLine.Execute(quote.ID, "CHAIR-001", 1)
@@ -95,7 +96,8 @@ func TestReportHandlerReturnsReturnRateByCategory(t *testing.T) {
 	quoteConversion := application.NewGetQuoteConversionReportUseCase(quoteRepo, orderRepo)
 	returnRateReport := application.NewGetReturnRateByCategoryReportUseCase(orderRepo, returnRepo)
 	topDiscountedReport := application.NewGetTopDiscountedProductsReportUseCase(quoteRepo)
-	handler := NewReportHandler(quoteConversion, returnRateReport, topDiscountedReport)
+	lowStockReport := application.NewGetLowStockItemsReportUseCase(inventory)
+	handler := NewReportHandler(quoteConversion, returnRateReport, topDiscountedReport, lowStockReport)
 
 	standardQuote, _ := createQuote.Execute("customer-001")
 	_, _ = addQuoteLine.Execute(standardQuote.ID, "CHAIR-001", 2)
@@ -153,7 +155,8 @@ func TestReportHandlerReturnsTopDiscountedProducts(t *testing.T) {
 	quoteConversion := application.NewGetQuoteConversionReportUseCase(quoteRepo, orderRepo)
 	returnRateReport := application.NewGetReturnRateByCategoryReportUseCase(orderRepo, returnRepo)
 	topDiscountedReport := application.NewGetTopDiscountedProductsReportUseCase(quoteRepo)
-	handler := NewReportHandler(quoteConversion, returnRateReport, topDiscountedReport)
+	lowStockReport := application.NewGetLowStockItemsReportUseCase(memory.NewInventoryReservationAdapter(map[string]int{}))
+	handler := NewReportHandler(quoteConversion, returnRateReport, topDiscountedReport, lowStockReport)
 
 	quote, _ := createQuote.Execute("customer-001")
 	_, _ = addQuoteLine.Execute(quote.ID, "CHAIR-001", 2)
@@ -173,6 +176,39 @@ func TestReportHandlerReturnsTopDiscountedProducts(t *testing.T) {
 	}
 	if !strings.Contains(body, `"totalDiscountAmount":5000`) {
 		t.Fatalf("expected top discount amount in body, got %s", body)
+	}
+}
+
+func TestReportHandlerReturnsLowStockItems(t *testing.T) {
+	inventory := memory.NewInventoryReservationAdapter(map[string]int{
+		"CHAIR-001": 2,
+		"DESK-001":  6,
+		"LAMP-001":  1,
+	})
+	inventory.SetReorderThreshold("CHAIR-001", 3)
+	inventory.SetReorderThreshold("DESK-001", 5)
+	inventory.SetReorderThreshold("LAMP-001", 1)
+
+	quoteConversion := application.NewGetQuoteConversionReportUseCase(memory.NewQuoteRepository(), memory.NewOrderRepository())
+	returnRateReport := application.NewGetReturnRateByCategoryReportUseCase(memory.NewOrderRepository(), memory.NewReturnRequestRepository())
+	topDiscountedReport := application.NewGetTopDiscountedProductsReportUseCase(memory.NewQuoteRepository())
+	lowStockReport := application.NewGetLowStockItemsReportUseCase(inventory)
+	handler := NewReportHandler(quoteConversion, returnRateReport, topDiscountedReport, lowStockReport)
+
+	request := httptest.NewRequest(http.MethodGet, "/reports/low-stock-items", nil)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, recorder.Code)
+	}
+
+	body := recorder.Body.String()
+	if !strings.Contains(body, `"sku":"LAMP-001"`) || !strings.Contains(body, `"sku":"CHAIR-001"`) {
+		t.Fatalf("expected low-stock items in body, got %s", body)
+	}
+	if !strings.Contains(body, `"reorderThreshold":3`) {
+		t.Fatalf("expected reorder threshold in body, got %s", body)
 	}
 }
 
