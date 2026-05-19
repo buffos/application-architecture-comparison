@@ -83,3 +83,73 @@ func TestPaymentAndShipmentWorkflowUsesPorts(t *testing.T) {
 		t.Fatalf("expected remaining stock 1, got %d", inventory.Available("CHAIR-001"))
 	}
 }
+
+func TestManualReviewPaymentMustBeApprovedBeforeShipment(t *testing.T) {
+	quoteRepo := memory.NewQuoteRepository()
+	orderRepo := memory.NewOrderRepository()
+	shipmentRepo := memory.NewShipmentRepository()
+	customerRepo := memory.NewCustomerRepository()
+	productRepo := memory.NewProductRepository()
+	inventory := memory.NewInventoryReservationAdapter(map[string]int{
+		"CHAIR-001": 5,
+	})
+	pricingPolicy := pricing.NewFixedPricingPolicy()
+	approvalPolicy := approval.NewCategoryApprovalPolicy()
+	paymentGateway := payment.NewManualReviewGateway()
+	shipmentClock := timeadapter.NewFixedClock(time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC))
+
+	_ = customerRepo.Save(domain.Customer{ID: "customer-001", Active: true})
+	_ = productRepo.Save(domain.Product{
+		SKU:              "CHAIR-001",
+		Name:             "Office Chair",
+		Category:         "Standard",
+		BasePrice:        10000,
+		Available:        true,
+		ReturnWindowDays: 30,
+	})
+
+	createQuote := NewCreateDraftQuoteUseCase(quoteRepo, customerRepo)
+	addQuoteLine := NewAddQuoteLineUseCase(quoteRepo, productRepo, pricingPolicy)
+	submitQuote := NewSubmitQuoteUseCase(quoteRepo, approvalPolicy)
+	convertQuote := NewConvertQuoteToOrderUseCase(quoteRepo, orderRepo, inventory)
+	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
+	approvePaymentReview := NewApprovePaymentReviewUseCase(orderRepo)
+	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
+
+	quote, _ := createQuote.Execute("customer-001")
+	_, _ = addQuoteLine.Execute(quote.ID, "CHAIR-001", 2)
+	_, _ = submitQuote.Execute(quote.ID)
+	order, _ := convertQuote.Execute(quote.ID)
+
+	reviewOrder, err := capturePayment.Execute(order.ID)
+	if err != nil {
+		t.Fatalf("expected payment capture to succeed with manual review, got %v", err)
+	}
+
+	if reviewOrder.Status != domain.OrderStatusPaymentReview || reviewOrder.PaymentStatus != "ManualReview" {
+		t.Fatalf("expected order in payment review, got status=%s payment=%s", reviewOrder.Status, reviewOrder.PaymentStatus)
+	}
+
+	_, err = createShipment.Execute(order.ID)
+	if err != domain.ErrShipmentNotAllowedUntilPaymentAccepted {
+		t.Fatalf("expected %v, got %v", domain.ErrShipmentNotAllowedUntilPaymentAccepted, err)
+	}
+
+	approvedOrder, err := approvePaymentReview.Execute(order.ID, "manager-1")
+	if err != nil {
+		t.Fatalf("expected payment review approval to succeed, got %v", err)
+	}
+
+	if approvedOrder.Status != domain.OrderStatusReadyForFulfillment || approvedOrder.PaymentStatus != "Accepted" || approvedOrder.PaymentReviewedBy != "manager-1" {
+		t.Fatalf("unexpected approved order: %+v", approvedOrder)
+	}
+
+	shipment, err := createShipment.Execute(order.ID)
+	if err != nil {
+		t.Fatalf("expected shipment creation to succeed after approval, got %v", err)
+	}
+
+	if shipment.Status != domain.ShipmentStatusShipped {
+		t.Fatalf("expected shipment status %s, got %s", domain.ShipmentStatusShipped, shipment.Status)
+	}
+}

@@ -23,16 +23,29 @@ func (uc CapturePaymentUseCase) Execute(id string) (domain.Order, error) {
 		return domain.Order{}, err
 	}
 
-	ok, err := uc.payments.Capture(order)
+	result, err := uc.payments.Capture(order)
 	if err != nil {
 		return domain.Order{}, err
 	}
 
-	if !ok {
+	switch result {
+	case ports.PaymentResultAccepted:
+		order.AcceptPayment()
+	case ports.PaymentResultManualReview:
+		order.MarkPaymentReview()
+	case ports.PaymentResultFailed:
+		order.FailPayment()
+		if err := uc.orders.Save(order); err != nil {
+			return domain.Order{}, err
+		}
+		return domain.Order{}, domain.ErrPaymentFailed
+	default:
+		order.FailPayment()
+		if err := uc.orders.Save(order); err != nil {
+			return domain.Order{}, err
+		}
 		return domain.Order{}, domain.ErrPaymentFailed
 	}
-
-	order.AcceptPayment()
 
 	if err := uc.orders.Save(order); err != nil {
 		return domain.Order{}, err
