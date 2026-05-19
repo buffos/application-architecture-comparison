@@ -93,7 +93,7 @@ func TestReportHandlerReturnsReturnRateByCategory(t *testing.T) {
 	capturePayment := application.NewCapturePaymentUseCase(orderRepo, paymentGateway)
 	createShipment := application.NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
 	requestReturn := application.NewRequestReturnUseCase(orderRepo, returnRepo, returnClock)
-	acceptReturn := application.NewAcceptReturnUseCase(returnRepo, returnPolicy, idempotency)
+	acceptReturn := application.NewAcceptReturnUseCase(orderRepo, returnRepo, returnPolicy, idempotency)
 	approvalQueueReport := application.NewGetOrdersAwaitingApprovalReportUseCase(quoteRepo)
 	quoteConversion := application.NewGetQuoteConversionReportUseCase(quoteRepo, orderRepo)
 	returnRateReport := application.NewGetReturnRateByCategoryReportUseCase(orderRepo, returnRepo)

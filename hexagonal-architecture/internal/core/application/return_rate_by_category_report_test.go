@@ -44,7 +44,7 @@ func TestReturnRateByCategoryReport(t *testing.T) {
 	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
 	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
 	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo, returnClock)
-	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy, idempotency)
+	acceptReturn := NewAcceptReturnUseCase(orderRepo, returnRepo, returnPolicy, idempotency)
 	reportUseCase := NewGetReturnRateByCategoryReportUseCase(orderRepo, returnRepo)
 
 	standardOrder := createShippedOrder(t, createQuote, addQuoteLine, submitQuote, approveQuote, convertQuote, capturePayment, createShipment, "customer-001", "CHAIR-001", 2)

@@ -45,7 +45,7 @@ func TestReturnHandlerGetsAndListsReturns(t *testing.T) {
 	capturePayment := application.NewCapturePaymentUseCase(orderRepo, paymentGateway)
 	createShipment := application.NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
 	requestReturn := application.NewRequestReturnUseCase(orderRepo, returnRepo, returnClock)
-	acceptReturn := application.NewAcceptReturnUseCase(returnRepo, returnPolicy, idempotency)
+	acceptReturn := application.NewAcceptReturnUseCase(orderRepo, returnRepo, returnPolicy, idempotency)
 	completeRefund := application.NewCompleteRefundUseCase(returnRepo, refundGateway, inventory, idempotency)
 	getReturn := application.NewGetReturnRequestUseCase(returnRepo)
 	listReturns := application.NewListReturnRequestsUseCase(returnRepo)

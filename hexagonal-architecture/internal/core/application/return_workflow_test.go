@@ -50,7 +50,7 @@ func TestShippedOrderCanRequestReturnAndBeRefunded(t *testing.T) {
 	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
 	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
 	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo, returnClock)
-	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy, idempotency)
+	acceptReturn := NewAcceptReturnUseCase(orderRepo, returnRepo, returnPolicy, idempotency)
 	completeRefund := NewCompleteRefundUseCase(returnRepo, refundGateway, inventory, idempotency)
 
 	quote, _ := createQuote.Execute("customer-001")
@@ -140,7 +140,7 @@ func TestReturnCanBeRejectedAndThenCannotBeRefunded(t *testing.T) {
 	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
 	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
 	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo, returnClock)
-	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy, idempotency)
+	acceptReturn := NewAcceptReturnUseCase(orderRepo, returnRepo, returnPolicy, idempotency)
 	rejectReturn := NewRejectReturnUseCase(returnRepo)
 	completeRefund := NewCompleteRefundUseCase(returnRepo, refundGateway, inventory, idempotency)
 
@@ -223,7 +223,7 @@ func TestReturnAcceptanceCanBeBlockedByPolicy(t *testing.T) {
 	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
 	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
 	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo, returnClock)
-	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy, idempotency)
+	acceptReturn := NewAcceptReturnUseCase(orderRepo, returnRepo, returnPolicy, idempotency)
 
 	quote, _ := createQuote.Execute("customer-001")
 	_, _ = addQuoteLine.Execute(quote.ID, "CHAIR-001", 2)
@@ -374,7 +374,7 @@ func TestReturnActorsAreRequired(t *testing.T) {
 	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
 	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
 	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo, returnClock)
-	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy, idempotency)
+	acceptReturn := NewAcceptReturnUseCase(orderRepo, returnRepo, returnPolicy, idempotency)
 	rejectReturn := NewRejectReturnUseCase(returnRepo)
 	completeRefund := NewCompleteRefundUseCase(returnRepo, refund.NewAcceptAllGateway(), inventory, idempotency)
 
@@ -442,7 +442,7 @@ func TestAcceptReturnIsIdempotent(t *testing.T) {
 	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
 	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
 	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo, returnClock)
-	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy, idempotency)
+	acceptReturn := NewAcceptReturnUseCase(orderRepo, returnRepo, returnPolicy, idempotency)
 
 	quote, _ := createQuote.Execute("customer-001")
 	_, _ = addQuoteLine.Execute(quote.ID, "CHAIR-001", 2)
@@ -494,7 +494,7 @@ func TestCompleteRefundIsIdempotent(t *testing.T) {
 	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
 	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
 	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo, returnClock)
-	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy, idempotency)
+	acceptReturn := NewAcceptReturnUseCase(orderRepo, returnRepo, returnPolicy, idempotency)
 	completeRefund := NewCompleteRefundUseCase(returnRepo, refundGateway, inventory, idempotency)
 
 	quote, _ := createQuote.Execute("customer-001")

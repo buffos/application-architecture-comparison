@@ -6,13 +6,15 @@ import (
 )
 
 type AcceptReturnUseCase struct {
+	orders  ports.OrderRepository
 	returns ports.ReturnRequestRepository
 	policy  ports.ReturnEligibilityPolicy
 	keys    ports.IdempotencyStore
 }
 
-func NewAcceptReturnUseCase(returns ports.ReturnRequestRepository, policy ports.ReturnEligibilityPolicy, keys ports.IdempotencyStore) AcceptReturnUseCase {
+func NewAcceptReturnUseCase(orders ports.OrderRepository, returns ports.ReturnRequestRepository, policy ports.ReturnEligibilityPolicy, keys ports.IdempotencyStore) AcceptReturnUseCase {
 	return AcceptReturnUseCase{
+		orders:  orders,
 		returns: returns,
 		policy:  policy,
 		keys:    keys,
@@ -47,6 +49,19 @@ func (uc AcceptReturnUseCase) Execute(returnRequestID, reviewedBy, idempotencyKe
 	}
 
 	if err := request.Accept(reviewedBy); err != nil {
+		return domain.ReturnRequest{}, err
+	}
+
+	order, err := uc.orders.FindByID(request.OrderID)
+	if err != nil {
+		return domain.ReturnRequest{}, err
+	}
+
+	if err := order.ApplyAcceptedReturn(request.Lines); err != nil {
+		return domain.ReturnRequest{}, err
+	}
+
+	if err := uc.orders.Save(order); err != nil {
 		return domain.ReturnRequest{}, err
 	}
 

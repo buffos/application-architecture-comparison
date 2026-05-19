@@ -19,13 +19,13 @@ func NewRequestReturnUseCase(orders ports.OrderRepository, returns ports.ReturnR
 	}
 }
 
-func (uc RequestReturnUseCase) Execute(orderID, reason, requestedBy string) (domain.ReturnRequest, error) {
+func (uc RequestReturnUseCase) Execute(orderID, reason, requestedBy string, requested ...domain.ReturnLineRequest) (domain.ReturnRequest, error) {
 	order, err := uc.orders.FindByID(orderID)
 	if err != nil {
 		return domain.ReturnRequest{}, err
 	}
 
-	request, err := domain.NewReturnRequest(order, reason, requestedBy, uc.clock.Now())
+	request, err := domain.NewReturnRequest(order, reason, requestedBy, uc.clock.Now(), requested...)
 	if err != nil {
 		return domain.ReturnRequest{}, err
 	}

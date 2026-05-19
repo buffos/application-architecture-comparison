@@ -35,6 +35,7 @@ type OrderLine struct {
 	LineTotal         int
 	ReturnWindowDays  int
 	ShippedQuantity   int
+	ReturnedQuantity  int
 }
 
 type Order struct {
@@ -120,6 +121,10 @@ func (o *OrderLine) RemainingShippableQuantity() int {
 	return o.Quantity - o.ShippedQuantity
 }
 
+func (o *OrderLine) RemainingReturnableQuantity() int {
+	return o.ShippedQuantity - o.ReturnedQuantity
+}
+
 func (o *Order) ApplyShipment(lines []ShipmentLine, shippedAt time.Time) error {
 	if o.Status != OrderStatusReadyForFulfillment && o.Status != OrderStatusPartiallyShipped {
 		return ErrShipmentNotAllowedUntilPaymentAccepted
@@ -166,6 +171,36 @@ func (o *Order) ApplyShipment(lines []ShipmentLine, shippedAt time.Time) error {
 	}
 
 	o.Status = OrderStatusPartiallyShipped
+	if o.ShippedAt.IsZero() {
+		o.ShippedAt = shippedAt
+	}
+	return nil
+}
+
+func (o *Order) ApplyAcceptedReturn(lines []ReturnLine) error {
+	indexBySKU := make(map[string]int, len(o.Lines))
+	for i, line := range o.Lines {
+		indexBySKU[line.SKU] = i
+	}
+
+	for _, returnLine := range lines {
+		index, ok := indexBySKU[returnLine.SKU]
+		if !ok {
+			return ErrReturnLineInvalid
+		}
+		if returnLine.Quantity <= 0 {
+			return ErrReturnLineInvalid
+		}
+		if returnLine.Quantity > o.Lines[index].RemainingReturnableQuantity() {
+			return ErrReturnQuantityExceedsRemaining
+		}
+	}
+
+	for _, returnLine := range lines {
+		index := indexBySKU[returnLine.SKU]
+		o.Lines[index].ReturnedQuantity += returnLine.Quantity
+	}
+
 	return nil
 }
 
