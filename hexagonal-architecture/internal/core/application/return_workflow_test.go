@@ -99,8 +99,8 @@ func TestShippedOrderCanRequestReturnAndBeRefunded(t *testing.T) {
 		t.Fatalf("expected processedBy manager-1, got %s", refunded.ProcessedBy)
 	}
 
-	if inventory.Available("CHAIR-001") != 3 {
-		t.Fatalf("expected restocked stock 3, got %d", inventory.Available("CHAIR-001"))
+	if inventory.Available("CHAIR-001") != 5 {
+		t.Fatalf("expected restocked stock 5, got %d", inventory.Available("CHAIR-001"))
 	}
 }
 
@@ -183,8 +183,8 @@ func TestReturnCanBeRejectedAndThenCannotBeRefunded(t *testing.T) {
 		t.Fatalf("expected %v, got %v", domain.ErrReturnRefundNotAllowed, err)
 	}
 
-	if inventory.Available("CHAIR-001") != 1 {
-		t.Fatalf("expected stock to remain 1 after rejected return, got %d", inventory.Available("CHAIR-001"))
+	if inventory.Available("CHAIR-001") != 3 {
+		t.Fatalf("expected stock to remain 3 after rejected return, got %d", inventory.Available("CHAIR-001"))
 	}
 }
 
@@ -520,7 +520,7 @@ func TestCompleteRefundIsIdempotent(t *testing.T) {
 		t.Fatalf("expected idempotent refund result to match first result, got status=%s processedBy=%s", second.Status, second.ProcessedBy)
 	}
 
-	if inventory.Available("CHAIR-001") != 3 {
-		t.Fatalf("expected stock to be restocked once to 3, got %d", inventory.Available("CHAIR-001"))
+	if inventory.Available("CHAIR-001") != 5 {
+		t.Fatalf("expected stock to be restocked once to 5, got %d", inventory.Available("CHAIR-001"))
 	}
 }

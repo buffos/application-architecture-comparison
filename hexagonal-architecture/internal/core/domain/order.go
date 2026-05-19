@@ -10,6 +10,7 @@ import (
 const OrderStatusReadyForPayment = "ReadyForPayment"
 const OrderStatusPaymentReview = "PaymentReview"
 const OrderStatusReadyForFulfillment = "ReadyForFulfillment"
+const OrderStatusPartiallyShipped = "PartiallyShipped"
 const OrderStatusShipped = "Shipped"
 const OrderStatusCancelled = "Cancelled"
 
@@ -21,6 +22,8 @@ var ErrPaymentFailed = errors.New("payment failed")
 var ErrPaymentReviewNotAllowed = errors.New("payment review is not allowed")
 var ErrOrderActorRequired = errors.New("actor is required")
 var ErrOrderCancellationNotAllowed = errors.New("order cancellation is not allowed after shipment")
+var ErrShipmentLineInvalid = errors.New("shipment line is invalid")
+var ErrShipmentQuantityExceedsRemaining = errors.New("shipment quantity exceeds remaining shippable quantity")
 
 type OrderLine struct {
 	SKU               string
@@ -31,6 +34,7 @@ type OrderLine struct {
 	AdjustedUnitPrice int
 	LineTotal         int
 	ReturnWindowDays  int
+	ShippedQuantity   int
 }
 
 type Order struct {
@@ -109,6 +113,59 @@ func (o *Order) MarkShipped(shippedAt time.Time) error {
 
 	o.Status = OrderStatusShipped
 	o.ShippedAt = shippedAt
+	return nil
+}
+
+func (o *OrderLine) RemainingShippableQuantity() int {
+	return o.Quantity - o.ShippedQuantity
+}
+
+func (o *Order) ApplyShipment(lines []ShipmentLine, shippedAt time.Time) error {
+	if o.Status != OrderStatusReadyForFulfillment && o.Status != OrderStatusPartiallyShipped {
+		return ErrShipmentNotAllowedUntilPaymentAccepted
+	}
+	if len(lines) == 0 {
+		return ErrShipmentLineInvalid
+	}
+
+	indexBySKU := make(map[string]int, len(o.Lines))
+	for i, line := range o.Lines {
+		indexBySKU[line.SKU] = i
+	}
+
+	for _, shippedLine := range lines {
+		if shippedLine.Quantity <= 0 {
+			return ErrShipmentLineInvalid
+		}
+		index, ok := indexBySKU[shippedLine.SKU]
+		if !ok {
+			return ErrShipmentLineInvalid
+		}
+		if shippedLine.Quantity > o.Lines[index].RemainingShippableQuantity() {
+			return ErrShipmentQuantityExceedsRemaining
+		}
+	}
+
+	for _, shippedLine := range lines {
+		index := indexBySKU[shippedLine.SKU]
+		o.Lines[index].ShippedQuantity += shippedLine.Quantity
+	}
+
+	fullyShipped := true
+	for _, line := range o.Lines {
+		if line.RemainingShippableQuantity() > 0 {
+			fullyShipped = false
+			break
+		}
+	}
+
+	if fullyShipped {
+		o.Status = OrderStatusShipped
+		o.ShippedAt = shippedAt
+		return nil
+	}
+
+	o.Status = OrderStatusPartiallyShipped
 	return nil
 }
 

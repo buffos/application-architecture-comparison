@@ -4,6 +4,7 @@ import "hexagonal-architecture/internal/core/domain"
 
 type InventoryReservationAdapter struct {
 	available  map[string]int
+	reserved   map[string]int
 	thresholds map[string]int
 }
 
@@ -15,6 +16,7 @@ func NewInventoryReservationAdapter(initial map[string]int) *InventoryReservatio
 
 	return &InventoryReservationAdapter{
 		available:  copyMap,
+		reserved:   make(map[string]int, len(initial)),
 		thresholds: make(map[string]int, len(initial)),
 	}
 }
@@ -28,6 +30,7 @@ func (a *InventoryReservationAdapter) Reserve(lines []domain.ReservationLine) er
 
 	for _, line := range lines {
 		a.available[line.SKU] -= line.Quantity
+		a.reserved[line.SKU] += line.Quantity
 	}
 
 	return nil
@@ -35,13 +38,13 @@ func (a *InventoryReservationAdapter) Reserve(lines []domain.ReservationLine) er
 
 func (a *InventoryReservationAdapter) Consume(lines []domain.ReservationLine) error {
 	for _, line := range lines {
-		if a.available[line.SKU] < line.Quantity {
+		if a.reserved[line.SKU] < line.Quantity {
 			return domain.ErrInsufficientStock
 		}
 	}
 
 	for _, line := range lines {
-		a.available[line.SKU] -= line.Quantity
+		a.reserved[line.SKU] -= line.Quantity
 	}
 
 	return nil
@@ -49,6 +52,7 @@ func (a *InventoryReservationAdapter) Consume(lines []domain.ReservationLine) er
 
 func (a *InventoryReservationAdapter) Release(lines []domain.ReservationLine) error {
 	for _, line := range lines {
+		a.reserved[line.SKU] -= line.Quantity
 		a.available[line.SKU] += line.Quantity
 	}
 

@@ -100,7 +100,7 @@ func TestCancelOrderFailsAfterShipment(t *testing.T) {
 		t.Fatalf("expected %v, got %v", domain.ErrOrderCancellationNotAllowed, err)
 	}
 
-	if inventory.Available("CHAIR-001") != 1 {
-		t.Fatalf("expected stock to remain 1 after shipped-order cancellation attempt, got %d", inventory.Available("CHAIR-001"))
+	if inventory.Available("CHAIR-001") != 3 {
+		t.Fatalf("expected stock to remain 3 after shipped-order cancellation attempt, got %d", inventory.Available("CHAIR-001"))
 	}
 }

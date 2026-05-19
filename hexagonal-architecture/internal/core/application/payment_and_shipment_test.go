@@ -79,8 +79,8 @@ func TestPaymentAndShipmentWorkflowUsesPorts(t *testing.T) {
 		t.Fatalf("expected shippedAt %v, got %v", shipmentClock.Now(), loadedOrder.ShippedAt)
 	}
 
-	if inventory.Available("CHAIR-001") != 1 {
-		t.Fatalf("expected remaining stock 1, got %d", inventory.Available("CHAIR-001"))
+	if inventory.Available("CHAIR-001") != 3 {
+		t.Fatalf("expected remaining stock 3, got %d", inventory.Available("CHAIR-001"))
 	}
 }
 

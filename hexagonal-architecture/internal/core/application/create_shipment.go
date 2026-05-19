@@ -21,19 +21,19 @@ func NewCreateShipmentUseCase(orders ports.OrderRepository, shipments ports.Ship
 	}
 }
 
-func (uc CreateShipmentUseCase) Execute(orderID string) (domain.Shipment, error) {
+func (uc CreateShipmentUseCase) Execute(orderID string, requested ...domain.ShipmentLine) (domain.Shipment, error) {
 	order, err := uc.orders.FindByID(orderID)
 	if err != nil {
 		return domain.Shipment{}, err
 	}
 
-	shipment, err := domain.NewShipment(order)
+	shipment, err := domain.NewShipment(order, requested)
 	if err != nil {
 		return domain.Shipment{}, err
 	}
 
-	reservations := make([]domain.ReservationLine, 0, len(order.Lines))
-	for _, line := range order.Lines {
+	reservations := make([]domain.ReservationLine, 0, len(shipment.Lines))
+	for _, line := range shipment.Lines {
 		reservations = append(reservations, domain.ReservationLine{
 			SKU:      line.SKU,
 			Quantity: line.Quantity,
@@ -44,7 +44,7 @@ func (uc CreateShipmentUseCase) Execute(orderID string) (domain.Shipment, error)
 		return domain.Shipment{}, err
 	}
 
-	if err := order.MarkShipped(uc.clock.Now()); err != nil {
+	if err := order.ApplyShipment(shipment.Lines, uc.clock.Now()); err != nil {
 		return domain.Shipment{}, err
 	}
 
