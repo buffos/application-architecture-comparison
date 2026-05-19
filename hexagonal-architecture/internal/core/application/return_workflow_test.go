@@ -2,6 +2,7 @@ package application
 
 import (
 	"testing"
+	"time"
 
 	"hexagonal-architecture/internal/adapters/repository/memory"
 	"hexagonal-architecture/internal/adapters/services/approval"
@@ -9,6 +10,7 @@ import (
 	"hexagonal-architecture/internal/adapters/services/pricing"
 	"hexagonal-architecture/internal/adapters/services/refund"
 	"hexagonal-architecture/internal/adapters/services/returnpolicy"
+	timeadapter "hexagonal-architecture/internal/adapters/services/time"
 	"hexagonal-architecture/internal/core/domain"
 )
 
@@ -26,15 +28,18 @@ func TestShippedOrderCanRequestReturnAndBeRefunded(t *testing.T) {
 	approvalPolicy := approval.NewCategoryApprovalPolicy()
 	paymentGateway := payment.NewAcceptAllGateway()
 	refundGateway := refund.NewAcceptAllGateway()
-	returnPolicy := returnpolicy.NewReasonPolicy()
+	returnPolicy := returnpolicy.NewWindowPolicy()
+	shipmentClock := timeadapter.NewFixedClock(time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC))
+	returnClock := timeadapter.NewFixedClock(time.Date(2026, 5, 10, 12, 0, 0, 0, time.UTC))
 
 	_ = customerRepo.Save(domain.Customer{ID: "customer-001", Active: true})
 	_ = productRepo.Save(domain.Product{
-		SKU:       "CHAIR-001",
-		Name:      "Office Chair",
-		Category:  "Standard",
-		BasePrice: 10000,
-		Available: true,
+		SKU:              "CHAIR-001",
+		Name:             "Office Chair",
+		Category:         "Standard",
+		BasePrice:        10000,
+		Available:        true,
+		ReturnWindowDays: 30,
 	})
 
 	createQuote := NewCreateDraftQuoteUseCase(quoteRepo, customerRepo)
@@ -42,8 +47,8 @@ func TestShippedOrderCanRequestReturnAndBeRefunded(t *testing.T) {
 	submitQuote := NewSubmitQuoteUseCase(quoteRepo, approvalPolicy)
 	convertQuote := NewConvertQuoteToOrderUseCase(quoteRepo, orderRepo, inventory)
 	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
-	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory)
-	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo)
+	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
+	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo, returnClock)
 	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy)
 	completeRefund := NewCompleteRefundUseCase(returnRepo, refundGateway, inventory)
 
@@ -100,15 +105,18 @@ func TestReturnCanBeRejectedAndThenCannotBeRefunded(t *testing.T) {
 	approvalPolicy := approval.NewCategoryApprovalPolicy()
 	paymentGateway := payment.NewAcceptAllGateway()
 	refundGateway := refund.NewAcceptAllGateway()
-	returnPolicy := returnpolicy.NewReasonPolicy()
+	returnPolicy := returnpolicy.NewWindowPolicy()
+	shipmentClock := timeadapter.NewFixedClock(time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC))
+	returnClock := timeadapter.NewFixedClock(time.Date(2026, 5, 10, 12, 0, 0, 0, time.UTC))
 
 	_ = customerRepo.Save(domain.Customer{ID: "customer-001", Active: true})
 	_ = productRepo.Save(domain.Product{
-		SKU:       "CHAIR-001",
-		Name:      "Office Chair",
-		Category:  "Standard",
-		BasePrice: 10000,
-		Available: true,
+		SKU:              "CHAIR-001",
+		Name:             "Office Chair",
+		Category:         "Standard",
+		BasePrice:        10000,
+		Available:        true,
+		ReturnWindowDays: 30,
 	})
 
 	createQuote := NewCreateDraftQuoteUseCase(quoteRepo, customerRepo)
@@ -116,8 +124,8 @@ func TestReturnCanBeRejectedAndThenCannotBeRefunded(t *testing.T) {
 	submitQuote := NewSubmitQuoteUseCase(quoteRepo, approvalPolicy)
 	convertQuote := NewConvertQuoteToOrderUseCase(quoteRepo, orderRepo, inventory)
 	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
-	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory)
-	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo)
+	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
+	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo, returnClock)
 	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy)
 	rejectReturn := NewRejectReturnUseCase(returnRepo)
 	completeRefund := NewCompleteRefundUseCase(returnRepo, refundGateway, inventory)
@@ -129,7 +137,7 @@ func TestReturnCanBeRejectedAndThenCannotBeRefunded(t *testing.T) {
 	_, _ = capturePayment.Execute(order.ID)
 	_, _ = createShipment.Execute(order.ID)
 
-	request, err := requestReturn.Execute(order.ID, "Outside policy")
+	request, err := requestReturn.Execute(order.ID, "Changed mind")
 	if err != nil {
 		t.Fatalf("expected return request to succeed, got %v", err)
 	}
@@ -171,15 +179,18 @@ func TestReturnAcceptanceCanBeBlockedByPolicy(t *testing.T) {
 	pricingPolicy := pricing.NewFixedPricingPolicy()
 	approvalPolicy := approval.NewCategoryApprovalPolicy()
 	paymentGateway := payment.NewAcceptAllGateway()
-	returnPolicy := returnpolicy.NewReasonPolicy()
+	returnPolicy := returnpolicy.NewWindowPolicy()
+	shipmentClock := timeadapter.NewFixedClock(time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC))
+	returnClock := timeadapter.NewFixedClock(time.Date(2026, 6, 5, 9, 0, 0, 0, time.UTC))
 
 	_ = customerRepo.Save(domain.Customer{ID: "customer-001", Active: true})
 	_ = productRepo.Save(domain.Product{
-		SKU:       "CHAIR-001",
-		Name:      "Office Chair",
-		Category:  "Standard",
-		BasePrice: 10000,
-		Available: true,
+		SKU:              "CHAIR-001",
+		Name:             "Office Chair",
+		Category:         "Standard",
+		BasePrice:        10000,
+		Available:        true,
+		ReturnWindowDays: 30,
 	})
 
 	createQuote := NewCreateDraftQuoteUseCase(quoteRepo, customerRepo)
@@ -187,8 +198,8 @@ func TestReturnAcceptanceCanBeBlockedByPolicy(t *testing.T) {
 	submitQuote := NewSubmitQuoteUseCase(quoteRepo, approvalPolicy)
 	convertQuote := NewConvertQuoteToOrderUseCase(quoteRepo, orderRepo, inventory)
 	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
-	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory)
-	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo)
+	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
+	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo, returnClock)
 	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy)
 
 	quote, _ := createQuote.Execute("customer-001")
@@ -198,7 +209,7 @@ func TestReturnAcceptanceCanBeBlockedByPolicy(t *testing.T) {
 	_, _ = capturePayment.Execute(order.ID)
 	_, _ = createShipment.Execute(order.ID)
 
-	request, err := requestReturn.Execute(order.ID, "Outside return window")
+	request, err := requestReturn.Execute(order.ID, "Changed mind")
 	if err != nil {
 		t.Fatalf("expected return request to succeed, got %v", err)
 	}
@@ -229,21 +240,23 @@ func TestReturnRequestRequiresShippedOrder(t *testing.T) {
 	})
 	pricingPolicy := pricing.NewFixedPricingPolicy()
 	approvalPolicy := approval.NewCategoryApprovalPolicy()
+	returnClock := timeadapter.NewFixedClock(time.Date(2026, 5, 10, 12, 0, 0, 0, time.UTC))
 
 	_ = customerRepo.Save(domain.Customer{ID: "customer-001", Active: true})
 	_ = productRepo.Save(domain.Product{
-		SKU:       "CHAIR-001",
-		Name:      "Office Chair",
-		Category:  "Standard",
-		BasePrice: 10000,
-		Available: true,
+		SKU:              "CHAIR-001",
+		Name:             "Office Chair",
+		Category:         "Standard",
+		BasePrice:        10000,
+		Available:        true,
+		ReturnWindowDays: 30,
 	})
 
 	createQuote := NewCreateDraftQuoteUseCase(quoteRepo, customerRepo)
 	addQuoteLine := NewAddQuoteLineUseCase(quoteRepo, productRepo, pricingPolicy)
 	submitQuote := NewSubmitQuoteUseCase(quoteRepo, approvalPolicy)
 	convertQuote := NewConvertQuoteToOrderUseCase(quoteRepo, orderRepo, inventory)
-	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo)
+	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo, returnClock)
 
 	quote, _ := createQuote.Execute("customer-001")
 	_, _ = addQuoteLine.Execute(quote.ID, "CHAIR-001", 2)
@@ -269,14 +282,17 @@ func TestClearanceItemCannotBeReturned(t *testing.T) {
 	pricingPolicy := pricing.NewFixedPricingPolicy()
 	approvalPolicy := approval.NewCategoryApprovalPolicy()
 	paymentGateway := payment.NewAcceptAllGateway()
+	shipmentClock := timeadapter.NewFixedClock(time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC))
+	returnClock := timeadapter.NewFixedClock(time.Date(2026, 5, 10, 12, 0, 0, 0, time.UTC))
 
 	_ = customerRepo.Save(domain.Customer{ID: "customer-001", Active: true})
 	_ = productRepo.Save(domain.Product{
-		SKU:       "LAMP-001",
-		Name:      "Clearance Lamp",
-		Category:  "Clearance",
-		BasePrice: 4000,
-		Available: true,
+		SKU:              "LAMP-001",
+		Name:             "Clearance Lamp",
+		Category:         "Clearance",
+		BasePrice:        4000,
+		Available:        true,
+		ReturnWindowDays: 30,
 	})
 
 	createQuote := NewCreateDraftQuoteUseCase(quoteRepo, customerRepo)
@@ -284,8 +300,8 @@ func TestClearanceItemCannotBeReturned(t *testing.T) {
 	submitQuote := NewSubmitQuoteUseCase(quoteRepo, approvalPolicy)
 	convertQuote := NewConvertQuoteToOrderUseCase(quoteRepo, orderRepo, inventory)
 	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
-	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory)
-	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo)
+	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
+	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo, returnClock)
 
 	quote, _ := createQuote.Execute("customer-001")
 	_, _ = addQuoteLine.Execute(quote.ID, "LAMP-001", 1)

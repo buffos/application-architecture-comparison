@@ -27,6 +27,7 @@ type QuoteLine struct {
 	BaseUnitPrice     int
 	AdjustedUnitPrice int
 	LineTotal         int
+	ReturnWindowDays  int
 }
 
 type Quote struct {
@@ -67,6 +68,7 @@ func (q *Quote) AddLine(product Product, quantity int, adjustedUnitPrice int) er
 		BaseUnitPrice:     product.BasePrice,
 		AdjustedUnitPrice: adjustedUnitPrice,
 		LineTotal:         adjustedUnitPrice * quantity,
+		ReturnWindowDays:  product.ReturnWindowDays,
 	})
 
 	return nil

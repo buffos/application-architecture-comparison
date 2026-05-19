@@ -2,11 +2,13 @@ package application
 
 import (
 	"testing"
+	"time"
 
 	"hexagonal-architecture/internal/adapters/repository/memory"
 	"hexagonal-architecture/internal/adapters/services/approval"
 	"hexagonal-architecture/internal/adapters/services/payment"
 	"hexagonal-architecture/internal/adapters/services/pricing"
+	timeadapter "hexagonal-architecture/internal/adapters/services/time"
 	"hexagonal-architecture/internal/core/domain"
 )
 
@@ -67,6 +69,7 @@ func TestCancelOrderFailsAfterShipment(t *testing.T) {
 	pricingPolicy := pricing.NewFixedPricingPolicy()
 	approvalPolicy := approval.NewCategoryApprovalPolicy()
 	paymentGateway := payment.NewAcceptAllGateway()
+	shipmentClock := timeadapter.NewFixedClock(time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC))
 
 	_ = customerRepo.Save(domain.Customer{ID: "customer-001", Active: true})
 	_ = productRepo.Save(domain.Product{
@@ -82,7 +85,7 @@ func TestCancelOrderFailsAfterShipment(t *testing.T) {
 	submitQuote := NewSubmitQuoteUseCase(quoteRepo, approvalPolicy)
 	convertQuote := NewConvertQuoteToOrderUseCase(quoteRepo, orderRepo, inventory)
 	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
-	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory)
+	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
 	cancelOrder := NewCancelOrderUseCase(orderRepo, inventory)
 
 	quote, _ := createQuote.Execute("customer-001")

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync/atomic"
+	"time"
 )
 
 const OrderStatusReadyForPayment = "ReadyForPayment"
@@ -26,6 +27,7 @@ type OrderLine struct {
 	BaseUnitPrice     int
 	AdjustedUnitPrice int
 	LineTotal         int
+	ReturnWindowDays  int
 }
 
 type Order struct {
@@ -34,6 +36,7 @@ type Order struct {
 	CustomerID    string
 	Status        string
 	PaymentStatus string
+	ShippedAt     time.Time
 	Lines         []OrderLine
 }
 
@@ -54,6 +57,7 @@ func NewOrderFromQuote(quote Quote) (Order, error) {
 			BaseUnitPrice:     line.BaseUnitPrice,
 			AdjustedUnitPrice: line.AdjustedUnitPrice,
 			LineTotal:         line.LineTotal,
+			ReturnWindowDays:  line.ReturnWindowDays,
 		})
 	}
 
@@ -72,12 +76,13 @@ func (o *Order) AcceptPayment() {
 	o.Status = OrderStatusReadyForFulfillment
 }
 
-func (o *Order) MarkShipped() error {
+func (o *Order) MarkShipped(shippedAt time.Time) error {
 	if o.Status != OrderStatusReadyForFulfillment {
 		return ErrShipmentNotAllowedUntilPaymentAccepted
 	}
 
 	o.Status = OrderStatusShipped
+	o.ShippedAt = shippedAt
 	return nil
 }
 

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync/atomic"
+	"time"
 )
 
 const ReturnStatusRequested = "Requested"
@@ -20,22 +21,25 @@ var ErrReturnRefundNotAllowed = errors.New("return refund is not allowed")
 var ErrReturnReviewNotAllowed = errors.New("return review is not allowed")
 
 type ReturnLine struct {
-	SKU             string
-	ProductName     string
-	ProductCategory string
-	Quantity        int
-	LineTotal       int
+	SKU              string
+	ProductName      string
+	ProductCategory  string
+	Quantity         int
+	LineTotal        int
+	ReturnWindowDays int
 }
 
 type ReturnRequest struct {
-	ID      string
-	OrderID string
-	Reason  string
-	Status  string
-	Lines   []ReturnLine
+	ID          string
+	OrderID     string
+	Reason      string
+	Status      string
+	RequestedAt time.Time
+	ShippedAt   time.Time
+	Lines       []ReturnLine
 }
 
-func NewReturnRequest(order Order, reason string) (ReturnRequest, error) {
+func NewReturnRequest(order Order, reason string, requestedAt time.Time) (ReturnRequest, error) {
 	if order.Status != OrderStatusShipped {
 		return ReturnRequest{}, ErrReturnNotEligible
 	}
@@ -49,20 +53,23 @@ func NewReturnRequest(order Order, reason string) (ReturnRequest, error) {
 		}
 
 		lines = append(lines, ReturnLine{
-			SKU:             line.SKU,
-			ProductName:     line.ProductName,
-			ProductCategory: line.ProductCategory,
-			Quantity:        line.Quantity,
-			LineTotal:       line.LineTotal,
+			SKU:              line.SKU,
+			ProductName:      line.ProductName,
+			ProductCategory:  line.ProductCategory,
+			Quantity:         line.Quantity,
+			LineTotal:        line.LineTotal,
+			ReturnWindowDays: line.ReturnWindowDays,
 		})
 	}
 
 	return ReturnRequest{
-		ID:      fmt.Sprintf("ret-%03d", id),
-		OrderID: order.ID,
-		Reason:  reason,
-		Status:  ReturnStatusRequested,
-		Lines:   lines,
+		ID:          fmt.Sprintf("ret-%03d", id),
+		OrderID:     order.ID,
+		Reason:      reason,
+		Status:      ReturnStatusRequested,
+		RequestedAt: requestedAt,
+		ShippedAt:   order.ShippedAt,
+		Lines:       lines,
 	}, nil
 }
 

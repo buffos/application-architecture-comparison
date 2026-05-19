@@ -9,13 +9,15 @@ type CreateShipmentUseCase struct {
 	orders    ports.OrderRepository
 	shipments ports.ShipmentRepository
 	inventory ports.InventoryConsumption
+	clock     ports.Clock
 }
 
-func NewCreateShipmentUseCase(orders ports.OrderRepository, shipments ports.ShipmentRepository, inventory ports.InventoryConsumption) CreateShipmentUseCase {
+func NewCreateShipmentUseCase(orders ports.OrderRepository, shipments ports.ShipmentRepository, inventory ports.InventoryConsumption, clock ports.Clock) CreateShipmentUseCase {
 	return CreateShipmentUseCase{
 		orders:    orders,
 		shipments: shipments,
 		inventory: inventory,
+		clock:     clock,
 	}
 }
 
@@ -42,7 +44,7 @@ func (uc CreateShipmentUseCase) Execute(orderID string) (domain.Shipment, error)
 		return domain.Shipment{}, err
 	}
 
-	if err := order.MarkShipped(); err != nil {
+	if err := order.MarkShipped(uc.clock.Now()); err != nil {
 		return domain.Shipment{}, err
 	}
 

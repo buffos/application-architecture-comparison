@@ -8,12 +8,14 @@ import (
 type RequestReturnUseCase struct {
 	orders  ports.OrderRepository
 	returns ports.ReturnRequestRepository
+	clock   ports.Clock
 }
 
-func NewRequestReturnUseCase(orders ports.OrderRepository, returns ports.ReturnRequestRepository) RequestReturnUseCase {
+func NewRequestReturnUseCase(orders ports.OrderRepository, returns ports.ReturnRequestRepository, clock ports.Clock) RequestReturnUseCase {
 	return RequestReturnUseCase{
 		orders:  orders,
 		returns: returns,
+		clock:   clock,
 	}
 }
 
@@ -23,7 +25,7 @@ func (uc RequestReturnUseCase) Execute(orderID, reason string) (domain.ReturnReq
 		return domain.ReturnRequest{}, err
 	}
 
-	request, err := domain.NewReturnRequest(order, reason)
+	request, err := domain.NewReturnRequest(order, reason, uc.clock.Now())
 	if err != nil {
 		return domain.ReturnRequest{}, err
 	}

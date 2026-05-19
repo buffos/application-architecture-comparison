@@ -2,11 +2,13 @@ package application
 
 import (
 	"testing"
+	"time"
 
 	"hexagonal-architecture/internal/adapters/repository/memory"
 	"hexagonal-architecture/internal/adapters/services/approval"
 	"hexagonal-architecture/internal/adapters/services/payment"
 	"hexagonal-architecture/internal/adapters/services/pricing"
+	timeadapter "hexagonal-architecture/internal/adapters/services/time"
 	"hexagonal-architecture/internal/core/domain"
 )
 
@@ -22,14 +24,16 @@ func TestPaymentAndShipmentWorkflowUsesPorts(t *testing.T) {
 	pricingPolicy := pricing.NewFixedPricingPolicy()
 	approvalPolicy := approval.NewCategoryApprovalPolicy()
 	paymentGateway := payment.NewAcceptAllGateway()
+	shipmentClock := timeadapter.NewFixedClock(time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC))
 
 	_ = customerRepo.Save(domain.Customer{ID: "customer-001", Active: true})
 	_ = productRepo.Save(domain.Product{
-		SKU:       "CHAIR-001",
-		Name:      "Office Chair",
-		Category:  "Standard",
-		BasePrice: 10000,
-		Available: true,
+		SKU:              "CHAIR-001",
+		Name:             "Office Chair",
+		Category:         "Standard",
+		BasePrice:        10000,
+		Available:        true,
+		ReturnWindowDays: 30,
 	})
 
 	createQuote := NewCreateDraftQuoteUseCase(quoteRepo, customerRepo)
@@ -37,7 +41,7 @@ func TestPaymentAndShipmentWorkflowUsesPorts(t *testing.T) {
 	submitQuote := NewSubmitQuoteUseCase(quoteRepo, approvalPolicy)
 	convertQuote := NewConvertQuoteToOrderUseCase(quoteRepo, orderRepo, inventory)
 	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
-	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory)
+	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
 
 	quote, _ := createQuote.Execute("customer-001")
 	_, _ = addQuoteLine.Execute(quote.ID, "CHAIR-001", 2)
@@ -69,6 +73,10 @@ func TestPaymentAndShipmentWorkflowUsesPorts(t *testing.T) {
 
 	if loadedOrder.Status != domain.OrderStatusShipped {
 		t.Fatalf("expected order status %s, got %s", domain.OrderStatusShipped, loadedOrder.Status)
+	}
+
+	if !loadedOrder.ShippedAt.Equal(shipmentClock.Now()) {
+		t.Fatalf("expected shippedAt %v, got %v", shipmentClock.Now(), loadedOrder.ShippedAt)
 	}
 
 	if inventory.Available("CHAIR-001") != 1 {
