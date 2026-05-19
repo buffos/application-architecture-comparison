@@ -8,10 +8,22 @@ import (
 )
 
 type ReportHandler struct {
-	quoteConversion       application.GetQuoteConversionReportUseCase
-	returnRateByCategory  application.GetReturnRateByCategoryReportUseCase
-	topDiscountedProducts application.GetTopDiscountedProductsReportUseCase
-	lowStockItems         application.GetLowStockItemsReportUseCase
+	ordersAwaitingApproval application.GetOrdersAwaitingApprovalReportUseCase
+	quoteConversion        application.GetQuoteConversionReportUseCase
+	returnRateByCategory   application.GetReturnRateByCategoryReportUseCase
+	topDiscountedProducts  application.GetTopDiscountedProductsReportUseCase
+	lowStockItems          application.GetLowStockItemsReportUseCase
+}
+
+type ordersAwaitingApprovalResponse struct {
+	Items []ordersAwaitingApprovalRowResponse `json:"items"`
+}
+
+type ordersAwaitingApprovalRowResponse struct {
+	QuoteID     string `json:"quoteId"`
+	CustomerID  string `json:"customerId"`
+	LineCount   int    `json:"lineCount"`
+	TotalAmount int    `json:"totalAmount"`
 }
 
 type quoteConversionResponse struct {
@@ -55,20 +67,26 @@ type lowStockItemRowResponse struct {
 }
 
 func NewReportHandler(
+	ordersAwaitingApproval application.GetOrdersAwaitingApprovalReportUseCase,
 	quoteConversion application.GetQuoteConversionReportUseCase,
 	returnRateByCategory application.GetReturnRateByCategoryReportUseCase,
 	topDiscountedProducts application.GetTopDiscountedProductsReportUseCase,
 	lowStockItems application.GetLowStockItemsReportUseCase,
 ) ReportHandler {
 	return ReportHandler{
-		quoteConversion:       quoteConversion,
-		returnRateByCategory:  returnRateByCategory,
-		topDiscountedProducts: topDiscountedProducts,
-		lowStockItems:         lowStockItems,
+		ordersAwaitingApproval: ordersAwaitingApproval,
+		quoteConversion:        quoteConversion,
+		returnRateByCategory:   returnRateByCategory,
+		topDiscountedProducts:  topDiscountedProducts,
+		lowStockItems:          lowStockItems,
 	}
 }
 
 func (h ReportHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet && r.URL.Path == "/reports/orders-awaiting-approval" {
+		h.ordersAwaitingApprovalReport(w, r)
+		return
+	}
 	if r.Method == http.MethodGet && r.URL.Path == "/reports/quote-conversion" {
 		h.quoteConversionReport(w, r)
 		return
@@ -87,6 +105,28 @@ func (h ReportHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.NotFound(w, r)
+}
+
+func (h ReportHandler) ordersAwaitingApprovalReport(w http.ResponseWriter, r *http.Request) {
+	report, err := h.ordersAwaitingApproval.Execute()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	rows := make([]ordersAwaitingApprovalRowResponse, 0, len(report))
+	for _, row := range report {
+		rows = append(rows, ordersAwaitingApprovalRowResponse{
+			QuoteID:     row.QuoteID,
+			CustomerID:  row.CustomerID,
+			LineCount:   row.LineCount,
+			TotalAmount: row.TotalAmount,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(ordersAwaitingApprovalResponse{Items: rows})
 }
 
 func (h ReportHandler) quoteConversionReport(w http.ResponseWriter, r *http.Request) {
