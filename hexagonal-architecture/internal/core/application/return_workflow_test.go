@@ -31,6 +31,7 @@ func TestShippedOrderCanRequestReturnAndBeRefunded(t *testing.T) {
 	returnPolicy := returnpolicy.NewWindowPolicy()
 	shipmentClock := timeadapter.NewFixedClock(time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC))
 	returnClock := timeadapter.NewFixedClock(time.Date(2026, 5, 10, 12, 0, 0, 0, time.UTC))
+	idempotency := memory.NewIdempotencyStore()
 
 	_ = customerRepo.Save(domain.Customer{ID: "customer-001", Active: true})
 	_ = productRepo.Save(domain.Product{
@@ -49,8 +50,8 @@ func TestShippedOrderCanRequestReturnAndBeRefunded(t *testing.T) {
 	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
 	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
 	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo, returnClock)
-	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy)
-	completeRefund := NewCompleteRefundUseCase(returnRepo, refundGateway, inventory)
+	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy, idempotency)
+	completeRefund := NewCompleteRefundUseCase(returnRepo, refundGateway, inventory, idempotency)
 
 	quote, _ := createQuote.Execute("customer-001")
 	_, _ = addQuoteLine.Execute(quote.ID, "CHAIR-001", 2)
@@ -72,7 +73,7 @@ func TestShippedOrderCanRequestReturnAndBeRefunded(t *testing.T) {
 		t.Fatalf("expected requestedBy warehouse-clerk-1, got %s", request.RequestedBy)
 	}
 
-	accepted, err := acceptReturn.Execute(request.ID, "warehouse-clerk-1")
+	accepted, err := acceptReturn.Execute(request.ID, "warehouse-clerk-1", "return-accept-001")
 	if err != nil {
 		t.Fatalf("expected return acceptance to succeed, got %v", err)
 	}
@@ -85,7 +86,7 @@ func TestShippedOrderCanRequestReturnAndBeRefunded(t *testing.T) {
 		t.Fatalf("expected reviewedBy warehouse-clerk-1, got %s", accepted.ReviewedBy)
 	}
 
-	refunded, err := completeRefund.Execute(request.ID, "manager-1")
+	refunded, err := completeRefund.Execute(request.ID, "manager-1", "refund-001")
 	if err != nil {
 		t.Fatalf("expected refund to succeed, got %v", err)
 	}
@@ -120,6 +121,7 @@ func TestReturnCanBeRejectedAndThenCannotBeRefunded(t *testing.T) {
 	returnPolicy := returnpolicy.NewWindowPolicy()
 	shipmentClock := timeadapter.NewFixedClock(time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC))
 	returnClock := timeadapter.NewFixedClock(time.Date(2026, 5, 10, 12, 0, 0, 0, time.UTC))
+	idempotency := memory.NewIdempotencyStore()
 
 	_ = customerRepo.Save(domain.Customer{ID: "customer-001", Active: true})
 	_ = productRepo.Save(domain.Product{
@@ -138,9 +140,9 @@ func TestReturnCanBeRejectedAndThenCannotBeRefunded(t *testing.T) {
 	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
 	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
 	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo, returnClock)
-	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy)
+	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy, idempotency)
 	rejectReturn := NewRejectReturnUseCase(returnRepo)
-	completeRefund := NewCompleteRefundUseCase(returnRepo, refundGateway, inventory)
+	completeRefund := NewCompleteRefundUseCase(returnRepo, refundGateway, inventory, idempotency)
 
 	quote, _ := createQuote.Execute("customer-001")
 	_, _ = addQuoteLine.Execute(quote.ID, "CHAIR-001", 2)
@@ -171,12 +173,12 @@ func TestReturnCanBeRejectedAndThenCannotBeRefunded(t *testing.T) {
 		t.Fatalf("expected review note Outside policy, got %s", rejected.ReviewNote)
 	}
 
-	_, err = acceptReturn.Execute(request.ID, "warehouse-clerk-3")
+	_, err = acceptReturn.Execute(request.ID, "warehouse-clerk-3", "return-accept-002")
 	if err != domain.ErrReturnNotEligible && err != domain.ErrReturnReviewNotAllowed {
 		t.Fatalf("expected review denial or already-reviewed error, got %v", err)
 	}
 
-	_, err = completeRefund.Execute(request.ID, "manager-1")
+	_, err = completeRefund.Execute(request.ID, "manager-1", "refund-002")
 	if err != domain.ErrReturnRefundNotAllowed {
 		t.Fatalf("expected %v, got %v", domain.ErrReturnRefundNotAllowed, err)
 	}
@@ -202,6 +204,7 @@ func TestReturnAcceptanceCanBeBlockedByPolicy(t *testing.T) {
 	returnPolicy := returnpolicy.NewWindowPolicy()
 	shipmentClock := timeadapter.NewFixedClock(time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC))
 	returnClock := timeadapter.NewFixedClock(time.Date(2026, 6, 5, 9, 0, 0, 0, time.UTC))
+	idempotency := memory.NewIdempotencyStore()
 
 	_ = customerRepo.Save(domain.Customer{ID: "customer-001", Active: true})
 	_ = productRepo.Save(domain.Product{
@@ -220,7 +223,7 @@ func TestReturnAcceptanceCanBeBlockedByPolicy(t *testing.T) {
 	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
 	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
 	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo, returnClock)
-	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy)
+	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy, idempotency)
 
 	quote, _ := createQuote.Execute("customer-001")
 	_, _ = addQuoteLine.Execute(quote.ID, "CHAIR-001", 2)
@@ -234,7 +237,7 @@ func TestReturnAcceptanceCanBeBlockedByPolicy(t *testing.T) {
 		t.Fatalf("expected return request to succeed, got %v", err)
 	}
 
-	_, err = acceptReturn.Execute(request.ID, "warehouse-clerk-1")
+	_, err = acceptReturn.Execute(request.ID, "warehouse-clerk-1", "return-accept-003")
 	if err != domain.ErrReturnNotEligible {
 		t.Fatalf("expected %v, got %v", domain.ErrReturnNotEligible, err)
 	}
@@ -352,6 +355,7 @@ func TestReturnActorsAreRequired(t *testing.T) {
 	returnPolicy := returnpolicy.NewWindowPolicy()
 	shipmentClock := timeadapter.NewFixedClock(time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC))
 	returnClock := timeadapter.NewFixedClock(time.Date(2026, 5, 10, 12, 0, 0, 0, time.UTC))
+	idempotency := memory.NewIdempotencyStore()
 
 	_ = customerRepo.Save(domain.Customer{ID: "customer-001", Active: true})
 	_ = productRepo.Save(domain.Product{
@@ -370,9 +374,9 @@ func TestReturnActorsAreRequired(t *testing.T) {
 	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
 	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
 	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo, returnClock)
-	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy)
+	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy, idempotency)
 	rejectReturn := NewRejectReturnUseCase(returnRepo)
-	completeRefund := NewCompleteRefundUseCase(returnRepo, refund.NewAcceptAllGateway(), inventory)
+	completeRefund := NewCompleteRefundUseCase(returnRepo, refund.NewAcceptAllGateway(), inventory, idempotency)
 
 	quote, _ := createQuote.Execute("customer-001")
 	_, _ = addQuoteLine.Execute(quote.ID, "CHAIR-001", 2)
@@ -391,7 +395,7 @@ func TestReturnActorsAreRequired(t *testing.T) {
 		t.Fatalf("expected return request to succeed, got %v", err)
 	}
 
-	_, err = acceptReturn.Execute(request.ID, "")
+	_, err = acceptReturn.Execute(request.ID, "", "return-accept-004")
 	if err != domain.ErrActorRequired {
 		t.Fatalf("expected %v, got %v", domain.ErrActorRequired, err)
 	}
@@ -401,13 +405,122 @@ func TestReturnActorsAreRequired(t *testing.T) {
 		t.Fatalf("expected %v, got %v", domain.ErrActorRequired, err)
 	}
 
-	accepted, err := acceptReturn.Execute(request.ID, "warehouse-clerk-1")
+	accepted, err := acceptReturn.Execute(request.ID, "warehouse-clerk-1", "return-accept-005")
 	if err != nil {
 		t.Fatalf("expected return acceptance to succeed, got %v", err)
 	}
 
-	_, err = completeRefund.Execute(accepted.ID, "")
+	_, err = completeRefund.Execute(accepted.ID, "", "refund-003")
 	if err != domain.ErrActorRequired {
 		t.Fatalf("expected %v, got %v", domain.ErrActorRequired, err)
+	}
+}
+
+func TestAcceptReturnIsIdempotent(t *testing.T) {
+	quoteRepo := memory.NewQuoteRepository()
+	orderRepo := memory.NewOrderRepository()
+	shipmentRepo := memory.NewShipmentRepository()
+	returnRepo := memory.NewReturnRequestRepository()
+	customerRepo := memory.NewCustomerRepository()
+	productRepo := memory.NewProductRepository()
+	inventory := memory.NewInventoryReservationAdapter(map[string]int{"CHAIR-001": 5})
+	pricingPolicy := pricing.NewFixedPricingPolicy()
+	approvalPolicy := approval.NewCategoryApprovalPolicy()
+	paymentGateway := payment.NewAcceptAllGateway()
+	returnPolicy := returnpolicy.NewWindowPolicy()
+	shipmentClock := timeadapter.NewFixedClock(time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC))
+	returnClock := timeadapter.NewFixedClock(time.Date(2026, 5, 10, 12, 0, 0, 0, time.UTC))
+	idempotency := memory.NewIdempotencyStore()
+
+	_ = customerRepo.Save(domain.Customer{ID: "customer-001", Active: true})
+	_ = productRepo.Save(domain.Product{SKU: "CHAIR-001", Name: "Office Chair", Category: "Standard", BasePrice: 10000, Available: true, ReturnWindowDays: 30})
+
+	createQuote := NewCreateDraftQuoteUseCase(quoteRepo, customerRepo)
+	addQuoteLine := NewAddQuoteLineUseCase(quoteRepo, productRepo, pricingPolicy)
+	submitQuote := NewSubmitQuoteUseCase(quoteRepo, approvalPolicy)
+	convertQuote := NewConvertQuoteToOrderUseCase(quoteRepo, orderRepo, inventory)
+	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
+	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
+	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo, returnClock)
+	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy, idempotency)
+
+	quote, _ := createQuote.Execute("customer-001")
+	_, _ = addQuoteLine.Execute(quote.ID, "CHAIR-001", 2)
+	_, _ = submitQuote.Execute(quote.ID)
+	order, _ := convertQuote.Execute(quote.ID)
+	_, _ = capturePayment.Execute(order.ID)
+	_, _ = createShipment.Execute(order.ID)
+	request, _ := requestReturn.Execute(order.ID, "Damaged", "warehouse-clerk-1")
+
+	first, err := acceptReturn.Execute(request.ID, "warehouse-clerk-1", "return-accept-010")
+	if err != nil {
+		t.Fatalf("expected first accept to succeed, got %v", err)
+	}
+
+	second, err := acceptReturn.Execute(request.ID, "warehouse-clerk-9", "return-accept-010")
+	if err != nil {
+		t.Fatalf("expected second accept with same key to succeed, got %v", err)
+	}
+
+	if second.Status != domain.ReturnStatusAccepted || second.ReviewedBy != first.ReviewedBy {
+		t.Fatalf("expected idempotent accept result to match first result, got status=%s reviewedBy=%s", second.Status, second.ReviewedBy)
+	}
+}
+
+func TestCompleteRefundIsIdempotent(t *testing.T) {
+	quoteRepo := memory.NewQuoteRepository()
+	orderRepo := memory.NewOrderRepository()
+	shipmentRepo := memory.NewShipmentRepository()
+	returnRepo := memory.NewReturnRequestRepository()
+	customerRepo := memory.NewCustomerRepository()
+	productRepo := memory.NewProductRepository()
+	inventory := memory.NewInventoryReservationAdapter(map[string]int{"CHAIR-001": 5})
+	pricingPolicy := pricing.NewFixedPricingPolicy()
+	approvalPolicy := approval.NewCategoryApprovalPolicy()
+	paymentGateway := payment.NewAcceptAllGateway()
+	returnPolicy := returnpolicy.NewWindowPolicy()
+	refundGateway := refund.NewAcceptAllGateway()
+	shipmentClock := timeadapter.NewFixedClock(time.Date(2026, 5, 1, 10, 0, 0, 0, time.UTC))
+	returnClock := timeadapter.NewFixedClock(time.Date(2026, 5, 10, 12, 0, 0, 0, time.UTC))
+	idempotency := memory.NewIdempotencyStore()
+
+	_ = customerRepo.Save(domain.Customer{ID: "customer-001", Active: true})
+	_ = productRepo.Save(domain.Product{SKU: "CHAIR-001", Name: "Office Chair", Category: "Standard", BasePrice: 10000, Available: true, ReturnWindowDays: 30})
+
+	createQuote := NewCreateDraftQuoteUseCase(quoteRepo, customerRepo)
+	addQuoteLine := NewAddQuoteLineUseCase(quoteRepo, productRepo, pricingPolicy)
+	submitQuote := NewSubmitQuoteUseCase(quoteRepo, approvalPolicy)
+	convertQuote := NewConvertQuoteToOrderUseCase(quoteRepo, orderRepo, inventory)
+	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
+	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory, shipmentClock)
+	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo, returnClock)
+	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy, idempotency)
+	completeRefund := NewCompleteRefundUseCase(returnRepo, refundGateway, inventory, idempotency)
+
+	quote, _ := createQuote.Execute("customer-001")
+	_, _ = addQuoteLine.Execute(quote.ID, "CHAIR-001", 2)
+	_, _ = submitQuote.Execute(quote.ID)
+	order, _ := convertQuote.Execute(quote.ID)
+	_, _ = capturePayment.Execute(order.ID)
+	_, _ = createShipment.Execute(order.ID)
+	request, _ := requestReturn.Execute(order.ID, "Damaged", "warehouse-clerk-1")
+	_, _ = acceptReturn.Execute(request.ID, "warehouse-clerk-1", "return-accept-011")
+
+	first, err := completeRefund.Execute(request.ID, "manager-1", "refund-010")
+	if err != nil {
+		t.Fatalf("expected first refund to succeed, got %v", err)
+	}
+
+	second, err := completeRefund.Execute(request.ID, "manager-9", "refund-010")
+	if err != nil {
+		t.Fatalf("expected second refund with same key to succeed, got %v", err)
+	}
+
+	if second.Status != domain.ReturnStatusRefunded || second.ProcessedBy != first.ProcessedBy {
+		t.Fatalf("expected idempotent refund result to match first result, got status=%s processedBy=%s", second.Status, second.ProcessedBy)
+	}
+
+	if inventory.Available("CHAIR-001") != 3 {
+		t.Fatalf("expected stock to be restocked once to 3, got %d", inventory.Available("CHAIR-001"))
 	}
 }

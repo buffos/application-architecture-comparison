@@ -8,16 +8,30 @@ import (
 type AcceptReturnUseCase struct {
 	returns ports.ReturnRequestRepository
 	policy  ports.ReturnEligibilityPolicy
+	keys    ports.IdempotencyStore
 }
 
-func NewAcceptReturnUseCase(returns ports.ReturnRequestRepository, policy ports.ReturnEligibilityPolicy) AcceptReturnUseCase {
+func NewAcceptReturnUseCase(returns ports.ReturnRequestRepository, policy ports.ReturnEligibilityPolicy, keys ports.IdempotencyStore) AcceptReturnUseCase {
 	return AcceptReturnUseCase{
 		returns: returns,
 		policy:  policy,
+		keys:    keys,
 	}
 }
 
-func (uc AcceptReturnUseCase) Execute(returnRequestID, reviewedBy string) (domain.ReturnRequest, error) {
+func (uc AcceptReturnUseCase) Execute(returnRequestID, reviewedBy, idempotencyKey string) (domain.ReturnRequest, error) {
+	seen, err := uc.keys.Seen("accept-return", idempotencyKey)
+	if err != nil {
+		return domain.ReturnRequest{}, err
+	}
+	if seen {
+		storedID, err := uc.keys.ResourceID("accept-return", idempotencyKey)
+		if err != nil {
+			return domain.ReturnRequest{}, err
+		}
+		return uc.returns.FindByID(storedID)
+	}
+
 	request, err := uc.returns.FindByID(returnRequestID)
 	if err != nil {
 		return domain.ReturnRequest{}, err
@@ -37,6 +51,10 @@ func (uc AcceptReturnUseCase) Execute(returnRequestID, reviewedBy string) (domai
 	}
 
 	if err := uc.returns.Save(request); err != nil {
+		return domain.ReturnRequest{}, err
+	}
+
+	if err := uc.keys.Remember("accept-return", idempotencyKey, request.ID); err != nil {
 		return domain.ReturnRequest{}, err
 	}
 

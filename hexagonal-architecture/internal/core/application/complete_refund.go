@@ -9,17 +9,31 @@ type CompleteRefundUseCase struct {
 	returns   ports.ReturnRequestRepository
 	refunds   ports.RefundGateway
 	inventory ports.InventoryRestock
+	keys      ports.IdempotencyStore
 }
 
-func NewCompleteRefundUseCase(returns ports.ReturnRequestRepository, refunds ports.RefundGateway, inventory ports.InventoryRestock) CompleteRefundUseCase {
+func NewCompleteRefundUseCase(returns ports.ReturnRequestRepository, refunds ports.RefundGateway, inventory ports.InventoryRestock, keys ports.IdempotencyStore) CompleteRefundUseCase {
 	return CompleteRefundUseCase{
 		returns:   returns,
 		refunds:   refunds,
 		inventory: inventory,
+		keys:      keys,
 	}
 }
 
-func (uc CompleteRefundUseCase) Execute(returnRequestID, processedBy string) (domain.ReturnRequest, error) {
+func (uc CompleteRefundUseCase) Execute(returnRequestID, processedBy, idempotencyKey string) (domain.ReturnRequest, error) {
+	seen, err := uc.keys.Seen("complete-refund", idempotencyKey)
+	if err != nil {
+		return domain.ReturnRequest{}, err
+	}
+	if seen {
+		storedID, err := uc.keys.ResourceID("complete-refund", idempotencyKey)
+		if err != nil {
+			return domain.ReturnRequest{}, err
+		}
+		return uc.returns.FindByID(storedID)
+	}
+
 	request, err := uc.returns.FindByID(returnRequestID)
 	if err != nil {
 		return domain.ReturnRequest{}, err
@@ -51,6 +65,10 @@ func (uc CompleteRefundUseCase) Execute(returnRequestID, processedBy string) (do
 	}
 
 	if err := uc.returns.Save(request); err != nil {
+		return domain.ReturnRequest{}, err
+	}
+
+	if err := uc.keys.Remember("complete-refund", idempotencyKey, request.ID); err != nil {
 		return domain.ReturnRequest{}, err
 	}
 
