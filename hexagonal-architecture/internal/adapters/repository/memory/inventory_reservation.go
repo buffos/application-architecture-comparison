@@ -71,6 +71,25 @@ func (a *InventoryReservationAdapter) SetReorderThreshold(sku string, threshold 
 	a.thresholds[sku] = threshold
 }
 
+func (a *InventoryReservationAdapter) FindBySKU(sku string) (domain.StockRecord, error) {
+	available, ok := a.available[sku]
+	if !ok {
+		return domain.StockRecord{}, domain.ErrStockRecordNotFound
+	}
+
+	return domain.StockRecord{
+		SKU:              sku,
+		Available:        available,
+		ReorderThreshold: a.thresholds[sku],
+	}, nil
+}
+
+func (a *InventoryReservationAdapter) Save(record domain.StockRecord) error {
+	a.available[record.SKU] = record.Available
+	a.thresholds[record.SKU] = record.ReorderThreshold
+	return nil
+}
+
 func (a *InventoryReservationAdapter) ListStock() ([]domain.StockRecord, error) {
 	records := make([]domain.StockRecord, 0, len(a.available))
 	for sku, available := range a.available {
