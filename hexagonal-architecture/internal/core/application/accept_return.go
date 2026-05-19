@@ -7,16 +7,29 @@ import (
 
 type AcceptReturnUseCase struct {
 	returns ports.ReturnRequestRepository
+	policy  ports.ReturnEligibilityPolicy
 }
 
-func NewAcceptReturnUseCase(returns ports.ReturnRequestRepository) AcceptReturnUseCase {
-	return AcceptReturnUseCase{returns: returns}
+func NewAcceptReturnUseCase(returns ports.ReturnRequestRepository, policy ports.ReturnEligibilityPolicy) AcceptReturnUseCase {
+	return AcceptReturnUseCase{
+		returns: returns,
+		policy:  policy,
+	}
 }
 
 func (uc AcceptReturnUseCase) Execute(returnRequestID string) (domain.ReturnRequest, error) {
 	request, err := uc.returns.FindByID(returnRequestID)
 	if err != nil {
 		return domain.ReturnRequest{}, err
+	}
+
+	canAccept, err := uc.policy.CanAccept(request)
+	if err != nil {
+		return domain.ReturnRequest{}, err
+	}
+
+	if !canAccept {
+		return domain.ReturnRequest{}, domain.ErrReturnNotEligible
 	}
 
 	if err := request.Accept(); err != nil {

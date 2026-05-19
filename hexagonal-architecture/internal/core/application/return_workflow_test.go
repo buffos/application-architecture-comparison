@@ -8,6 +8,7 @@ import (
 	"hexagonal-architecture/internal/adapters/services/payment"
 	"hexagonal-architecture/internal/adapters/services/pricing"
 	"hexagonal-architecture/internal/adapters/services/refund"
+	"hexagonal-architecture/internal/adapters/services/returnpolicy"
 	"hexagonal-architecture/internal/core/domain"
 )
 
@@ -25,6 +26,7 @@ func TestShippedOrderCanRequestReturnAndBeRefunded(t *testing.T) {
 	approvalPolicy := approval.NewCategoryApprovalPolicy()
 	paymentGateway := payment.NewAcceptAllGateway()
 	refundGateway := refund.NewAcceptAllGateway()
+	returnPolicy := returnpolicy.NewReasonPolicy()
 
 	_ = customerRepo.Save(domain.Customer{ID: "customer-001", Active: true})
 	_ = productRepo.Save(domain.Product{
@@ -42,7 +44,7 @@ func TestShippedOrderCanRequestReturnAndBeRefunded(t *testing.T) {
 	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
 	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory)
 	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo)
-	acceptReturn := NewAcceptReturnUseCase(returnRepo)
+	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy)
 	completeRefund := NewCompleteRefundUseCase(returnRepo, refundGateway, inventory)
 
 	quote, _ := createQuote.Execute("customer-001")
@@ -98,6 +100,7 @@ func TestReturnCanBeRejectedAndThenCannotBeRefunded(t *testing.T) {
 	approvalPolicy := approval.NewCategoryApprovalPolicy()
 	paymentGateway := payment.NewAcceptAllGateway()
 	refundGateway := refund.NewAcceptAllGateway()
+	returnPolicy := returnpolicy.NewReasonPolicy()
 
 	_ = customerRepo.Save(domain.Customer{ID: "customer-001", Active: true})
 	_ = productRepo.Save(domain.Product{
@@ -115,6 +118,7 @@ func TestReturnCanBeRejectedAndThenCannotBeRefunded(t *testing.T) {
 	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
 	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory)
 	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo)
+	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy)
 	rejectReturn := NewRejectReturnUseCase(returnRepo)
 	completeRefund := NewCompleteRefundUseCase(returnRepo, refundGateway, inventory)
 
@@ -139,6 +143,11 @@ func TestReturnCanBeRejectedAndThenCannotBeRefunded(t *testing.T) {
 		t.Fatalf("expected return status %s, got %s", domain.ReturnStatusRejected, rejected.Status)
 	}
 
+	_, err = acceptReturn.Execute(request.ID)
+	if err != domain.ErrReturnNotEligible && err != domain.ErrReturnReviewNotAllowed {
+		t.Fatalf("expected review denial or already-reviewed error, got %v", err)
+	}
+
 	_, err = completeRefund.Execute(request.ID)
 	if err != domain.ErrReturnRefundNotAllowed {
 		t.Fatalf("expected %v, got %v", domain.ErrReturnRefundNotAllowed, err)
@@ -146,6 +155,66 @@ func TestReturnCanBeRejectedAndThenCannotBeRefunded(t *testing.T) {
 
 	if inventory.Available("CHAIR-001") != 1 {
 		t.Fatalf("expected stock to remain 1 after rejected return, got %d", inventory.Available("CHAIR-001"))
+	}
+}
+
+func TestReturnAcceptanceCanBeBlockedByPolicy(t *testing.T) {
+	quoteRepo := memory.NewQuoteRepository()
+	orderRepo := memory.NewOrderRepository()
+	shipmentRepo := memory.NewShipmentRepository()
+	returnRepo := memory.NewReturnRequestRepository()
+	customerRepo := memory.NewCustomerRepository()
+	productRepo := memory.NewProductRepository()
+	inventory := memory.NewInventoryReservationAdapter(map[string]int{
+		"CHAIR-001": 5,
+	})
+	pricingPolicy := pricing.NewFixedPricingPolicy()
+	approvalPolicy := approval.NewCategoryApprovalPolicy()
+	paymentGateway := payment.NewAcceptAllGateway()
+	returnPolicy := returnpolicy.NewReasonPolicy()
+
+	_ = customerRepo.Save(domain.Customer{ID: "customer-001", Active: true})
+	_ = productRepo.Save(domain.Product{
+		SKU:       "CHAIR-001",
+		Name:      "Office Chair",
+		Category:  "Standard",
+		BasePrice: 10000,
+		Available: true,
+	})
+
+	createQuote := NewCreateDraftQuoteUseCase(quoteRepo, customerRepo)
+	addQuoteLine := NewAddQuoteLineUseCase(quoteRepo, productRepo, pricingPolicy)
+	submitQuote := NewSubmitQuoteUseCase(quoteRepo, approvalPolicy)
+	convertQuote := NewConvertQuoteToOrderUseCase(quoteRepo, orderRepo, inventory)
+	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
+	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory)
+	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo)
+	acceptReturn := NewAcceptReturnUseCase(returnRepo, returnPolicy)
+
+	quote, _ := createQuote.Execute("customer-001")
+	_, _ = addQuoteLine.Execute(quote.ID, "CHAIR-001", 2)
+	_, _ = submitQuote.Execute(quote.ID)
+	order, _ := convertQuote.Execute(quote.ID)
+	_, _ = capturePayment.Execute(order.ID)
+	_, _ = createShipment.Execute(order.ID)
+
+	request, err := requestReturn.Execute(order.ID, "Outside return window")
+	if err != nil {
+		t.Fatalf("expected return request to succeed, got %v", err)
+	}
+
+	_, err = acceptReturn.Execute(request.ID)
+	if err != domain.ErrReturnNotEligible {
+		t.Fatalf("expected %v, got %v", domain.ErrReturnNotEligible, err)
+	}
+
+	storedRequest, err := returnRepo.FindByID(request.ID)
+	if err != nil {
+		t.Fatalf("expected return lookup to succeed, got %v", err)
+	}
+
+	if storedRequest.Status != domain.ReturnStatusRequested {
+		t.Fatalf("expected return status %s, got %s", domain.ReturnStatusRequested, storedRequest.Status)
 	}
 }
 
