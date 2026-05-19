@@ -42,7 +42,7 @@ func TestShippedOrderCanRequestReturnAndBeRefunded(t *testing.T) {
 	capturePayment := NewCapturePaymentUseCase(orderRepo, paymentGateway)
 	createShipment := NewCreateShipmentUseCase(orderRepo, shipmentRepo, inventory)
 	requestReturn := NewRequestReturnUseCase(orderRepo, returnRepo)
-	completeRefund := NewCompleteRefundUseCase(returnRepo, refundGateway)
+	completeRefund := NewCompleteRefundUseCase(returnRepo, refundGateway, inventory)
 
 	quote, _ := createQuote.Execute("customer-001")
 	_, _ = addQuoteLine.Execute(quote.ID, "CHAIR-001", 2)
@@ -67,6 +67,10 @@ func TestShippedOrderCanRequestReturnAndBeRefunded(t *testing.T) {
 
 	if refunded.Status != domain.ReturnStatusRefunded {
 		t.Fatalf("expected return status %s, got %s", domain.ReturnStatusRefunded, refunded.Status)
+	}
+
+	if inventory.Available("CHAIR-001") != 3 {
+		t.Fatalf("expected restocked stock 3, got %d", inventory.Available("CHAIR-001"))
 	}
 }
 
