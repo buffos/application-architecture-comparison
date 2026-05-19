@@ -36,3 +36,17 @@ func (r *ShipmentRepository) FindByID(id string) (domain.Shipment, error) {
 
 	return shipment, nil
 }
+
+func (r *ShipmentRepository) ListByOrderID(orderID string) ([]domain.Shipment, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	shipments := make([]domain.Shipment, 0, len(r.shipments))
+	for _, shipment := range r.shipments {
+		if orderID == "" || shipment.OrderID == orderID {
+			shipments = append(shipments, shipment)
+		}
+	}
+
+	return shipments, nil
+}
