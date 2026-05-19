@@ -7,6 +7,8 @@ import (
 )
 
 const ReturnStatusRequested = "Requested"
+const ReturnStatusAccepted = "Accepted"
+const ReturnStatusRejected = "Rejected"
 const ReturnStatusRefunded = "Refunded"
 
 var returnSequence uint64
@@ -15,6 +17,7 @@ var ErrReturnRequestNotFound = errors.New("return request not found")
 var ErrReturnNotEligible = errors.New("return is not eligible")
 var ErrRefundFailed = errors.New("refund failed")
 var ErrReturnRefundNotAllowed = errors.New("return refund is not allowed")
+var ErrReturnReviewNotAllowed = errors.New("return review is not allowed")
 
 type ReturnLine struct {
 	SKU             string
@@ -63,8 +66,26 @@ func NewReturnRequest(order Order, reason string) (ReturnRequest, error) {
 	}, nil
 }
 
-func (r *ReturnRequest) MarkRefunded() error {
+func (r *ReturnRequest) Accept() error {
 	if r.Status != ReturnStatusRequested {
+		return ErrReturnReviewNotAllowed
+	}
+
+	r.Status = ReturnStatusAccepted
+	return nil
+}
+
+func (r *ReturnRequest) Reject() error {
+	if r.Status != ReturnStatusRequested {
+		return ErrReturnReviewNotAllowed
+	}
+
+	r.Status = ReturnStatusRejected
+	return nil
+}
+
+func (r *ReturnRequest) MarkRefunded() error {
+	if r.Status != ReturnStatusAccepted {
 		return ErrReturnRefundNotAllowed
 	}
 

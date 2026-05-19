@@ -34,6 +34,10 @@ func (uc CompleteRefundUseCase) Execute(returnRequestID string) (domain.ReturnRe
 		return domain.ReturnRequest{}, domain.ErrRefundFailed
 	}
 
+	if err := request.MarkRefunded(); err != nil {
+		return domain.ReturnRequest{}, err
+	}
+
 	lines := make([]domain.ReservationLine, 0, len(request.Lines))
 	for _, line := range request.Lines {
 		lines = append(lines, domain.ReservationLine{
@@ -43,10 +47,6 @@ func (uc CompleteRefundUseCase) Execute(returnRequestID string) (domain.ReturnRe
 	}
 
 	if err := uc.inventory.Restock(lines); err != nil {
-		return domain.ReturnRequest{}, err
-	}
-
-	if err := request.MarkRefunded(); err != nil {
 		return domain.ReturnRequest{}, err
 	}
 
