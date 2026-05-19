@@ -3,6 +3,7 @@ package http
 import (
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -40,7 +41,12 @@ func TestQuoteHandlerCreatesDraftQuote(t *testing.T) {
 		t.Fatalf("expected response to contain draft status, got %s", body)
 	}
 
-	getRequest := httptest.NewRequest(http.MethodGet, "/quotes/quote-001", nil)
+	matches := regexp.MustCompile(`"id":"([^"]+)"`).FindStringSubmatch(body)
+	if len(matches) != 2 {
+		t.Fatalf("expected response to contain quote id, got %s", body)
+	}
+
+	getRequest := httptest.NewRequest(http.MethodGet, "/quotes/"+matches[1], nil)
 	getRecorder := httptest.NewRecorder()
 
 	handler.ServeHTTP(getRecorder, getRequest)
@@ -50,7 +56,7 @@ func TestQuoteHandlerCreatesDraftQuote(t *testing.T) {
 	}
 
 	getBody := getRecorder.Body.String()
-	if !strings.Contains(getBody, `"id":"quote-001"`) {
+	if !strings.Contains(getBody, `"id":"`+matches[1]+`"`) {
 		t.Fatalf("expected fetched response to contain quote id, got %s", getBody)
 	}
 }
