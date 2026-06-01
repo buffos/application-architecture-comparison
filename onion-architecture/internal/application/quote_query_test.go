@@ -25,6 +25,10 @@ func (f stubQuoteListFinder) ListByStatus(status string) ([]domain.Quote, error)
 		return nil, f.err
 	}
 
+	if status == "" {
+		return f.list, nil
+	}
+
 	result := make([]domain.Quote, 0)
 	for _, quote := range f.list {
 		if quote.Status == status {

@@ -25,6 +25,10 @@ func (f stubOrderFinder) ListByStatus(status string) ([]domain.Order, error) {
 		return nil, f.err
 	}
 
+	if status == "" {
+		return f.list, nil
+	}
+
 	result := make([]domain.Order, 0)
 	for _, order := range f.list {
 		if order.Status == status {

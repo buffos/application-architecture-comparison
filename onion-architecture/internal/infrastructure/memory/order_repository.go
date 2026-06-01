@@ -43,6 +43,11 @@ func (r *OrderRepository) ListByStatus(status string) ([]domain.Order, error) {
 
 	result := make([]domain.Order, 0)
 	for _, order := range r.orders {
+		if status == "" {
+			result = append(result, order)
+			continue
+		}
+
 		if order.Status == status {
 			result = append(result, order)
 		}

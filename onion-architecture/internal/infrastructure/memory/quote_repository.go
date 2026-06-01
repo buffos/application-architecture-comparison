@@ -43,6 +43,11 @@ func (r *QuoteRepository) ListByStatus(status string) ([]domain.Quote, error) {
 
 	result := make([]domain.Quote, 0)
 	for _, quote := range r.quotes {
+		if status == "" {
+			result = append(result, quote)
+			continue
+		}
+
 		if quote.Status == status {
 			result = append(result, quote)
 		}
