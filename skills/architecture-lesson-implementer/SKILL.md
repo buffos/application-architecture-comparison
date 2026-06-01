@@ -117,6 +117,20 @@ Add a Mermaid diagram when it improves understanding of:
 
 Do not add diagrams mechanically. Use them when they actually clarify the lesson.
 
+When you do add a diagram, prefer architectural accuracy over generic simplification.
+
+That means:
+
+- show the real boundary ownership used by the code in that lesson
+- distinguish contracts/interfaces from concrete structs or classes
+- distinguish data/persistence adapters from behavioral or translation adapters when useful
+- show implementation relationships separately from runtime call flow when that clarification matters
+- show layer or boundary grouping when the architecture depends on it
+
+If color improves readability, use it consistently and explain it with a short legend.
+
+Do not draw a textbook architecture that contradicts the code you are about to implement.
+
 ### 7. Implement Only the Current Lesson
 
 After writing the lesson, implement only the code required for that lesson.
@@ -176,6 +190,21 @@ Mermaid is especially useful when showing:
 - adapter boundaries
 - module relationships
 - lifecycle or command flow
+
+When a lesson is architecture-heavy, the diagram should help the reader answer:
+
+- what belongs to which layer or boundary
+- which elements are contracts versus concrete implementations
+- which direction runtime calls go
+- which direction dependency or implementation relationships go
+
+Useful conventions when Mermaid supports them:
+
+- subgraphs for layers or architecture boundaries
+- dashed borders for interfaces/contracts
+- dashed arrows for implementation or dependency-to-contract relationships
+- solid arrows for runtime or request flow
+- color coding with a legend when it makes boundary types easier to scan
 
 ### Keep Lessons Incremental
 

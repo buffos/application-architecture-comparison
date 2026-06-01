@@ -31,3 +31,20 @@ Where useful, make the lesson reveal the tradeoff:
 - simpler but more coupled
 - more decoupled but more indirect
 - richer domain semantics but more modeling overhead
+
+## Make Boundaries Concrete In Diagrams
+
+If a lesson includes a diagram, the diagram should reinforce the real architectural boundaries expressed by the code.
+
+Avoid diagrams that:
+
+- place interfaces in the wrong layer for the actual implementation
+- hide whether an element is a contract or a concrete type
+- collapse different adapter responsibilities into one vague box when the distinction matters
+
+Prefer diagrams that make it easy to see:
+
+- where each element belongs
+- what depends on what
+- what implements what
+- which arrows represent runtime flow versus structural relationships

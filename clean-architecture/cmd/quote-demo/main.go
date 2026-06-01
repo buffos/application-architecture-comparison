@@ -17,6 +17,7 @@ func main() {
 	productGateway := memory.NewProductGateway()
 	createPresenter := presenters.NewCreateDraftQuotePresenter()
 	addLinePresenter := presenters.NewAddQuoteLinePresenter()
+	submitPresenter := presenters.NewSubmitQuotePresenter()
 	getPresenter := presenters.NewGetQuotePresenter()
 
 	if err := customerGateway.Save(entities.Customer{
@@ -48,6 +49,13 @@ func main() {
 		log.Fatal(err)
 	}
 
+	submitInteractor := usecases.NewSubmitQuoteInteractor(quoteGateway, submitPresenter)
+	submitController := controllers.NewSubmitQuoteController(submitInteractor)
+
+	if err := submitController.Handle(createPresenter.ViewModel().QuoteID); err != nil {
+		log.Fatal(err)
+	}
+
 	getInteractor := usecases.NewGetQuoteInteractor(quoteGateway, getPresenter)
 	getController := controllers.NewGetQuoteController(getInteractor)
 
@@ -57,5 +65,6 @@ func main() {
 
 	fmt.Println(createPresenter.ViewModel().Message)
 	fmt.Println(addLinePresenter.ViewModel().Message)
+	fmt.Println(submitPresenter.ViewModel().Message)
 	fmt.Println(getPresenter.ViewModel().Message)
 }
