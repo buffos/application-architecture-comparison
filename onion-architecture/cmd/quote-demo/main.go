@@ -82,7 +82,7 @@ func main() {
 	lineResult, err := addQuoteLine.Execute(application.AddQuoteLineCommand{
 		QuoteID:    result.QuoteID,
 		ProductSKU: "sku-002",
-		Quantity:   1,
+		Quantity:   2,
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -128,12 +128,24 @@ func main() {
 
 	shipmentResult, err := createShipment.Execute(application.CreateShipmentCommand{
 		OrderID: orderResult.OrderID,
+		Lines: []application.CreateShipmentLine{
+			{ProductSKU: "sku-002", Quantity: 1},
+		},
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("created shipment: shipment=%s order=%s orderStatus=%s lines=%d\n", shipmentResult.ShipmentID, shipmentResult.OrderID, shipmentResult.OrderStatus, shipmentResult.LineCount)
+	fmt.Printf("created partial shipment: shipment=%s order=%s orderStatus=%s lines=%d\n", shipmentResult.ShipmentID, shipmentResult.OrderID, shipmentResult.OrderStatus, shipmentResult.LineCount)
+
+	finalShipmentResult, err := createShipment.Execute(application.CreateShipmentCommand{
+		OrderID: orderResult.OrderID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("created remaining shipment: shipment=%s order=%s orderStatus=%s lines=%d\n", finalShipmentResult.ShipmentID, finalShipmentResult.OrderID, finalShipmentResult.OrderStatus, finalShipmentResult.LineCount)
 
 	details, err := getQuote.Execute(application.GetQuoteQuery{QuoteID: result.QuoteID})
 	if err != nil {

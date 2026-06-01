@@ -55,9 +55,14 @@ func (s QuoteConversionReportService) Execute() (QuoteConversionReport, error) {
 		return QuoteConversionReport{}, err
 	}
 
+	partiallyShipped, err := s.orders.ListByStatus("PartiallyShipped")
+	if err != nil {
+		return QuoteConversionReport{}, err
+	}
+
 	totalQuotes := len(drafts)
 	approvedQuotes := len(approved) + len(pendingApproval)
-	convertedQuotes := len(pendingPayment) + len(paymentReview) + len(paid) + len(shipped)
+	convertedQuotes := len(pendingPayment) + len(paymentReview) + len(paid) + len(partiallyShipped) + len(shipped)
 
 	rate := 0.0
 	if approvedQuotes > 0 {

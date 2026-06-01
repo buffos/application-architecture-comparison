@@ -17,6 +17,7 @@ var ErrOrderNotReturnable = errors.New("order is not returnable")
 const OrderStatusPendingPayment = "PendingPayment"
 const OrderStatusPaymentReview = "PaymentReview"
 const OrderStatusPaid = "Paid"
+const OrderStatusPartiallyShipped = "PartiallyShipped"
 const OrderStatusShipped = "Shipped"
 const OrderStatusCancelled = "Cancelled"
 
@@ -27,6 +28,7 @@ type OrderLine struct {
 	ProductName      string
 	ProductCategory  string
 	Quantity         int
+	ShippedQuantity  int
 	UnitPrice        int
 	ReturnWindowDays int
 }
@@ -95,10 +97,46 @@ func (o *Order) ApprovePaymentReview() error {
 }
 
 func (o Order) EnsureShippable() error {
-	if o.Status != OrderStatusPaid {
+	if o.Status != OrderStatusPaid && o.Status != OrderStatusPartiallyShipped {
 		return ErrOrderNotShippable
 	}
 
+	return nil
+}
+
+func (o *Order) ApplyShipment(lines []ShipmentLine, shippedAt time.Time) error {
+	resolved, err := resolveShipmentLines(*o, lines)
+	if err != nil {
+		return err
+	}
+
+	shipmentsBySKU := make(map[string]int, len(resolved))
+	for _, line := range resolved {
+		shipmentsBySKU[line.ProductSKU] += line.Quantity
+	}
+
+	for i := range o.Lines {
+		o.Lines[i].ShippedQuantity += shipmentsBySKU[o.Lines[i].ProductSKU]
+	}
+
+	if o.ShippedAt.IsZero() {
+		o.ShippedAt = shippedAt
+	}
+
+	allShipped := true
+	for _, line := range o.Lines {
+		if line.ShippedQuantity < line.Quantity {
+			allShipped = false
+			break
+		}
+	}
+
+	if allShipped {
+		o.Status = OrderStatusShipped
+		return nil
+	}
+
+	o.Status = OrderStatusPartiallyShipped
 	return nil
 }
 
@@ -113,7 +151,7 @@ func (o *Order) MarkShipped(shippedAt time.Time) error {
 }
 
 func (o *Order) Cancel() error {
-	if o.Status == OrderStatusShipped || o.Status == OrderStatusCancelled {
+	if o.Status == OrderStatusPartiallyShipped || o.Status == OrderStatusShipped || o.Status == OrderStatusCancelled {
 		return ErrOrderNotCancellable
 	}
 

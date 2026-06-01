@@ -78,3 +78,22 @@ func TestCancelOrderServiceRejectsShippedOrder(t *testing.T) {
 		t.Fatalf("expected %v, got %v", domain.ErrOrderNotCancellable, err)
 	}
 }
+
+func TestCancelOrderServiceRejectsPartiallyShippedOrder(t *testing.T) {
+	orders := &stubOrderRepository{
+		order: domain.Order{
+			ID:         "order-001",
+			QuoteID:    "quote-001",
+			CustomerID: "customer-001",
+			Status:     domain.OrderStatusPartiallyShipped,
+		},
+	}
+	inventory := &stubInventoryRelease{}
+
+	service := NewCancelOrderService(orders, inventory)
+
+	_, err := service.Execute(CancelOrderCommand{OrderID: "order-001"})
+	if err != domain.ErrOrderNotCancellable {
+		t.Fatalf("expected %v, got %v", domain.ErrOrderNotCancellable, err)
+	}
+}

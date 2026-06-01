@@ -18,6 +18,7 @@ func TestQuoteConversionReportServiceComputesMetrics(t *testing.T) {
 	orders := stubOrderFinder{
 		list: []domain.Order{
 			{ID: "order-001", Status: domain.OrderStatusPendingPayment},
+			{ID: "order-002", Status: domain.OrderStatusPartiallyShipped},
 			{ID: "order-002", Status: domain.OrderStatusShipped},
 		},
 	}
@@ -37,7 +38,7 @@ func TestQuoteConversionReportServiceComputesMetrics(t *testing.T) {
 		t.Fatalf("expected approved quotes 2, got %d", report.ApprovedQuotes)
 	}
 
-	if report.ConvertedQuotes != 2 {
-		t.Fatalf("expected converted quotes 2, got %d", report.ConvertedQuotes)
+	if report.ConvertedQuotes != 3 {
+		t.Fatalf("expected converted quotes 3, got %d", report.ConvertedQuotes)
 	}
 }

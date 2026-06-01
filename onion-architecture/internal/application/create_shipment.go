@@ -4,13 +4,19 @@ import "onion-architecture/internal/domain"
 
 type CreateShipmentCommand struct {
 	OrderID string
+	Lines   []CreateShipmentLine
+}
+
+type CreateShipmentLine struct {
+	ProductSKU string
+	Quantity   int
 }
 
 type CreateShipmentResult struct {
-	ShipmentID string
-	OrderID    string
+	ShipmentID  string
+	OrderID     string
 	OrderStatus string
-	LineCount  int
+	LineCount   int
 }
 
 type ShipmentStore interface {
@@ -37,12 +43,20 @@ func (s CreateShipmentService) Execute(command CreateShipmentCommand) (CreateShi
 		return CreateShipmentResult{}, err
 	}
 
-	shipment, err := domain.NewShipmentFromOrder(order)
+	lines := make([]domain.ShipmentLine, 0, len(command.Lines))
+	for _, line := range command.Lines {
+		lines = append(lines, domain.ShipmentLine{
+			ProductSKU: line.ProductSKU,
+			Quantity:   line.Quantity,
+		})
+	}
+
+	shipment, err := domain.NewShipmentFromOrder(order, lines)
 	if err != nil {
 		return CreateShipmentResult{}, err
 	}
 
-	if err := order.MarkShipped(s.clock.Now()); err != nil {
+	if err := order.ApplyShipment(shipment.Lines, s.clock.Now()); err != nil {
 		return CreateShipmentResult{}, err
 	}
 
@@ -55,9 +69,9 @@ func (s CreateShipmentService) Execute(command CreateShipmentCommand) (CreateShi
 	}
 
 	return CreateShipmentResult{
-		ShipmentID: shipment.ID,
-		OrderID:    shipment.OrderID,
+		ShipmentID:  shipment.ID,
+		OrderID:     shipment.OrderID,
 		OrderStatus: order.Status,
-		LineCount:  len(shipment.Lines),
+		LineCount:   len(shipment.Lines),
 	}, nil
 }
