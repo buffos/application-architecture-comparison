@@ -174,6 +174,7 @@ Architectures currently implemented in this repository:
 - `025` Quote conversion report: [025-quote-conversion-report.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/025-quote-conversion-report.md:1)
 - `026` Return rate by category report: [026-return-rate-by-category-report.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/026-return-rate-by-category-report.md:1)
 - `027` Low stock items report: [027-low-stock-items-report.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/027-low-stock-items-report.md:1)
+- `028` Orders awaiting approval report: [028-orders-awaiting-approval-report.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/028-orders-awaiting-approval-report.md:1)
 
 ## How To Maintain This File
 
