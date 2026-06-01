@@ -65,7 +65,7 @@ func TestRequestReturnInteractorCreatesRequestedReturnForShippedOrder(t *testing
 
 	interactor := NewRequestReturnInteractor(orders, returns, clock, output)
 
-	err := interactor.Execute(RequestReturnInput{OrderID: "order-001", Reason: "damaged item"})
+	err := interactor.Execute(RequestReturnInput{OrderID: "order-001", Reason: "damaged item", RequestedBy: "customer-001"})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -76,6 +76,10 @@ func TestRequestReturnInteractorCreatesRequestedReturnForShippedOrder(t *testing
 
 	if returns.saved.Status != entities.ReturnRequestStatusRequested {
 		t.Fatalf("expected status %s, got %s", entities.ReturnRequestStatusRequested, returns.saved.Status)
+	}
+
+	if returns.saved.RequestedBy != "customer-001" {
+		t.Fatalf("expected requester customer-001, got %s", returns.saved.RequestedBy)
 	}
 }
 
@@ -94,7 +98,7 @@ func TestRequestReturnInteractorRejectsNonShippedOrder(t *testing.T) {
 
 	interactor := NewRequestReturnInteractor(orders, returns, clock, output)
 
-	err := interactor.Execute(RequestReturnInput{OrderID: "order-002", Reason: "changed mind"})
+	err := interactor.Execute(RequestReturnInput{OrderID: "order-002", Reason: "changed mind", RequestedBy: "customer-001"})
 	if err != entities.ErrOrderNotReturnable {
 		t.Fatalf("expected %v, got %v", entities.ErrOrderNotReturnable, err)
 	}

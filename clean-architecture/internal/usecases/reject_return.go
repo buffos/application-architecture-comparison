@@ -2,6 +2,8 @@ package usecases
 
 type RejectReturnInput struct {
 	ReturnRequestID string
+	ReviewedBy      string
+	ReviewNote      string
 }
 
 type RejectReturnOutput struct {
@@ -36,7 +38,7 @@ func (uc RejectReturnInteractor) Execute(input RejectReturnInput) error {
 		return err
 	}
 
-	if err := request.Reject(); err != nil {
+	if err := request.Reject(input.ReviewedBy, input.ReviewNote); err != nil {
 		return err
 	}
 

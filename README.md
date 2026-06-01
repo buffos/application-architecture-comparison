@@ -163,6 +163,7 @@ Architectures currently implemented in this repository:
 - `014` Return review boundary: [014-return-review-boundary.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/014-return-review-boundary.md:1)
 - `015` Return eligibility policy: [015-return-eligibility-policy.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/015-return-eligibility-policy.md:1)
 - `016` Real return window policy: [016-real-return-window-policy.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/016-real-return-window-policy.md:1)
+- `017` Return actor metadata: [017-return-actor-metadata.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/017-return-actor-metadata.md:1)
 
 ## How To Maintain This File
 

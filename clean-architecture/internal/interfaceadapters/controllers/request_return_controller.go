@@ -10,9 +10,10 @@ func NewRequestReturnController(useCase usecases.RequestReturnInputBoundary) Req
 	return RequestReturnController{useCase: useCase}
 }
 
-func (c RequestReturnController) Handle(orderID string, reason string) error {
+func (c RequestReturnController) Handle(orderID string, reason string, requestedBy string) error {
 	return c.useCase.Execute(usecases.RequestReturnInput{
-		OrderID: orderID,
-		Reason:  reason,
+		OrderID:     orderID,
+		Reason:      reason,
+		RequestedBy: requestedBy,
 	})
 }

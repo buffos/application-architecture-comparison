@@ -76,13 +76,17 @@ func TestRequestReturnInteractorCreatesRequestedReturn(t *testing.T) {
 
 	interactor := NewRequestReturnInteractor(orders, returns, clock, output)
 
-	err := interactor.Execute(RequestReturnInput{OrderID: "order-001", Reason: "damaged item"})
+	err := interactor.Execute(RequestReturnInput{OrderID: "order-001", Reason: "damaged item", RequestedBy: "customer-001"})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
 	if returns.saved.Status != entities.ReturnRequestStatusRequested {
 		t.Fatalf("expected status %s, got %s", entities.ReturnRequestStatusRequested, returns.saved.Status)
+	}
+
+	if returns.saved.RequestedBy != "customer-001" {
+		t.Fatalf("expected requester customer-001, got %s", returns.saved.RequestedBy)
 	}
 }
 
@@ -94,6 +98,7 @@ func TestAcceptReturnInteractorRefundsAndRestocks(t *testing.T) {
 			Reason:  "damaged item",
 			Status:  entities.ReturnRequestStatusRequested,
 			RequestedAt: time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC),
+			RequestedBy: "customer-001",
 		},
 	}
 	orders := &stubOrderEditor{
@@ -113,7 +118,7 @@ func TestAcceptReturnInteractorRefundsAndRestocks(t *testing.T) {
 
 	interactor := NewAcceptReturnInteractor(orders, returns, stubReturnEligibilityPolicy{allowed: true}, stubRefundGateway{}, restock, output)
 
-	err := interactor.Execute(AcceptReturnInput{ReturnRequestID: "return-001"})
+	err := interactor.Execute(AcceptReturnInput{ReturnRequestID: "return-001", ReviewedBy: "reviewer-001", ProcessedBy: "finance-001"})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -125,6 +130,14 @@ func TestAcceptReturnInteractorRefundsAndRestocks(t *testing.T) {
 	if len(restock.items) != 1 {
 		t.Fatalf("expected 1 restock item, got %d", len(restock.items))
 	}
+
+	if returns.saved.ReviewedBy != "reviewer-001" {
+		t.Fatalf("expected reviewer reviewer-001, got %s", returns.saved.ReviewedBy)
+	}
+
+	if returns.saved.ProcessedBy != "finance-001" {
+		t.Fatalf("expected processor finance-001, got %s", returns.saved.ProcessedBy)
+	}
 }
 
 func TestAcceptReturnInteractorBlocksPolicyRejectedReturn(t *testing.T) {
@@ -135,6 +148,7 @@ func TestAcceptReturnInteractorBlocksPolicyRejectedReturn(t *testing.T) {
 			Reason:  "changed mind",
 			Status:  entities.ReturnRequestStatusRequested,
 			RequestedAt: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC),
+			RequestedBy: "customer-001",
 		},
 	}
 	orders := &stubOrderEditor{
@@ -154,7 +168,7 @@ func TestAcceptReturnInteractorBlocksPolicyRejectedReturn(t *testing.T) {
 
 	interactor := NewAcceptReturnInteractor(orders, returns, stubReturnEligibilityPolicy{allowed: false}, stubRefundGateway{}, restock, output)
 
-	err := interactor.Execute(AcceptReturnInput{ReturnRequestID: "return-003"})
+	err := interactor.Execute(AcceptReturnInput{ReturnRequestID: "return-003", ReviewedBy: "reviewer-001", ProcessedBy: "finance-001"})
 	if err != entities.ErrQuoteCannotTransition {
 		t.Fatalf("expected %v, got %v", entities.ErrQuoteCannotTransition, err)
 	}
@@ -171,22 +185,31 @@ func timePtr(t time.Time) *time.Time {
 func TestRejectReturnInteractorPreventsRefundAndRestock(t *testing.T) {
 	returns := &stubReturnRequestEditor{
 		request: entities.ReturnRequest{
-			ID:      "return-002",
-			OrderID: "order-001",
-			Reason:  "changed mind",
-			Status:  entities.ReturnRequestStatusRequested,
+			ID:          "return-002",
+			OrderID:     "order-001",
+			Reason:      "changed mind",
+			Status:      entities.ReturnRequestStatusRequested,
+			RequestedBy: "customer-001",
 		},
 	}
 	output := &stubRejectReturnOutput{}
 
 	interactor := NewRejectReturnInteractor(returns, output)
 
-	err := interactor.Execute(RejectReturnInput{ReturnRequestID: "return-002"})
+	err := interactor.Execute(RejectReturnInput{ReturnRequestID: "return-002", ReviewedBy: "reviewer-002", ReviewNote: "damaged evidence missing"})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
 	if returns.saved.Status != entities.ReturnRequestStatusRejected {
 		t.Fatalf("expected status %s, got %s", entities.ReturnRequestStatusRejected, returns.saved.Status)
+	}
+
+	if returns.saved.ReviewedBy != "reviewer-002" {
+		t.Fatalf("expected reviewer reviewer-002, got %s", returns.saved.ReviewedBy)
+	}
+
+	if returns.saved.ReviewNote != "damaged evidence missing" {
+		t.Fatalf("expected review note to be saved, got %s", returns.saved.ReviewNote)
 	}
 }

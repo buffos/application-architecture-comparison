@@ -4,6 +4,8 @@ import "clean-architecture/internal/entities"
 
 type AcceptReturnInput struct {
 	ReturnRequestID string
+	ReviewedBy      string
+	ProcessedBy     string
 }
 
 type AcceptReturnOutput struct {
@@ -72,7 +74,7 @@ func (uc AcceptReturnInteractor) Execute(input AcceptReturnInput) error {
 		return entities.ErrQuoteCannotTransition
 	}
 
-	if err := request.Accept(); err != nil {
+	if err := request.Accept(input.ReviewedBy); err != nil {
 		return err
 	}
 
@@ -92,7 +94,7 @@ func (uc AcceptReturnInteractor) Execute(input AcceptReturnInput) error {
 		return err
 	}
 
-	if err := request.MarkRefunded(); err != nil {
+	if err := request.MarkRefunded(input.ProcessedBy); err != nil {
 		return err
 	}
 

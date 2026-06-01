@@ -5,6 +5,7 @@ import "clean-architecture/internal/entities"
 type RequestReturnInput struct {
 	OrderID string
 	Reason  string
+	RequestedBy string
 }
 
 type RequestReturnOutput struct {
@@ -47,7 +48,7 @@ func (uc RequestReturnInteractor) Execute(input RequestReturnInput) error {
 		return err
 	}
 
-	request, err := entities.NewReturnRequestFromShippedOrder(order, input.Reason, uc.clock.Now())
+	request, err := entities.NewReturnRequestFromShippedOrder(order, input.Reason, uc.clock.Now(), input.RequestedBy)
 	if err != nil {
 		return err
 	}
