@@ -6,6 +6,7 @@ import (
 )
 
 const OrderStatusPendingPayment = "PendingPayment"
+const OrderStatusPaid = "Paid"
 
 var orderSequence uint64
 
@@ -51,4 +52,13 @@ func NewOrderFromApprovedQuote(quote Quote) (Order, error) {
 		Status:        OrderStatusPendingPayment,
 		Lines:         lines,
 	}, nil
+}
+
+func (o *Order) MarkPaid() error {
+	if o.Status != OrderStatusPendingPayment {
+		return ErrQuoteCannotTransition
+	}
+
+	o.Status = OrderStatusPaid
+	return nil
 }

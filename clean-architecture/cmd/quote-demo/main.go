@@ -7,6 +7,7 @@ import (
 	"clean-architecture/internal/entities"
 	"clean-architecture/internal/infrastructure/memory"
 	approvalpolicy "clean-architecture/internal/infrastructure/policies/approval"
+	paymentservice "clean-architecture/internal/infrastructure/services/payment"
 	"clean-architecture/internal/interfaceadapters/controllers"
 	"clean-architecture/internal/interfaceadapters/presenters"
 	"clean-architecture/internal/usecases"
@@ -21,10 +22,12 @@ func main() {
 		"CHAIR-001": 5,
 	})
 	approvalPolicy := approvalpolicy.NewCategoryPolicy()
+	paymentGateway := paymentservice.NewAcceptAllGateway()
 	createPresenter := presenters.NewCreateDraftQuotePresenter()
 	addLinePresenter := presenters.NewAddQuoteLinePresenter()
 	submitPresenter := presenters.NewSubmitQuotePresenter()
 	convertPresenter := presenters.NewConvertQuoteToOrderPresenter()
+	capturePresenter := presenters.NewCapturePaymentPresenter()
 	getPresenter := presenters.NewGetQuotePresenter()
 
 	if err := customerGateway.Save(entities.Customer{
@@ -71,6 +74,13 @@ func main() {
 		log.Fatal(err)
 	}
 
+	captureInteractor := usecases.NewCapturePaymentInteractor(orderGateway, paymentGateway, capturePresenter)
+	captureController := controllers.NewCapturePaymentController(captureInteractor)
+
+	if err := captureController.Handle(convertPresenter.ViewModel().OrderID); err != nil {
+		log.Fatal(err)
+	}
+
 	getInteractor := usecases.NewGetQuoteInteractor(quoteGateway, getPresenter)
 	getController := controllers.NewGetQuoteController(getInteractor)
 
@@ -82,5 +92,6 @@ func main() {
 	fmt.Println(addLinePresenter.ViewModel().Message)
 	fmt.Println(submitPresenter.ViewModel().Message)
 	fmt.Println(convertPresenter.ViewModel().Message)
+	fmt.Println(capturePresenter.ViewModel().Message)
 	fmt.Println(getPresenter.ViewModel().Message)
 }

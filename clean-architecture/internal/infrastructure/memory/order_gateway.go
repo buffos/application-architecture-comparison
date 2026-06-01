@@ -24,3 +24,15 @@ func (g *OrderGateway) Save(order entities.Order) error {
 	g.orders[order.ID] = order
 	return nil
 }
+
+func (g *OrderGateway) FindByID(id string) (entities.Order, error) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	order, ok := g.orders[id]
+	if !ok {
+		return entities.Order{}, entities.ErrQuoteNotFound
+	}
+
+	return order, nil
+}
