@@ -165,6 +165,7 @@ Architectures currently implemented in this repository:
 - `016` Real return window policy: [016-real-return-window-policy.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/016-real-return-window-policy.md:1)
 - `017` Return actor metadata: [017-return-actor-metadata.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/017-return-actor-metadata.md:1)
 - `018` Return command idempotency: [018-return-command-idempotency.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/018-return-command-idempotency.md:1)
+- `019` Return query surface: [019-return-query-surface.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/019-return-query-surface.md:1)
 
 ## How To Maintain This File
 

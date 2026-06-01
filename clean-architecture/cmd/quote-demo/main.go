@@ -20,6 +20,7 @@ func main() {
 	quoteGateway := memory.NewQuoteGateway()
 	orderGateway := memory.NewOrderGateway()
 	shipmentGateway := memory.NewShipmentGateway()
+	returnRequestGateway := memory.NewReturnRequestGateway()
 	productGateway := memory.NewProductGateway()
 	inventoryReservation := memory.NewInventoryReservation(map[string]int{
 		"CHAIR-001": 5,
@@ -35,6 +36,9 @@ func main() {
 	capturePresenter := presenters.NewCapturePaymentPresenter()
 	shipmentPresenter := presenters.NewCreateShipmentPresenter()
 	getPresenter := presenters.NewGetQuotePresenter()
+	requestReturnPresenter := presenters.NewRequestReturnPresenter()
+	getReturnPresenter := presenters.NewGetReturnRequestPresenter()
+	listReturnPresenter := presenters.NewListReturnRequestsPresenter()
 
 	if err := customerGateway.Save(entities.Customer{
 		ID:     "customer-001",
@@ -43,11 +47,11 @@ func main() {
 		log.Fatal(err)
 	}
 	if err := productGateway.Save(entities.Product{
-		SKU:       "CHAIR-001",
-		Name:      "Office Chair",
-		Category:  "Standard",
-		BasePrice: 10000,
-		Available: true,
+		SKU:              "CHAIR-001",
+		Name:             "Office Chair",
+		Category:         "Standard",
+		BasePrice:        10000,
+		Available:        true,
 		ReturnWindowDays: 30,
 	}); err != nil {
 		log.Fatal(err)
@@ -98,7 +102,28 @@ func main() {
 	getInteractor := usecases.NewGetQuoteInteractor(quoteGateway, getPresenter)
 	getController := controllers.NewGetQuoteController(getInteractor)
 
+	requestReturnInteractor := usecases.NewRequestReturnInteractor(orderGateway, returnRequestGateway, clock, requestReturnPresenter)
+	requestReturnController := controllers.NewRequestReturnController(requestReturnInteractor)
+
+	getReturnInteractor := usecases.NewGetReturnRequestInteractor(returnRequestGateway, getReturnPresenter)
+	getReturnController := controllers.NewGetReturnRequestController(getReturnInteractor)
+
+	listReturnInteractor := usecases.NewListReturnRequestsInteractor(returnRequestGateway, listReturnPresenter)
+	listReturnController := controllers.NewListReturnRequestsController(listReturnInteractor)
+
 	if err := getController.Handle(createPresenter.ViewModel().QuoteID); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := requestReturnController.Handle(convertPresenter.ViewModel().OrderID, "damaged item", "customer-001"); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := getReturnController.Handle(requestReturnPresenter.ViewModel().ReturnRequestID); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := listReturnController.Handle(entities.ReturnRequestStatusRequested); err != nil {
 		log.Fatal(err)
 	}
 
@@ -109,4 +134,7 @@ func main() {
 	fmt.Println(capturePresenter.ViewModel().Message)
 	fmt.Println(shipmentPresenter.ViewModel().Message)
 	fmt.Println(getPresenter.ViewModel().Message)
+	fmt.Println(requestReturnPresenter.ViewModel().Message)
+	fmt.Println(getReturnPresenter.ViewModel().Message)
+	fmt.Println(listReturnPresenter.ViewModel().Message)
 }

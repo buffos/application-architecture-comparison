@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"sort"
 	"sync"
 
 	"clean-architecture/internal/entities"
@@ -35,4 +36,24 @@ func (g *ReturnRequestGateway) FindByID(id string) (entities.ReturnRequest, erro
 	}
 
 	return request, nil
+}
+
+func (g *ReturnRequestGateway) ListByStatus(status string) ([]entities.ReturnRequest, error) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	requests := make([]entities.ReturnRequest, 0, len(g.requests))
+	for _, request := range g.requests {
+		if status != "" && request.Status != status {
+			continue
+		}
+
+		requests = append(requests, request)
+	}
+
+	sort.Slice(requests, func(i int, j int) bool {
+		return requests[i].ID < requests[j].ID
+	})
+
+	return requests, nil
 }
