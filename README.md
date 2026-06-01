@@ -167,6 +167,7 @@ Architectures currently implemented in this repository:
 - `018` Return command idempotency: [018-return-command-idempotency.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/018-return-command-idempotency.md:1)
 - `019` Return query surface: [019-return-query-surface.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/019-return-query-surface.md:1)
 - `020` Order query surface: [020-order-query-surface.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/020-order-query-surface.md:1)
+- `021` Shipment query surface: [021-shipment-query-surface.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/021-shipment-query-surface.md:1)
 
 ## How To Maintain This File
 

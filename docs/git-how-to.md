@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(clean): complete lesson 020 order query surface
+feat(clean): complete lesson 021 shipment query surface
 
 # Add tag
 
-git tag -a clean-020 -m "Clean Architecture Lesson 020"
-git push origin clean-020
+git tag -a clean-021 -m "Clean Architecture Lesson 021"
+git push origin clean-021
 
 or
 
