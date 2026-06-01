@@ -7,6 +7,7 @@ import (
 )
 
 var ErrCustomerIDRequired = errors.New("customer id is required")
+var ErrQuoteNotFound = errors.New("quote not found")
 
 const QuoteStatusDraft = "Draft"
 

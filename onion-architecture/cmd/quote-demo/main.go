@@ -21,6 +21,7 @@ func main() {
 	}
 
 	service := application.NewCreateDraftQuoteService(quoteRepository, customerRepository)
+	getQuote := application.NewGetQuoteService(quoteRepository)
 
 	result, err := service.Execute(application.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -30,4 +31,11 @@ func main() {
 	}
 
 	fmt.Printf("created draft quote: id=%s customer=%s status=%s\n", result.QuoteID, result.CustomerID, result.Status)
+
+	details, err := getQuote.Execute(application.GetQuoteQuery{QuoteID: result.QuoteID})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("loaded quote: id=%s customer=%s status=%s\n", details.QuoteID, details.CustomerID, details.Status)
 }
