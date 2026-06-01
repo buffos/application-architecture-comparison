@@ -11,6 +11,7 @@ import (
 type stubReturnRequestStore struct {
 	saved domain.ReturnRequest
 	found domain.ReturnRequest
+	list  []domain.ReturnRequest
 }
 
 func (s *stubReturnRequestStore) Save(request domain.ReturnRequest) error {
@@ -24,6 +25,17 @@ func (s *stubReturnRequestStore) FindByID(id string) (domain.ReturnRequest, erro
 	}
 
 	return s.found, nil
+}
+
+func (s *stubReturnRequestStore) ListByStatus(status string) ([]domain.ReturnRequest, error) {
+	result := make([]domain.ReturnRequest, 0)
+	for _, request := range s.list {
+		if request.Status == status {
+			result = append(result, request)
+		}
+	}
+
+	return result, nil
 }
 
 func TestRequestReturnServiceCreatesRequestedReturnForShippedOrder(t *testing.T) {

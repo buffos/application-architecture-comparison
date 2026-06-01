@@ -205,6 +205,7 @@ Architectures currently implemented in this repository:
 - `016` Real return window policy: [016-real-return-window-policy.md](onion-architecture/lessons/016-real-return-window-policy.md)
 - `017` Return actor metadata: [017-return-actor-metadata.md](onion-architecture/lessons/017-return-actor-metadata.md)
 - `018` Return command idempotency: [018-return-command-idempotency.md](onion-architecture/lessons/018-return-command-idempotency.md)
+- `019` Return query surface: [019-return-query-surface.md](onion-architecture/lessons/019-return-query-surface.md)
 
 ## How To Maintain This File
 
