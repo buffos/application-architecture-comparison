@@ -12,6 +12,9 @@ type CapturePaymentOutput struct {
 	Lines   int
 }
 
+const PaymentCaptureApproved = "Approved"
+const PaymentCaptureReview = "Review"
+
 type CapturePaymentInputBoundary interface {
 	Execute(input CapturePaymentInput) error
 }
@@ -26,7 +29,7 @@ type OrderEditor interface {
 }
 
 type PaymentGateway interface {
-	Capture(order entities.Order) error
+	Capture(order entities.Order) (string, error)
 }
 
 type CapturePaymentInteractor struct {
@@ -49,12 +52,22 @@ func (uc CapturePaymentInteractor) Execute(input CapturePaymentInput) error {
 		return err
 	}
 
-	if err := uc.payment.Capture(order); err != nil {
+	outcome, err := uc.payment.Capture(order)
+	if err != nil {
 		return err
 	}
 
-	if err := order.MarkPaid(); err != nil {
-		return err
+	switch outcome {
+	case PaymentCaptureApproved:
+		if err := order.MarkPaid(); err != nil {
+			return err
+		}
+	case PaymentCaptureReview:
+		if err := order.MarkPaymentReview(); err != nil {
+			return err
+		}
+	default:
+		return entities.ErrQuoteCannotTransition
 	}
 
 	if err := uc.orders.Save(order); err != nil {

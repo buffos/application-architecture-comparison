@@ -26,11 +26,12 @@ func (g *stubOrderEditor) Save(order entities.Order) error {
 }
 
 type stubPaymentGateway struct {
-	err error
+	outcome string
+	err     error
 }
 
-func (g stubPaymentGateway) Capture(order entities.Order) error {
-	return g.err
+func (g stubPaymentGateway) Capture(order entities.Order) (string, error) {
+	return g.outcome, g.err
 }
 
 type stubCapturePaymentOutput struct {
@@ -56,7 +57,7 @@ func TestCapturePaymentInteractorMarksOrderPaid(t *testing.T) {
 	}
 	output := &stubCapturePaymentOutput{}
 
-	interactor := NewCapturePaymentInteractor(orders, stubPaymentGateway{}, output)
+	interactor := NewCapturePaymentInteractor(orders, stubPaymentGateway{outcome: PaymentCaptureApproved}, output)
 
 	err := interactor.Execute(CapturePaymentInput{OrderID: "order-001"})
 	if err != nil {
@@ -83,10 +84,40 @@ func TestCapturePaymentInteractorRejectsWrongOrderState(t *testing.T) {
 	}
 	output := &stubCapturePaymentOutput{}
 
-	interactor := NewCapturePaymentInteractor(orders, stubPaymentGateway{}, output)
+	interactor := NewCapturePaymentInteractor(orders, stubPaymentGateway{outcome: PaymentCaptureApproved}, output)
 
 	err := interactor.Execute(CapturePaymentInput{OrderID: "order-002"})
 	if err != entities.ErrQuoteCannotTransition {
 		t.Fatalf("expected %v, got %v", entities.ErrQuoteCannotTransition, err)
+	}
+}
+
+func TestCapturePaymentInteractorMovesOrderToPaymentReview(t *testing.T) {
+	orders := &stubOrderEditor{
+		order: entities.Order{
+			ID:            "order-003",
+			CustomerID:    "customer-001",
+			SourceQuoteID: "quote-001",
+			Status:        entities.OrderStatusPendingPayment,
+			Lines: []entities.OrderLine{
+				{SKU: "CHAIR-001", Quantity: 2},
+			},
+		},
+	}
+	output := &stubCapturePaymentOutput{}
+
+	interactor := NewCapturePaymentInteractor(orders, stubPaymentGateway{outcome: PaymentCaptureReview}, output)
+
+	err := interactor.Execute(CapturePaymentInput{OrderID: "order-003"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if orders.saved.Status != entities.OrderStatusPaymentReview {
+		t.Fatalf("expected saved status %s, got %s", entities.OrderStatusPaymentReview, orders.saved.Status)
+	}
+
+	if output.output.Status != entities.OrderStatusPaymentReview {
+		t.Fatalf("expected output status %s, got %s", entities.OrderStatusPaymentReview, output.output.Status)
 	}
 }

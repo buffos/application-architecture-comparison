@@ -84,3 +84,24 @@ func TestCreateShipmentInteractorRejectsUnpaidOrder(t *testing.T) {
 		t.Fatalf("expected %v, got %v", entities.ErrQuoteCannotTransition, err)
 	}
 }
+
+func TestCreateShipmentInteractorRejectsOrderInPaymentReview(t *testing.T) {
+	orders := &stubOrderEditor{
+		order: entities.Order{
+			ID:            "order-003",
+			CustomerID:    "customer-001",
+			SourceQuoteID: "quote-001",
+			Status:        entities.OrderStatusPaymentReview,
+		},
+	}
+	shipments := &stubShipmentWriter{}
+	output := &stubCreateShipmentOutput{}
+	clock := stubClock{now: time.Date(2026, 6, 5, 9, 0, 0, 0, time.UTC)}
+
+	interactor := NewCreateShipmentInteractor(orders, shipments, clock, output)
+
+	err := interactor.Execute(CreateShipmentInput{OrderID: "order-003"})
+	if err != entities.ErrQuoteCannotTransition {
+		t.Fatalf("expected %v, got %v", entities.ErrQuoteCannotTransition, err)
+	}
+}
