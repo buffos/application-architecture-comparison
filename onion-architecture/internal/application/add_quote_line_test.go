@@ -108,3 +108,33 @@ func TestAddQuoteLineServiceRejectsInactiveProduct(t *testing.T) {
 		t.Fatalf("expected %v, got %v", domain.ErrProductInactive, err)
 	}
 }
+
+func TestAddQuoteLineServiceRejectsSubmittedQuote(t *testing.T) {
+	quotes := &stubQuoteStore{
+		quote: domain.Quote{
+			ID:         "quote-001",
+			CustomerID: "customer-001",
+			Status:     domain.QuoteStatusSubmitted,
+		},
+	}
+
+	products := stubProductLookup{
+		product: domain.Product{
+			SKU:       "sku-001",
+			Name:      "Desk",
+			Active:    true,
+			UnitPrice: 15000,
+		},
+	}
+
+	service := NewAddQuoteLineService(quotes, products)
+
+	_, err := service.Execute(AddQuoteLineCommand{
+		QuoteID:    "quote-001",
+		ProductSKU: "sku-001",
+		Quantity:   1,
+	})
+	if err != domain.ErrQuoteNotEditable {
+		t.Fatalf("expected %v, got %v", domain.ErrQuoteNotEditable, err)
+	}
+}

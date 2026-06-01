@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(onion): complete lesson 003 add quote line with product lookup
+feat(onion): complete lesson 004 submit quote state transition
 
 # Add tag
 
-git tag -a onion-003 -m "Onion Architecture Lesson 003"
-git push origin onion-003
+git tag -a onion-004 -m "Onion Architecture Lesson 004"
+git push origin onion-004
 
 or
 

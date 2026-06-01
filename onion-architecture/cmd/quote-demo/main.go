@@ -33,6 +33,7 @@ func main() {
 	service := application.NewCreateDraftQuoteService(quoteRepository, customerRepository)
 	getQuote := application.NewGetQuoteService(quoteRepository)
 	addQuoteLine := application.NewAddQuoteLineService(quoteRepository, productRepository)
+	submitQuote := application.NewSubmitQuoteService(quoteRepository)
 
 	result, err := service.Execute(application.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -53,6 +54,15 @@ func main() {
 	}
 
 	fmt.Printf("added quote line: id=%s lines=%d items=%d status=%s\n", lineResult.QuoteID, lineResult.LineCount, lineResult.TotalItems, lineResult.Status)
+
+	submitResult, err := submitQuote.Execute(application.SubmitQuoteCommand{
+		QuoteID: result.QuoteID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("submitted quote: id=%s lines=%d items=%d status=%s\n", submitResult.QuoteID, submitResult.LineCount, submitResult.TotalItems, submitResult.Status)
 
 	details, err := getQuote.Execute(application.GetQuoteQuery{QuoteID: result.QuoteID})
 	if err != nil {
