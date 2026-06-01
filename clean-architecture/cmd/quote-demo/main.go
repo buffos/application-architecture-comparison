@@ -17,6 +17,7 @@ func main() {
 	customerGateway := memory.NewCustomerGateway()
 	quoteGateway := memory.NewQuoteGateway()
 	orderGateway := memory.NewOrderGateway()
+	shipmentGateway := memory.NewShipmentGateway()
 	productGateway := memory.NewProductGateway()
 	inventoryReservation := memory.NewInventoryReservation(map[string]int{
 		"CHAIR-001": 5,
@@ -28,6 +29,7 @@ func main() {
 	submitPresenter := presenters.NewSubmitQuotePresenter()
 	convertPresenter := presenters.NewConvertQuoteToOrderPresenter()
 	capturePresenter := presenters.NewCapturePaymentPresenter()
+	shipmentPresenter := presenters.NewCreateShipmentPresenter()
 	getPresenter := presenters.NewGetQuotePresenter()
 
 	if err := customerGateway.Save(entities.Customer{
@@ -81,6 +83,13 @@ func main() {
 		log.Fatal(err)
 	}
 
+	createShipmentInteractor := usecases.NewCreateShipmentInteractor(orderGateway, shipmentGateway, shipmentPresenter)
+	createShipmentController := controllers.NewCreateShipmentController(createShipmentInteractor)
+
+	if err := createShipmentController.Handle(convertPresenter.ViewModel().OrderID); err != nil {
+		log.Fatal(err)
+	}
+
 	getInteractor := usecases.NewGetQuoteInteractor(quoteGateway, getPresenter)
 	getController := controllers.NewGetQuoteController(getInteractor)
 
@@ -93,5 +102,6 @@ func main() {
 	fmt.Println(submitPresenter.ViewModel().Message)
 	fmt.Println(convertPresenter.ViewModel().Message)
 	fmt.Println(capturePresenter.ViewModel().Message)
+	fmt.Println(shipmentPresenter.ViewModel().Message)
 	fmt.Println(getPresenter.ViewModel().Message)
 }

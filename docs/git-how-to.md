@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(clean): complete lesson 009 payment gateway and order capture
+feat(clean): complete lesson 010 shipment creation after payment
 
 # Add tag
 
-git tag -a clean-009 -m "Clean Architecture Lesson 009"
-git push origin clean-009
+git tag -a clean-010 -m "Clean Architecture Lesson 010"
+git push origin clean-010
 
 or
 

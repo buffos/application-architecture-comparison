@@ -156,6 +156,7 @@ Architectures currently implemented in this repository:
 - `007` Convert quote to order: [007-convert-quote-to-order.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/007-convert-quote-to-order.md:1)
 - `008` Order conversion with reservation: [008-order-conversion-with-reservation.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/008-order-conversion-with-reservation.md:1)
 - `009` Payment gateway and order capture: [009-payment-gateway-and-order-capture.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/009-payment-gateway-and-order-capture.md:1)
+- `010` Shipment creation after payment: [010-shipment-creation-after-payment.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/010-shipment-creation-after-payment.md:1)
 
 ## How To Maintain This File
 
