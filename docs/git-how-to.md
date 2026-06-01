@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(clean): complete lesson 010 shipment creation after payment
+feat(clean): complete lesson 011 order cancellation and release
 
 # Add tag
 
-git tag -a clean-010 -m "Clean Architecture Lesson 010"
-git push origin clean-010
+git tag -a clean-011 -m "Clean Architecture Lesson 011"
+git push origin clean-011
 
 or
 
