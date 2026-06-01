@@ -14,7 +14,8 @@ import (
 func main() {
 	customerGateway := memory.NewCustomerGateway()
 	quoteGateway := memory.NewQuoteGateway()
-	presenter := presenters.NewCreateDraftQuotePresenter()
+	createPresenter := presenters.NewCreateDraftQuotePresenter()
+	getPresenter := presenters.NewGetQuotePresenter()
 
 	if err := customerGateway.Save(entities.Customer{
 		ID:     "customer-001",
@@ -23,12 +24,20 @@ func main() {
 		log.Fatal(err)
 	}
 
-	interactor := usecases.NewCreateDraftQuoteInteractor(quoteGateway, customerGateway, presenter)
-	controller := controllers.NewCreateDraftQuoteController(interactor)
+	createInteractor := usecases.NewCreateDraftQuoteInteractor(quoteGateway, customerGateway, createPresenter)
+	createController := controllers.NewCreateDraftQuoteController(createInteractor)
 
-	if err := controller.Handle("customer-001"); err != nil {
+	if err := createController.Handle("customer-001"); err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println(presenter.ViewModel().Message)
+	getInteractor := usecases.NewGetQuoteInteractor(quoteGateway, getPresenter)
+	getController := controllers.NewGetQuoteController(getInteractor)
+
+	if err := getController.Handle(createPresenter.ViewModel().QuoteID); err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(createPresenter.ViewModel().Message)
+	fmt.Println(getPresenter.ViewModel().Message)
 }

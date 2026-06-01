@@ -24,3 +24,15 @@ func (g *QuoteGateway) Save(quote entities.Quote) error {
 	g.quotes[quote.ID] = quote
 	return nil
 }
+
+func (g *QuoteGateway) FindByID(id string) (entities.Quote, error) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	quote, ok := g.quotes[id]
+	if !ok {
+		return entities.Quote{}, entities.ErrQuoteNotFound
+	}
+
+	return quote, nil
+}
