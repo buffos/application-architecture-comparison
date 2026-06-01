@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(clean): complete lesson 011 order cancellation and release
+feat(clean): complete lesson 012 return request and refund boundary
 
 # Add tag
 
-git tag -a clean-011 -m "Clean Architecture Lesson 011"
-git push origin clean-011
+git tag -a clean-012 -m "Clean Architecture Lesson 012"
+git push origin clean-012
 
 or
 

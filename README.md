@@ -158,6 +158,7 @@ Architectures currently implemented in this repository:
 - `009` Payment gateway and order capture: [009-payment-gateway-and-order-capture.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/009-payment-gateway-and-order-capture.md:1)
 - `010` Shipment creation after payment: [010-shipment-creation-after-payment.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/010-shipment-creation-after-payment.md:1)
 - `011` Order cancellation and release: [011-order-cancellation-and-release.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/011-order-cancellation-and-release.md:1)
+- `012` Return request and refund boundary: [012-return-request-and-refund-boundary.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/012-return-request-and-refund-boundary.md:1)
 
 ## How To Maintain This File
 
