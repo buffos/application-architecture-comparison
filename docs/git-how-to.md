@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(onion): complete lesson 027 low stock items report
+feat(onion): complete lesson 028 orders awaiting approval report
 
 # Add tag
 
-git tag -a onion-027 -m "Onion Architecture Lesson 027"
-git push origin onion-027
+git tag -a onion-028 -m "Onion Architecture Lesson 028"
+git push origin onion-028
 
 or
 

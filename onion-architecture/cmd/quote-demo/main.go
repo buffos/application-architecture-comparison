@@ -66,6 +66,7 @@ func main() {
 	capturePayment := application.NewCapturePaymentService(orderRepository, paymentGateway)
 	createShipment := application.NewCreateShipmentService(orderRepository, shipmentRepository, clock)
 	lowStockItemsReport := application.NewLowStockItemsReportService(inventoryReservation)
+	ordersAwaitingApprovalReport := application.NewOrdersAwaitingApprovalReportService(quoteRepository)
 
 	result, err := service.Execute(application.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -139,6 +140,29 @@ func main() {
 
 	fmt.Printf("loaded quote: id=%s customer=%s status=%s lines=%d\n", details.QuoteID, details.CustomerID, details.Status, details.LineCount)
 
+	queueQuote, err := service.Execute(application.CreateDraftQuoteCommand{
+		CustomerID: "customer-001",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = addQuoteLine.Execute(application.AddQuoteLineCommand{
+		QuoteID:    queueQuote.QuoteID,
+		ProductSKU: "sku-002",
+		Quantity:   2,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = submitQuote.Execute(application.SubmitQuoteCommand{
+		QuoteID: queueQuote.QuoteID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	lowStockItems, err := lowStockItemsReport.Execute(application.LowStockItemsReportQuery{
 		Threshold: 5,
 	})
@@ -147,4 +171,11 @@ func main() {
 	}
 
 	fmt.Printf("low stock items: %v\n", lowStockItems)
+
+	approvalQueue, err := ordersAwaitingApprovalReport.Execute()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("orders awaiting approval: %v\n", approvalQueue)
 }
