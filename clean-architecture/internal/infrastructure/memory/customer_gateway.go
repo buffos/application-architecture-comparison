@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"sort"
 	"sync"
 
 	"clean-architecture/internal/entities"
@@ -35,4 +36,24 @@ func (g *CustomerGateway) FindByID(id string) (entities.Customer, error) {
 	}
 
 	return customer, nil
+}
+
+func (g *CustomerGateway) List(activeOnly bool) ([]entities.Customer, error) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	customers := make([]entities.Customer, 0, len(g.customers))
+	for _, customer := range g.customers {
+		if activeOnly && !customer.Active {
+			continue
+		}
+
+		customers = append(customers, customer)
+	}
+
+	sort.Slice(customers, func(i int, j int) bool {
+		return customers[i].ID < customers[j].ID
+	})
+
+	return customers, nil
 }

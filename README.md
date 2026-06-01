@@ -170,6 +170,7 @@ Architectures currently implemented in this repository:
 - `021` Shipment query surface: [021-shipment-query-surface.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/021-shipment-query-surface.md:1)
 - `022` Quote list query surface: [022-quote-list-query-surface.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/022-quote-list-query-surface.md:1)
 - `023` Product query surface: [023-product-query-surface.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/023-product-query-surface.md:1)
+- `024` Customer query surface: [024-customer-query-surface.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/024-customer-query-surface.md:1)
 
 ## How To Maintain This File
 

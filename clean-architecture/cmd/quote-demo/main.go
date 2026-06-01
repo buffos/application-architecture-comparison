@@ -30,6 +30,8 @@ func main() {
 	_ = returneligibility.NewWindowPolicy()
 	paymentGateway := paymentservice.NewAcceptAllGateway()
 	createPresenter := presenters.NewCreateDraftQuotePresenter()
+	getCustomerPresenter := presenters.NewGetCustomerPresenter()
+	listCustomersPresenter := presenters.NewListCustomersPresenter()
 	addLinePresenter := presenters.NewAddQuoteLinePresenter()
 	submitPresenter := presenters.NewSubmitQuotePresenter()
 	convertPresenter := presenters.NewConvertQuoteToOrderPresenter()
@@ -67,7 +69,21 @@ func main() {
 	createInteractor := usecases.NewCreateDraftQuoteInteractor(quoteGateway, customerGateway, createPresenter)
 	createController := controllers.NewCreateDraftQuoteController(createInteractor)
 
+	getCustomerInteractor := usecases.NewGetCustomerInteractor(customerGateway, getCustomerPresenter)
+	getCustomerController := controllers.NewGetCustomerController(getCustomerInteractor)
+
+	listCustomersInteractor := usecases.NewListCustomersInteractor(customerGateway, listCustomersPresenter)
+	listCustomersController := controllers.NewListCustomersController(listCustomersInteractor)
+
 	if err := createController.Handle("customer-001"); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := getCustomerController.Handle("customer-001"); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := listCustomersController.Handle(true); err != nil {
 		log.Fatal(err)
 	}
 
@@ -184,6 +200,8 @@ func main() {
 	}
 
 	fmt.Println(createPresenter.ViewModel().Message)
+	fmt.Println(getCustomerPresenter.ViewModel().Message)
+	fmt.Println(listCustomersPresenter.ViewModel().Message)
 	fmt.Println(addLinePresenter.ViewModel().Message)
 	fmt.Println(submitPresenter.ViewModel().Message)
 	fmt.Println(convertPresenter.ViewModel().Message)
