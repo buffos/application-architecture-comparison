@@ -7,7 +7,9 @@ import (
 	"clean-architecture/internal/entities"
 	"clean-architecture/internal/infrastructure/memory"
 	approvalpolicy "clean-architecture/internal/infrastructure/policies/approval"
+	returneligibility "clean-architecture/internal/infrastructure/policies/returneligibility"
 	paymentservice "clean-architecture/internal/infrastructure/services/payment"
+	timeadapter "clean-architecture/internal/infrastructure/services/time"
 	"clean-architecture/internal/interfaceadapters/controllers"
 	"clean-architecture/internal/interfaceadapters/presenters"
 	"clean-architecture/internal/usecases"
@@ -23,6 +25,8 @@ func main() {
 		"CHAIR-001": 5,
 	})
 	approvalPolicy := approvalpolicy.NewCategoryPolicy()
+	clock := timeadapter.NewSystemClock()
+	_ = returneligibility.NewWindowPolicy()
 	paymentGateway := paymentservice.NewAcceptAllGateway()
 	createPresenter := presenters.NewCreateDraftQuotePresenter()
 	addLinePresenter := presenters.NewAddQuoteLinePresenter()
@@ -44,6 +48,7 @@ func main() {
 		Category:  "Standard",
 		BasePrice: 10000,
 		Available: true,
+		ReturnWindowDays: 30,
 	}); err != nil {
 		log.Fatal(err)
 	}
@@ -69,7 +74,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	convertInteractor := usecases.NewConvertQuoteToOrderInteractor(quoteGateway, orderGateway, inventoryReservation, convertPresenter)
+	convertInteractor := usecases.NewConvertQuoteToOrderInteractor(quoteGateway, orderGateway, inventoryReservation, clock, convertPresenter)
 	convertController := controllers.NewConvertQuoteToOrderController(convertInteractor)
 
 	if err := convertController.Handle(createPresenter.ViewModel().QuoteID); err != nil {
@@ -83,7 +88,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	createShipmentInteractor := usecases.NewCreateShipmentInteractor(orderGateway, shipmentGateway, shipmentPresenter)
+	createShipmentInteractor := usecases.NewCreateShipmentInteractor(orderGateway, shipmentGateway, clock, shipmentPresenter)
 	createShipmentController := controllers.NewCreateShipmentController(createShipmentInteractor)
 
 	if err := createShipmentController.Handle(convertPresenter.ViewModel().OrderID); err != nil {

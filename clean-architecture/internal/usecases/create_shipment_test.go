@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"testing"
+	"time"
 
 	"clean-architecture/internal/entities"
 )
@@ -38,8 +39,9 @@ func TestCreateShipmentInteractorCreatesShipmentForPaidOrder(t *testing.T) {
 	}
 	shipments := &stubShipmentWriter{}
 	output := &stubCreateShipmentOutput{}
+	clock := stubClock{now: time.Date(2026, 6, 5, 9, 0, 0, 0, time.UTC)}
 
-	interactor := NewCreateShipmentInteractor(orders, shipments, output)
+	interactor := NewCreateShipmentInteractor(orders, shipments, clock, output)
 
 	err := interactor.Execute(CreateShipmentInput{OrderID: "order-001"})
 	if err != nil {
@@ -52,6 +54,9 @@ func TestCreateShipmentInteractorCreatesShipmentForPaidOrder(t *testing.T) {
 
 	if orders.saved.Status != entities.OrderStatusShipped {
 		t.Fatalf("expected order status %s, got %s", entities.OrderStatusShipped, orders.saved.Status)
+	}
+	if orders.saved.ShippedAt == nil {
+		t.Fatal("expected shipped timestamp to be set")
 	}
 
 	if output.output.ShipmentID == "" {
@@ -70,8 +75,9 @@ func TestCreateShipmentInteractorRejectsUnpaidOrder(t *testing.T) {
 	}
 	shipments := &stubShipmentWriter{}
 	output := &stubCreateShipmentOutput{}
+	clock := stubClock{now: time.Date(2026, 6, 5, 9, 0, 0, 0, time.UTC)}
 
-	interactor := NewCreateShipmentInteractor(orders, shipments, output)
+	interactor := NewCreateShipmentInteractor(orders, shipments, clock, output)
 
 	err := interactor.Execute(CreateShipmentInput{OrderID: "order-002"})
 	if err != entities.ErrQuoteCannotTransition {

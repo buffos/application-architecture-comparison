@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"testing"
+	"time"
 
 	"clean-architecture/internal/entities"
 )
@@ -63,15 +64,17 @@ func TestRequestReturnInteractorCreatesRequestedReturn(t *testing.T) {
 			CustomerID:    "customer-001",
 			SourceQuoteID: "quote-001",
 			Status:        entities.OrderStatusShipped,
+			ShippedAt:     timePtr(time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)),
 			Lines: []entities.OrderLine{
-				{SKU: "CHAIR-001", Quantity: 2},
+				{SKU: "CHAIR-001", Quantity: 2, ReturnWindowDays: 30},
 			},
 		},
 	}
 	returns := &stubReturnRequestWriter{}
 	output := &stubRequestReturnOutput{}
+	clock := stubClock{now: time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC)}
 
-	interactor := NewRequestReturnInteractor(orders, returns, output)
+	interactor := NewRequestReturnInteractor(orders, returns, clock, output)
 
 	err := interactor.Execute(RequestReturnInput{OrderID: "order-001", Reason: "damaged item"})
 	if err != nil {
@@ -90,6 +93,7 @@ func TestAcceptReturnInteractorRefundsAndRestocks(t *testing.T) {
 			OrderID: "order-001",
 			Reason:  "damaged item",
 			Status:  entities.ReturnRequestStatusRequested,
+			RequestedAt: time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC),
 		},
 	}
 	orders := &stubOrderEditor{
@@ -98,8 +102,9 @@ func TestAcceptReturnInteractorRefundsAndRestocks(t *testing.T) {
 			CustomerID:    "customer-001",
 			SourceQuoteID: "quote-001",
 			Status:        entities.OrderStatusShipped,
+			ShippedAt:     timePtr(time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)),
 			Lines: []entities.OrderLine{
-				{SKU: "CHAIR-001", Quantity: 2},
+				{SKU: "CHAIR-001", Quantity: 2, ReturnWindowDays: 30},
 			},
 		},
 	}
@@ -127,8 +132,9 @@ func TestAcceptReturnInteractorBlocksPolicyRejectedReturn(t *testing.T) {
 		request: entities.ReturnRequest{
 			ID:      "return-003",
 			OrderID: "order-001",
-			Reason:  "outside return window",
+			Reason:  "changed mind",
 			Status:  entities.ReturnRequestStatusRequested,
+			RequestedAt: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC),
 		},
 	}
 	orders := &stubOrderEditor{
@@ -137,8 +143,9 @@ func TestAcceptReturnInteractorBlocksPolicyRejectedReturn(t *testing.T) {
 			CustomerID:    "customer-001",
 			SourceQuoteID: "quote-001",
 			Status:        entities.OrderStatusShipped,
+			ShippedAt:     timePtr(time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)),
 			Lines: []entities.OrderLine{
-				{SKU: "CHAIR-001", Quantity: 2},
+				{SKU: "CHAIR-001", Quantity: 2, ReturnWindowDays: 30},
 			},
 		},
 	}
@@ -155,6 +162,10 @@ func TestAcceptReturnInteractorBlocksPolicyRejectedReturn(t *testing.T) {
 	if returns.saved.ID != "" {
 		t.Fatal("expected no saved return update when policy blocks acceptance")
 	}
+}
+
+func timePtr(t time.Time) *time.Time {
+	return &t
 }
 
 func TestRejectReturnInteractorPreventsRefundAndRestock(t *testing.T) {

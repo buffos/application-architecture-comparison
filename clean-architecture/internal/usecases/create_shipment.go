@@ -28,13 +28,15 @@ type ShipmentWriter interface {
 type CreateShipmentInteractor struct {
 	orders    OrderEditor
 	shipments ShipmentWriter
+	clock     Clock
 	output    CreateShipmentOutputBoundary
 }
 
-func NewCreateShipmentInteractor(orders OrderEditor, shipments ShipmentWriter, output CreateShipmentOutputBoundary) CreateShipmentInteractor {
+func NewCreateShipmentInteractor(orders OrderEditor, shipments ShipmentWriter, clock Clock, output CreateShipmentOutputBoundary) CreateShipmentInteractor {
 	return CreateShipmentInteractor{
 		orders:    orders,
 		shipments: shipments,
+		clock:     clock,
 		output:    output,
 	}
 }
@@ -50,7 +52,7 @@ func (uc CreateShipmentInteractor) Execute(input CreateShipmentInput) error {
 		return err
 	}
 
-	if err := order.MarkShipped(); err != nil {
+	if err := order.MarkShippedAt(uc.clock.Now()); err != nil {
 		return err
 	}
 

@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"testing"
+	"time"
 
 	"clean-architecture/internal/entities"
 )
@@ -60,8 +61,9 @@ func TestRequestReturnInteractorCreatesRequestedReturnForShippedOrder(t *testing
 	}
 	returns := &stubReturnRequestWriter{}
 	output := &stubRequestReturnOutput{}
+	clock := stubClock{now: time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC)}
 
-	interactor := NewRequestReturnInteractor(orders, returns, output)
+	interactor := NewRequestReturnInteractor(orders, returns, clock, output)
 
 	err := interactor.Execute(RequestReturnInput{OrderID: "order-001", Reason: "damaged item"})
 	if err != nil {
@@ -88,8 +90,9 @@ func TestRequestReturnInteractorRejectsNonShippedOrder(t *testing.T) {
 	}
 	returns := &stubReturnRequestWriter{}
 	output := &stubRequestReturnOutput{}
+	clock := stubClock{now: time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC)}
 
-	interactor := NewRequestReturnInteractor(orders, returns, output)
+	interactor := NewRequestReturnInteractor(orders, returns, clock, output)
 
 	err := interactor.Execute(RequestReturnInput{OrderID: "order-002", Reason: "changed mind"})
 	if err != entities.ErrOrderNotReturnable {

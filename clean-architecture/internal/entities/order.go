@@ -3,6 +3,7 @@ package entities
 import (
 	"fmt"
 	"sync/atomic"
+	"time"
 )
 
 const OrderStatusPendingPayment = "PendingPayment"
@@ -20,6 +21,7 @@ type OrderLine struct {
 	Quantity    int
 	UnitPrice   int
 	LineTotal   int
+	ReturnWindowDays int
 }
 
 type Order struct {
@@ -28,9 +30,10 @@ type Order struct {
 	SourceQuoteID string
 	Status        string
 	Lines         []OrderLine
+	ShippedAt     *time.Time
 }
 
-func NewOrderFromApprovedQuote(quote Quote) (Order, error) {
+func NewOrderFromApprovedQuote(quote Quote, now time.Time) (Order, error) {
 	if quote.Status != QuoteStatusApproved {
 		return Order{}, ErrQuoteNotConvertible
 	}
@@ -44,6 +47,7 @@ func NewOrderFromApprovedQuote(quote Quote) (Order, error) {
 			Quantity:    line.Quantity,
 			UnitPrice:   line.UnitPrice,
 			LineTotal:   line.LineTotal,
+			ReturnWindowDays: line.ReturnWindowDays,
 		})
 	}
 
@@ -71,6 +75,19 @@ func (o *Order) MarkShipped() error {
 	}
 
 	o.Status = OrderStatusShipped
+	now := time.Now()
+	o.ShippedAt = &now
+	return nil
+}
+
+func (o *Order) MarkShippedAt(at time.Time) error {
+	if o.Status != OrderStatusPaid {
+		return ErrQuoteCannotTransition
+	}
+
+	o.Status = OrderStatusShipped
+	copy := at
+	o.ShippedAt = &copy
 	return nil
 }
 

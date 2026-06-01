@@ -28,13 +28,15 @@ type ReturnRequestWriter interface {
 type RequestReturnInteractor struct {
 	orders   OrderEditor
 	returns  ReturnRequestWriter
+	clock    Clock
 	output   RequestReturnOutputBoundary
 }
 
-func NewRequestReturnInteractor(orders OrderEditor, returns ReturnRequestWriter, output RequestReturnOutputBoundary) RequestReturnInteractor {
+func NewRequestReturnInteractor(orders OrderEditor, returns ReturnRequestWriter, clock Clock, output RequestReturnOutputBoundary) RequestReturnInteractor {
 	return RequestReturnInteractor{
 		orders:  orders,
 		returns: returns,
+		clock:   clock,
 		output:  output,
 	}
 }
@@ -45,7 +47,7 @@ func (uc RequestReturnInteractor) Execute(input RequestReturnInput) error {
 		return err
 	}
 
-	request, err := entities.NewReturnRequestFromShippedOrder(order, input.Reason)
+	request, err := entities.NewReturnRequestFromShippedOrder(order, input.Reason, uc.clock.Now())
 	if err != nil {
 		return err
 	}

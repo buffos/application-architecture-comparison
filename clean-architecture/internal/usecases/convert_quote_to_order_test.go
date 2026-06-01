@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"testing"
+	"time"
 
 	"clean-architecture/internal/entities"
 )
@@ -52,8 +53,9 @@ func TestConvertQuoteToOrderInteractorCreatesOrderFromApprovedQuote(t *testing.T
 	orders := &stubOrderWriter{}
 	inventory := &stubInventoryReservation{}
 	output := &stubConvertQuoteToOrderOutput{}
+	clock := stubClock{now: time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)}
 
-	interactor := NewConvertQuoteToOrderInteractor(quotes, orders, inventory, output)
+	interactor := NewConvertQuoteToOrderInteractor(quotes, orders, inventory, clock, output)
 
 	err := interactor.Execute(ConvertQuoteToOrderInput{QuoteID: "quote-001"})
 	if err != nil {
@@ -91,8 +93,9 @@ func TestConvertQuoteToOrderInteractorRejectsNonApprovedQuote(t *testing.T) {
 	orders := &stubOrderWriter{}
 	inventory := &stubInventoryReservation{}
 	output := &stubConvertQuoteToOrderOutput{}
+	clock := stubClock{now: time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)}
 
-	interactor := NewConvertQuoteToOrderInteractor(quotes, orders, inventory, output)
+	interactor := NewConvertQuoteToOrderInteractor(quotes, orders, inventory, clock, output)
 
 	err := interactor.Execute(ConvertQuoteToOrderInput{QuoteID: "quote-002"})
 	if err != entities.ErrQuoteNotConvertible {
@@ -114,8 +117,9 @@ func TestConvertQuoteToOrderInteractorFailsWhenReservationFails(t *testing.T) {
 	orders := &stubOrderWriter{}
 	inventory := &stubInventoryReservation{err: entities.ErrInsufficientInventory}
 	output := &stubConvertQuoteToOrderOutput{}
+	clock := stubClock{now: time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)}
 
-	interactor := NewConvertQuoteToOrderInteractor(quotes, orders, inventory, output)
+	interactor := NewConvertQuoteToOrderInteractor(quotes, orders, inventory, clock, output)
 
 	err := interactor.Execute(ConvertQuoteToOrderInput{QuoteID: "quote-003"})
 	if err != entities.ErrInsufficientInventory {

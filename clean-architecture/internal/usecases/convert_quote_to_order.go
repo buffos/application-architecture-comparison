@@ -33,14 +33,16 @@ type ConvertQuoteToOrderInteractor struct {
 	quotes QuoteReader
 	orders OrderWriter
 	inventory InventoryReservation
+	clock Clock
 	output ConvertQuoteToOrderOutputBoundary
 }
 
-func NewConvertQuoteToOrderInteractor(quotes QuoteReader, orders OrderWriter, inventory InventoryReservation, output ConvertQuoteToOrderOutputBoundary) ConvertQuoteToOrderInteractor {
+func NewConvertQuoteToOrderInteractor(quotes QuoteReader, orders OrderWriter, inventory InventoryReservation, clock Clock, output ConvertQuoteToOrderOutputBoundary) ConvertQuoteToOrderInteractor {
 	return ConvertQuoteToOrderInteractor{
 		quotes: quotes,
 		orders: orders,
 		inventory: inventory,
+		clock: clock,
 		output: output,
 	}
 }
@@ -51,7 +53,7 @@ func (uc ConvertQuoteToOrderInteractor) Execute(input ConvertQuoteToOrderInput) 
 		return err
 	}
 
-	order, err := entities.NewOrderFromApprovedQuote(quote)
+	order, err := entities.NewOrderFromApprovedQuote(quote, uc.clock.Now())
 	if err != nil {
 		return err
 	}

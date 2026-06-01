@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync/atomic"
+	"time"
 )
 
 const QuoteStatusDraft = "Draft"
@@ -27,6 +28,7 @@ type QuoteLine struct {
 	Quantity      int
 	UnitPrice     int
 	LineTotal     int
+	ReturnWindowDays int
 }
 
 type Quote struct {
@@ -66,6 +68,7 @@ func (q *Quote) AddLine(product Product, quantity int) error {
 		Quantity:        quantity,
 		UnitPrice:       product.BasePrice,
 		LineTotal:       product.BasePrice * quantity,
+		ReturnWindowDays: product.ReturnWindowDays,
 	})
 
 	return nil
@@ -96,4 +99,8 @@ func (q *Quote) Approve() error {
 
 	q.Status = QuoteStatusApproved
 	return nil
+}
+
+func (q Quote) ToApprovedOrder(now time.Time) (Order, error) {
+	return NewOrderFromApprovedQuote(q, now)
 }

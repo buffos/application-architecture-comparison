@@ -11,6 +11,7 @@ type Product struct {
 	Category   string
 	BasePrice  int
 	Available  bool
+	ReturnWindowDays int
 }
 
 func (p Product) EnsureAvailable() error {

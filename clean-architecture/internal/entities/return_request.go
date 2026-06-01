@@ -3,6 +3,7 @@ package entities
 import (
 	"fmt"
 	"sync/atomic"
+	"time"
 )
 
 const ReturnRequestStatusRequested = "Requested"
@@ -19,9 +20,10 @@ type ReturnRequest struct {
 	OrderID string
 	Reason  string
 	Status  string
+	RequestedAt time.Time
 }
 
-func NewReturnRequestFromShippedOrder(order Order, reason string) (ReturnRequest, error) {
+func NewReturnRequestFromShippedOrder(order Order, reason string, requestedAt time.Time) (ReturnRequest, error) {
 	if order.Status != OrderStatusShipped {
 		return ReturnRequest{}, ErrOrderNotReturnable
 	}
@@ -33,6 +35,7 @@ func NewReturnRequestFromShippedOrder(order Order, reason string) (ReturnRequest
 		OrderID: order.ID,
 		Reason:  reason,
 		Status:  ReturnRequestStatusRequested,
+		RequestedAt: requestedAt,
 	}, nil
 }
 
