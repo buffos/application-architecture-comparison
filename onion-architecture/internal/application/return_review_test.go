@@ -47,18 +47,24 @@ func TestAcceptReturnServiceRefundsAndRestocksAcceptedReturn(t *testing.T) {
 	}
 	returns := &stubReturnRequestStore{
 		found: domain.ReturnRequest{
-			ID:      "return-001",
-			OrderID: "order-001",
-			Status:  domain.ReturnRequestStatusRequested,
-			Reason:  "damaged on arrival",
+			ID:          "return-001",
+			OrderID:     "order-001",
+			Status:      domain.ReturnRequestStatusRequested,
+			Reason:      "damaged on arrival",
 			RequestedAt: time.Date(2026, 6, 5, 10, 0, 0, 0, time.UTC),
+			RequestedBy: "customer-001",
 		},
 	}
 	restock := &stubInventoryRestock{}
 
 	service := NewAcceptReturnService(orders, returns, stubReturnEligibilityPolicy{eligible: true}, stubRefundGateway{}, restock)
 
-	result, err := service.Execute(AcceptReturnCommand{ReturnRequestID: "return-001"})
+	result, err := service.Execute(AcceptReturnCommand{
+		ReturnRequestID: "return-001",
+		ReviewedBy:      "agent-007",
+		ReviewNote:      "confirmed damage",
+		ProcessedBy:     "finance-001",
+	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -70,26 +76,43 @@ func TestAcceptReturnServiceRefundsAndRestocksAcceptedReturn(t *testing.T) {
 	if len(restock.items) != 1 {
 		t.Fatalf("expected one restock item, got %d", len(restock.items))
 	}
+
+	if returns.saved.ReviewedBy != "agent-007" {
+		t.Fatalf("expected reviewed by agent-007, got %s", returns.saved.ReviewedBy)
+	}
+
+	if returns.saved.ProcessedBy != "finance-001" {
+		t.Fatalf("expected processed by finance-001, got %s", returns.saved.ProcessedBy)
+	}
 }
 
 func TestRejectReturnServiceRejectsRequestedReturn(t *testing.T) {
 	returns := &stubReturnRequestStore{
 		found: domain.ReturnRequest{
-			ID:      "return-001",
-			OrderID: "order-001",
-			Status:  domain.ReturnRequestStatusRequested,
+			ID:          "return-001",
+			OrderID:     "order-001",
+			Status:      domain.ReturnRequestStatusRequested,
+			RequestedBy: "customer-001",
 		},
 	}
 
 	service := NewRejectReturnService(returns)
 
-	result, err := service.Execute(RejectReturnCommand{ReturnRequestID: "return-001"})
+	result, err := service.Execute(RejectReturnCommand{
+		ReturnRequestID: "return-001",
+		ReviewedBy:      "agent-008",
+		ReviewNote:      "opened and used",
+	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
 	if result.Status != domain.ReturnRequestStatusRejected {
 		t.Fatalf("expected status %s, got %s", domain.ReturnRequestStatusRejected, result.Status)
+	}
+
+	if returns.saved.ReviewedBy != "agent-008" {
+		t.Fatalf("expected reviewed by agent-008, got %s", returns.saved.ReviewedBy)
 	}
 }
 
@@ -123,18 +146,24 @@ func TestAcceptReturnServiceLeavesRequestUnchangedWhenPolicyBlocksIt(t *testing.
 	}
 	returns := &stubReturnRequestStore{
 		found: domain.ReturnRequest{
-			ID:      "return-001",
-			OrderID: "order-001",
-			Status:  domain.ReturnRequestStatusRequested,
-			Reason:  "outside return window",
+			ID:          "return-001",
+			OrderID:     "order-001",
+			Status:      domain.ReturnRequestStatusRequested,
+			Reason:      "outside return window",
 			RequestedAt: time.Date(2026, 7, 5, 10, 0, 0, 0, time.UTC),
+			RequestedBy: "customer-001",
 		},
 	}
 	restock := &stubInventoryRestock{}
 
 	service := NewAcceptReturnService(orders, returns, stubReturnEligibilityPolicy{eligible: false}, stubRefundGateway{}, restock)
 
-	result, err := service.Execute(AcceptReturnCommand{ReturnRequestID: "return-001"})
+	result, err := service.Execute(AcceptReturnCommand{
+		ReturnRequestID: "return-001",
+		ReviewedBy:      "agent-009",
+		ReviewNote:      "policy blocked",
+		ProcessedBy:     "finance-001",
+	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -170,13 +199,19 @@ func TestAcceptReturnServiceAppliesRealWindowPolicy(t *testing.T) {
 			Status:      domain.ReturnRequestStatusRequested,
 			Reason:      "damaged on arrival",
 			RequestedAt: time.Date(2026, 6, 15, 10, 0, 0, 0, time.UTC),
+			RequestedBy: "customer-001",
 		},
 	}
 	restock := &stubInventoryRestock{}
 
 	service := NewAcceptReturnService(orders, returns, returneligibility.NewWindowPolicy(), stubRefundGateway{}, restock)
 
-	result, err := service.Execute(AcceptReturnCommand{ReturnRequestID: "return-002"})
+	result, err := service.Execute(AcceptReturnCommand{
+		ReturnRequestID: "return-002",
+		ReviewedBy:      "agent-010",
+		ReviewNote:      "within window",
+		ProcessedBy:     "finance-002",
+	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -208,13 +243,19 @@ func TestAcceptReturnServiceBlocksOutOfWindowReturn(t *testing.T) {
 			Status:      domain.ReturnRequestStatusRequested,
 			Reason:      "damaged on arrival",
 			RequestedAt: time.Date(2026, 7, 5, 10, 0, 0, 0, time.UTC),
+			RequestedBy: "customer-001",
 		},
 	}
 	restock := &stubInventoryRestock{}
 
 	service := NewAcceptReturnService(orders, returns, returneligibility.NewWindowPolicy(), stubRefundGateway{}, restock)
 
-	result, err := service.Execute(AcceptReturnCommand{ReturnRequestID: "return-003"})
+	result, err := service.Execute(AcceptReturnCommand{
+		ReturnRequestID: "return-003",
+		ReviewedBy:      "agent-011",
+		ReviewNote:      "outside window",
+		ProcessedBy:     "finance-003",
+	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}

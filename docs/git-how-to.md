@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(onion): complete lesson 016 real return window policy
+feat(onion): complete lesson 017 return actor metadata
 
 # Add tag
 
-git tag -a onion-016 -m "Onion Architecture Lesson 016"
-git push origin onion-016
+git tag -a onion-017 -m "Onion Architecture Lesson 017"
+git push origin onion-017
 
 or
 

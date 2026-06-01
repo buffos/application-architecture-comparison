@@ -42,8 +42,9 @@ func TestRequestReturnServiceCreatesRequestedReturnForShippedOrder(t *testing.T)
 	service := NewRequestReturnService(orders, returns, clock)
 
 	result, err := service.Execute(RequestReturnCommand{
-		OrderID: "order-001",
-		Reason:  "damaged on arrival",
+		OrderID:     "order-001",
+		Reason:      "damaged on arrival",
+		RequestedBy: "customer-001",
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -59,6 +60,10 @@ func TestRequestReturnServiceCreatesRequestedReturnForShippedOrder(t *testing.T)
 
 	if !returns.saved.RequestedAt.Equal(clock.Now()) {
 		t.Fatalf("expected requested at %v, got %v", clock.Now(), returns.saved.RequestedAt)
+	}
+
+	if returns.saved.RequestedBy != "customer-001" {
+		t.Fatalf("expected requested by customer-001, got %s", returns.saved.RequestedBy)
 	}
 }
 
@@ -77,10 +82,33 @@ func TestRequestReturnServiceRejectsNonShippedOrder(t *testing.T) {
 	service := NewRequestReturnService(orders, returns, clock)
 
 	_, err := service.Execute(RequestReturnCommand{
-		OrderID: "order-001",
-		Reason:  "changed mind",
+		OrderID:     "order-001",
+		Reason:      "changed mind",
+		RequestedBy: "customer-001",
 	})
 	if err != domain.ErrOrderNotReturnable {
 		t.Fatalf("expected %v, got %v", domain.ErrOrderNotReturnable, err)
+	}
+}
+
+func TestRequestReturnServiceRejectsMissingActor(t *testing.T) {
+	orders := &stubOrderRepository{
+		order: domain.Order{
+			ID:        "order-001",
+			Status:    domain.OrderStatusShipped,
+			ShippedAt: time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC),
+		},
+	}
+	returns := &stubReturnRequestStore{}
+	clock := timeinfra.NewFixedClock(time.Date(2026, 6, 5, 10, 0, 0, 0, time.UTC))
+
+	service := NewRequestReturnService(orders, returns, clock)
+
+	_, err := service.Execute(RequestReturnCommand{
+		OrderID: "order-001",
+		Reason:  "damaged on arrival",
+	})
+	if err != domain.ErrActorRequired {
+		t.Fatalf("expected %v, got %v", domain.ErrActorRequired, err)
 	}
 }

@@ -2,6 +2,8 @@ package application
 
 type RejectReturnCommand struct {
 	ReturnRequestID string
+	ReviewedBy      string
+	ReviewNote      string
 }
 
 type RejectReturnResult struct {
@@ -25,7 +27,7 @@ func (s RejectReturnService) Execute(command RejectReturnCommand) (RejectReturnR
 		return RejectReturnResult{}, err
 	}
 
-	if err := request.Reject(); err != nil {
+	if err := request.Reject(command.ReviewedBy, command.ReviewNote); err != nil {
 		return RejectReturnResult{}, err
 	}
 

@@ -16,6 +16,9 @@ type ReturnEligibilityPolicy interface {
 
 type AcceptReturnCommand struct {
 	ReturnRequestID string
+	ReviewedBy      string
+	ReviewNote      string
+	ProcessedBy     string
 }
 
 type AcceptReturnResult struct {
@@ -64,7 +67,7 @@ func (s AcceptReturnService) Execute(command AcceptReturnCommand) (AcceptReturnR
 		}, nil
 	}
 
-	if err := request.Accept(); err != nil {
+	if err := request.Accept(command.ReviewedBy, command.ReviewNote); err != nil {
 		return AcceptReturnResult{}, err
 	}
 
@@ -84,7 +87,7 @@ func (s AcceptReturnService) Execute(command AcceptReturnCommand) (AcceptReturnR
 		return AcceptReturnResult{}, err
 	}
 
-	if err := request.MarkRefunded(); err != nil {
+	if err := request.MarkRefunded(command.ProcessedBy); err != nil {
 		return AcceptReturnResult{}, err
 	}
 

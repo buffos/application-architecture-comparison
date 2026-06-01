@@ -29,6 +29,65 @@ Instead:
 - infrastructure provides the actual time source
 - the domain stores the relevant timestamps as business facts
 
+## Diagram
+
+```mermaid
+flowchart LR
+    subgraph DOM["Domain Core"]
+        direction TB
+        PRD["Product<br/>ReturnWindowDays"]
+        ORD["Order<br/>ShippedAt + Line Snapshots"]
+        RET["ReturnRequest<br/>RequestedAt"]
+    end
+
+    subgraph APP["Application Ring"]
+        direction TB
+        CLK["Clock"]
+        CRS["CreateShipment Service"]
+        RRS["RequestReturn Service"]
+        POL["Return Eligibility Policy"]
+        ARS["AcceptReturn Service"]
+    end
+
+    subgraph INF["Infrastructure Ring"]
+        direction TB
+        SCLK["System Clock"]
+        FCLK["Fixed Clock"]
+        WPL["Window Policy"]
+    end
+
+    CRS --> ORD
+    RRS --> RET
+    ARS --> ORD
+    ARS --> RET
+    ARS --> PRD
+
+    CLK -.used by.-> CRS
+    CLK -.used by.-> RRS
+    POL -.used by.-> ARS
+    CLK -.implemented by.-> SCLK
+    CLK -.implemented by.-> FCLK
+    POL -.implemented by.-> WPL
+
+    classDef dataadapter fill:#d8f3dc,stroke:#2d6a4f,color:#111;
+    classDef app fill:#f3e8ff,stroke:#7b2cbf,color:#111;
+    classDef domain fill:#fff3bf,stroke:#b08900,color:#111;
+    classDef contract stroke-dasharray: 6 4;
+
+    class SCLK,FCLK,WPL dataadapter;
+    class CLK,CRS,RRS,POL,ARS app;
+    class PRD,ORD,RET domain;
+    class CLK,POL contract;
+```
+
+Legend:
+
+- green: infrastructure adapter
+- purple: application ring
+- yellow: domain core
+- dashed border: interface / contract
+- dashed arrow: structural relationship
+
 ## Implementation Focus
 
 Implement one policy upgrade:

@@ -3,8 +3,9 @@ package application
 import "onion-architecture/internal/domain"
 
 type RequestReturnCommand struct {
-	OrderID string
-	Reason  string
+	OrderID     string
+	Reason      string
+	RequestedBy string
 }
 
 type RequestReturnResult struct {
@@ -42,7 +43,7 @@ func (s RequestReturnService) Execute(command RequestReturnCommand) (RequestRetu
 		return RequestReturnResult{}, err
 	}
 
-	request, err := domain.NewReturnRequest(order.ID, command.Reason, s.clock.Now())
+	request, err := domain.NewReturnRequest(order.ID, command.Reason, s.clock.Now(), command.RequestedBy)
 	if err != nil {
 		return RequestReturnResult{}, err
 	}
