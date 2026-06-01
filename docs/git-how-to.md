@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(onion): complete lesson 032 plugin pricing extension point
+feat(onion): complete lesson 033 why not stop at onion
 
 # Add tag
 
-git tag -a onion-032 -m "Onion Architecture Lesson 032"
-git push origin onion-032
+git tag -a onion-033 -m "Onion Architecture Lesson 033"
+git push origin onion-033
 
 or
 

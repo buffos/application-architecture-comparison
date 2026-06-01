@@ -219,6 +219,7 @@ Architectures currently implemented in this repository:
 - `030` Partial shipment support: [030-partial-shipment-support.md](onion-architecture/lessons/030-partial-shipment-support.md)
 - `031` Partial returns by line: [031-partial-returns-by-line.md](onion-architecture/lessons/031-partial-returns-by-line.md)
 - `032` Plugin pricing extension point: [032-plugin-pricing-extension-point.md](onion-architecture/lessons/032-plugin-pricing-extension-point.md)
+- `033` Why not stop at onion?: [033-why-not-stop-at-onion.md](onion-architecture/lessons/033-why-not-stop-at-onion.md)
 
 ## How To Maintain This File
 
