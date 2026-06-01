@@ -178,6 +178,8 @@ Architectures currently implemented in this repository:
 - `029` Payment review workflow: [029-payment-review-workflow.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/029-payment-review-workflow.md:1)
 - `030` Partial shipment support: [030-partial-shipment-support.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/030-partial-shipment-support.md:1)
 - `031` Partial returns by line: [031-partial-returns-by-line.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/031-partial-returns-by-line.md:1)
+- `032` Plugin pricing extension point: [032-plugin-pricing-extension-point.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/032-plugin-pricing-extension-point.md:1)
+- `033` Why not stop at clean?: [033-why-not-stop-at-clean.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/033-why-not-stop-at-clean.md:1)
 
 ## How To Maintain This File
 

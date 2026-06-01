@@ -42,6 +42,21 @@ type stubAddQuoteLineOutput struct {
 	output AddQuoteLineOutput
 }
 
+type stubPricingPolicy struct {
+	unitPrice int
+	err       error
+}
+
+func (p stubPricingPolicy) AdjustUnitPrice(product entities.Product, quantity int) (int, error) {
+	if p.err != nil {
+		return 0, p.err
+	}
+	if p.unitPrice != 0 {
+		return p.unitPrice, nil
+	}
+	return product.BasePrice, nil
+}
+
 func (o *stubAddQuoteLineOutput) Present(output AddQuoteLineOutput) error {
 	o.output = output
 	return nil
@@ -65,7 +80,7 @@ func TestAddQuoteLineInteractorAddsLineAndSavesQuote(t *testing.T) {
 	}
 	output := &stubAddQuoteLineOutput{}
 
-	interactor := NewAddQuoteLineInteractor(quotes, products, output)
+	interactor := NewAddQuoteLineInteractor(quotes, products, stubPricingPolicy{}, output)
 
 	err := interactor.Execute(AddQuoteLineInput{
 		QuoteID:  "quote-001",
@@ -82,6 +97,10 @@ func TestAddQuoteLineInteractorAddsLineAndSavesQuote(t *testing.T) {
 
 	if output.output.Lines != 1 {
 		t.Fatalf("expected presenter line count 1, got %d", output.output.Lines)
+	}
+
+	if output.output.TotalAmount != 20000 {
+		t.Fatalf("expected total amount 20000, got %d", output.output.TotalAmount)
 	}
 }
 
@@ -103,7 +122,7 @@ func TestAddQuoteLineInteractorRejectsUnavailableProduct(t *testing.T) {
 	}
 	output := &stubAddQuoteLineOutput{}
 
-	interactor := NewAddQuoteLineInteractor(quotes, products, output)
+	interactor := NewAddQuoteLineInteractor(quotes, products, stubPricingPolicy{}, output)
 
 	err := interactor.Execute(AddQuoteLineInput{
 		QuoteID:  "quote-001",

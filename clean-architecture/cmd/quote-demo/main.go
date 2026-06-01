@@ -9,6 +9,7 @@ import (
 	approvalpolicy "clean-architecture/internal/infrastructure/policies/approval"
 	returneligibility "clean-architecture/internal/infrastructure/policies/returneligibility"
 	paymentservice "clean-architecture/internal/infrastructure/services/payment"
+	pricingservice "clean-architecture/internal/infrastructure/services/pricing"
 	refundservice "clean-architecture/internal/infrastructure/services/refund"
 	timeadapter "clean-architecture/internal/infrastructure/services/time"
 	"clean-architecture/internal/interfaceadapters/controllers"
@@ -23,6 +24,7 @@ func main() {
 	shipmentGateway := memory.NewShipmentGateway()
 	returnRequestGateway := memory.NewReturnRequestGateway()
 	idempotencyStore := memory.NewIdempotencyStore()
+	pluginGateway := memory.NewPluginGateway()
 	productGateway := memory.NewProductGateway()
 	inventoryReservation := memory.NewInventoryReservation(map[string]int{
 		"CHAIR-001": 5,
@@ -32,6 +34,7 @@ func main() {
 	returnEligibilityPolicy := returneligibility.NewWindowPolicy()
 	paymentGateway := paymentservice.NewAcceptAllGateway()
 	refundGateway := refundservice.NewAcceptAllGateway()
+	pricingPolicy := pricingservice.NewPluginPolicy(pluginGateway)
 	createPresenter := presenters.NewCreateDraftQuotePresenter()
 	getCustomerPresenter := presenters.NewGetCustomerPresenter()
 	listCustomersPresenter := presenters.NewListCustomersPresenter()
@@ -39,6 +42,9 @@ func main() {
 	returnRateByCategoryReportPresenter := presenters.NewReturnRateByCategoryReportPresenter()
 	lowStockItemsReportPresenter := presenters.NewLowStockItemsReportPresenter()
 	ordersAwaitingApprovalReportPresenter := presenters.NewOrdersAwaitingApprovalReportPresenter()
+	registerPluginPresenter := presenters.NewRegisterPricingPluginPresenter()
+	enablePluginPresenter := presenters.NewEnablePluginPresenter()
+	listPluginsPresenter := presenters.NewListPluginsPresenter()
 	addLinePresenter := presenters.NewAddQuoteLinePresenter()
 	submitPresenter := presenters.NewSubmitQuotePresenter()
 	convertPresenter := presenters.NewConvertQuoteToOrderPresenter()
@@ -95,6 +101,15 @@ func main() {
 	ordersAwaitingApprovalReportInteractor := usecases.NewOrdersAwaitingApprovalReportInteractor(quoteGateway, ordersAwaitingApprovalReportPresenter)
 	ordersAwaitingApprovalReportController := controllers.NewOrdersAwaitingApprovalReportController(ordersAwaitingApprovalReportInteractor)
 
+	registerPluginInteractor := usecases.NewRegisterPricingPluginInteractor(pluginGateway, registerPluginPresenter)
+	registerPluginController := controllers.NewRegisterPricingPluginController(registerPluginInteractor)
+
+	enablePluginInteractor := usecases.NewEnablePluginInteractor(pluginGateway, enablePluginPresenter)
+	enablePluginController := controllers.NewEnablePluginController(enablePluginInteractor)
+
+	listPluginsInteractor := usecases.NewListPluginsInteractor(pluginGateway, listPluginsPresenter)
+	listPluginsController := controllers.NewListPluginsController(listPluginsInteractor)
+
 	if err := createController.Handle("customer-001"); err != nil {
 		log.Fatal(err)
 	}
@@ -107,7 +122,19 @@ func main() {
 		log.Fatal(err)
 	}
 
-	addLineInteractor := usecases.NewAddQuoteLineInteractor(quoteGateway, productGateway, addLinePresenter)
+	if err := registerPluginController.Handle("seasonal-pricing"); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := enablePluginController.Handle("seasonal-pricing"); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := listPluginsController.Handle(); err != nil {
+		log.Fatal(err)
+	}
+
+	addLineInteractor := usecases.NewAddQuoteLineInteractor(quoteGateway, productGateway, pricingPolicy, addLinePresenter)
 	addLineController := controllers.NewAddQuoteLineController(addLineInteractor)
 
 	if err := addLineController.Handle(createPresenter.ViewModel().QuoteID, "CHAIR-001", 2); err != nil {
@@ -245,6 +272,9 @@ func main() {
 	fmt.Println(createPresenter.ViewModel().Message)
 	fmt.Println(getCustomerPresenter.ViewModel().Message)
 	fmt.Println(listCustomersPresenter.ViewModel().Message)
+	fmt.Println(registerPluginPresenter.ViewModel().Message)
+	fmt.Println(enablePluginPresenter.ViewModel().Message)
+	fmt.Println(listPluginsPresenter.ViewModel().Message)
 	fmt.Println(addLinePresenter.ViewModel().Message)
 	fmt.Println(submitPresenter.ViewModel().Message)
 	fmt.Println(convertPresenter.ViewModel().Message)

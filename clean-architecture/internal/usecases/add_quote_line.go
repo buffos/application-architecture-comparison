@@ -9,9 +9,10 @@ type AddQuoteLineInput struct {
 }
 
 type AddQuoteLineOutput struct {
-	QuoteID string
-	Status  string
-	Lines   int
+	QuoteID     string
+	Status      string
+	Lines       int
+	TotalAmount int
 }
 
 type AddQuoteLineInputBoundary interface {
@@ -31,16 +32,22 @@ type ProductGateway interface {
 	FindBySKU(sku string) (entities.Product, error)
 }
 
+type PricingPolicy interface {
+	AdjustUnitPrice(product entities.Product, quantity int) (int, error)
+}
+
 type AddQuoteLineInteractor struct {
 	quotes   QuoteEditor
 	products ProductGateway
+	pricing  PricingPolicy
 	output   AddQuoteLineOutputBoundary
 }
 
-func NewAddQuoteLineInteractor(quotes QuoteEditor, products ProductGateway, output AddQuoteLineOutputBoundary) AddQuoteLineInteractor {
+func NewAddQuoteLineInteractor(quotes QuoteEditor, products ProductGateway, pricing PricingPolicy, output AddQuoteLineOutputBoundary) AddQuoteLineInteractor {
 	return AddQuoteLineInteractor{
 		quotes:   quotes,
 		products: products,
+		pricing:  pricing,
 		output:   output,
 	}
 }
@@ -60,7 +67,15 @@ func (uc AddQuoteLineInteractor) Execute(input AddQuoteLineInput) error {
 		return err
 	}
 
-	if err := quote.AddLine(product, input.Quantity); err != nil {
+	adjustedUnitPrice, err := uc.pricing.AdjustUnitPrice(product, input.Quantity)
+	if err != nil {
+		return err
+	}
+
+	pricedProduct := product
+	pricedProduct.BasePrice = adjustedUnitPrice
+
+	if err := quote.AddLine(pricedProduct, input.Quantity); err != nil {
 		return err
 	}
 
@@ -69,8 +84,18 @@ func (uc AddQuoteLineInteractor) Execute(input AddQuoteLineInput) error {
 	}
 
 	return uc.output.Present(AddQuoteLineOutput{
-		QuoteID: quote.ID,
-		Status:  quote.Status,
-		Lines:   len(quote.Lines),
+		QuoteID:     quote.ID,
+		Status:      quote.Status,
+		Lines:       len(quote.Lines),
+		TotalAmount: quoteTotalAmount(quote),
 	})
+}
+
+func quoteTotalAmount(quote entities.Quote) int {
+	total := 0
+	for _, line := range quote.Lines {
+		total += line.LineTotal
+	}
+
+	return total
 }
