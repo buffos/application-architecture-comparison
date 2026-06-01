@@ -6,6 +6,7 @@ import (
 
 	"clean-architecture/internal/entities"
 	"clean-architecture/internal/infrastructure/memory"
+	approvalpolicy "clean-architecture/internal/infrastructure/policies/approval"
 	"clean-architecture/internal/interfaceadapters/controllers"
 	"clean-architecture/internal/interfaceadapters/presenters"
 	"clean-architecture/internal/usecases"
@@ -15,6 +16,7 @@ func main() {
 	customerGateway := memory.NewCustomerGateway()
 	quoteGateway := memory.NewQuoteGateway()
 	productGateway := memory.NewProductGateway()
+	approvalPolicy := approvalpolicy.NewCategoryPolicy()
 	createPresenter := presenters.NewCreateDraftQuotePresenter()
 	addLinePresenter := presenters.NewAddQuoteLinePresenter()
 	submitPresenter := presenters.NewSubmitQuotePresenter()
@@ -29,6 +31,7 @@ func main() {
 	if err := productGateway.Save(entities.Product{
 		SKU:       "CHAIR-001",
 		Name:      "Office Chair",
+		Category:  "Standard",
 		BasePrice: 10000,
 		Available: true,
 	}); err != nil {
@@ -49,7 +52,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	submitInteractor := usecases.NewSubmitQuoteInteractor(quoteGateway, submitPresenter)
+	submitInteractor := usecases.NewSubmitQuoteInteractor(quoteGateway, approvalPolicy, submitPresenter)
 	submitController := controllers.NewSubmitQuoteController(submitInteractor)
 
 	if err := submitController.Handle(createPresenter.ViewModel().QuoteID); err != nil {

@@ -1,5 +1,7 @@
 package usecases
 
+import "clean-architecture/internal/entities"
+
 type SubmitQuoteInput struct {
 	QuoteID string
 }
@@ -18,14 +20,20 @@ type SubmitQuoteOutputBoundary interface {
 	Present(output SubmitQuoteOutput) error
 }
 
+type ApprovalPolicy interface {
+	RequiresApproval(quote entities.Quote) (bool, error)
+}
+
 type SubmitQuoteInteractor struct {
 	quotes QuoteEditor
+	approval ApprovalPolicy
 	output SubmitQuoteOutputBoundary
 }
 
-func NewSubmitQuoteInteractor(quotes QuoteEditor, output SubmitQuoteOutputBoundary) SubmitQuoteInteractor {
+func NewSubmitQuoteInteractor(quotes QuoteEditor, approval ApprovalPolicy, output SubmitQuoteOutputBoundary) SubmitQuoteInteractor {
 	return SubmitQuoteInteractor{
 		quotes: quotes,
+		approval: approval,
 		output: output,
 	}
 }
@@ -36,7 +44,12 @@ func (uc SubmitQuoteInteractor) Execute(input SubmitQuoteInput) error {
 		return err
 	}
 
-	if err := quote.Submit(); err != nil {
+	requiresApproval, err := uc.approval.RequiresApproval(quote)
+	if err != nil {
+		return err
+	}
+
+	if err := quote.Submit(requiresApproval); err != nil {
 		return err
 	}
 

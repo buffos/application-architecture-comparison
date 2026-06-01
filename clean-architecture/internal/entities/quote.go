@@ -8,6 +8,8 @@ import (
 
 const QuoteStatusDraft = "Draft"
 const QuoteStatusSubmitted = "Submitted"
+const QuoteStatusPendingApproval = "PendingApproval"
+const QuoteStatusApproved = "Approved"
 
 var quoteSequence uint64
 
@@ -21,6 +23,7 @@ var ErrQuoteCannotTransition = errors.New("quote cannot transition from its curr
 type QuoteLine struct {
 	SKU           string
 	ProductName   string
+	ProductCategory string
 	Quantity      int
 	UnitPrice     int
 	LineTotal     int
@@ -57,17 +60,18 @@ func (q *Quote) AddLine(product Product, quantity int) error {
 	}
 
 	q.Lines = append(q.Lines, QuoteLine{
-		SKU:         product.SKU,
-		ProductName: product.Name,
-		Quantity:    quantity,
-		UnitPrice:   product.BasePrice,
-		LineTotal:   product.BasePrice * quantity,
+		SKU:             product.SKU,
+		ProductName:     product.Name,
+		ProductCategory: product.Category,
+		Quantity:        quantity,
+		UnitPrice:       product.BasePrice,
+		LineTotal:       product.BasePrice * quantity,
 	})
 
 	return nil
 }
 
-func (q *Quote) Submit() error {
+func (q *Quote) Submit(requiresApproval bool) error {
 	if q.Status != QuoteStatusDraft {
 		return ErrQuoteCannotTransition
 	}
@@ -76,6 +80,11 @@ func (q *Quote) Submit() error {
 		return ErrQuoteCannotSubmitWithoutLines
 	}
 
-	q.Status = QuoteStatusSubmitted
+	if requiresApproval {
+		q.Status = QuoteStatusPendingApproval
+		return nil
+	}
+
+	q.Status = QuoteStatusApproved
 	return nil
 }

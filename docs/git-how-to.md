@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(clean): complete lesson 004 submit quote state transition
+feat(clean): complete lesson 005 approval policy boundary
 
 # Add tag
 
-git tag -a clean-004 -m "Clean Architecture Lesson 004"
-git push origin clean-004
+git tag -a clean-005 -m "Clean Architecture Lesson 005"
+git push origin clean-005
 
 or
 
