@@ -213,6 +213,7 @@ Architectures currently implemented in this repository:
 - `024` Customer query surface: [024-customer-query-surface.md](onion-architecture/lessons/024-customer-query-surface.md)
 - `025` Quote conversion report: [025-quote-conversion-report.md](onion-architecture/lessons/025-quote-conversion-report.md)
 - `026` Return rate by category report: [026-return-rate-by-category-report.md](onion-architecture/lessons/026-return-rate-by-category-report.md)
+- `027` Low stock items report: [027-low-stock-items-report.md](onion-architecture/lessons/027-low-stock-items-report.md)
 
 ## How To Maintain This File
 

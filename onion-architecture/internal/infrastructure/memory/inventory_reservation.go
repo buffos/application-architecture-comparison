@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"sort"
 	"sync"
 
 	"onion-architecture/internal/domain"
@@ -61,4 +62,23 @@ func (r *InventoryReservation) Restock(items []domain.InventoryRestockItem) erro
 	}
 
 	return nil
+}
+
+func (r *InventoryReservation) ListStock() ([]domain.InventoryStockRecord, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	result := make([]domain.InventoryStockRecord, 0, len(r.stock))
+	for sku, quantity := range r.stock {
+		result = append(result, domain.InventoryStockRecord{
+			ProductSKU: sku,
+			Quantity:   quantity,
+		})
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ProductSKU < result[j].ProductSKU
+	})
+
+	return result, nil
 }

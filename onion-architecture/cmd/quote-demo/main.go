@@ -30,28 +30,29 @@ func main() {
 	}
 
 	if err := productRepository.Save(domain.Product{
-		SKU:       "sku-001",
-		Name:      "Desk",
-		Category:  "Standard",
-		Active:    true,
-		UnitPrice: 15000,
+		SKU:              "sku-001",
+		Name:             "Desk",
+		Category:         "Standard",
+		Active:           true,
+		UnitPrice:        15000,
 		ReturnWindowDays: 30,
 	}); err != nil {
 		log.Fatal(err)
 	}
 
 	if err := productRepository.Save(domain.Product{
-		SKU:       "sku-002",
-		Name:      "Custom Desk",
-		Category:  "CustomBuild",
-		Active:    true,
-		UnitPrice: 45000,
+		SKU:              "sku-002",
+		Name:             "Custom Desk",
+		Category:         "CustomBuild",
+		Active:           true,
+		UnitPrice:        45000,
 		ReturnWindowDays: 30,
 	}); err != nil {
 		log.Fatal(err)
 	}
 
 	inventoryReservation.Seed("sku-002", 5)
+	inventoryReservation.Seed("sku-001", 20)
 
 	submissionPolicy := approval.NewCategoryPolicy()
 	_ = returneligibility.NewWindowPolicy()
@@ -64,6 +65,7 @@ func main() {
 	convertQuote := application.NewConvertQuoteToOrderService(quoteRepository, orderRepository, inventoryReservation)
 	capturePayment := application.NewCapturePaymentService(orderRepository, paymentGateway)
 	createShipment := application.NewCreateShipmentService(orderRepository, shipmentRepository, clock)
+	lowStockItemsReport := application.NewLowStockItemsReportService(inventoryReservation)
 
 	result, err := service.Execute(application.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -136,4 +138,13 @@ func main() {
 	}
 
 	fmt.Printf("loaded quote: id=%s customer=%s status=%s lines=%d\n", details.QuoteID, details.CustomerID, details.Status, details.LineCount)
+
+	lowStockItems, err := lowStockItemsReport.Execute(application.LowStockItemsReportQuery{
+		Threshold: 5,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("low stock items: %v\n", lowStockItems)
 }

@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(onion): complete lesson 026 return rate by category report
+feat(onion): complete lesson 027 low stock items report
 
 # Add tag
 
-git tag -a onion-026 -m "Onion Architecture Lesson 026"
-git push origin onion-026
+git tag -a onion-027 -m "Onion Architecture Lesson 027"
+git push origin onion-027
 
 or
 
