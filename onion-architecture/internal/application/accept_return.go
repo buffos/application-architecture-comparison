@@ -16,6 +16,7 @@ type ReturnEligibilityPolicy interface {
 
 type AcceptReturnCommand struct {
 	ReturnRequestID string
+	IdempotencyKey  string
 	ReviewedBy      string
 	ReviewNote      string
 	ProcessedBy     string
@@ -30,21 +31,32 @@ type AcceptReturnService struct {
 	orders  OrderRepository
 	returns ReturnRequestStore
 	policy  ReturnEligibilityPolicy
+	idempotency IdempotencyStore
 	refunds RefundGateway
 	restock InventoryRestock
 }
 
-func NewAcceptReturnService(orders OrderRepository, returns ReturnRequestStore, policy ReturnEligibilityPolicy, refunds RefundGateway, restock InventoryRestock) AcceptReturnService {
+func NewAcceptReturnService(orders OrderRepository, returns ReturnRequestStore, policy ReturnEligibilityPolicy, idempotency IdempotencyStore, refunds RefundGateway, restock InventoryRestock) AcceptReturnService {
 	return AcceptReturnService{
 		orders:  orders,
 		returns: returns,
 		policy:  policy,
+		idempotency: idempotency,
 		refunds: refunds,
 		restock: restock,
 	}
 }
 
 func (s AcceptReturnService) Execute(command AcceptReturnCommand) (AcceptReturnResult, error) {
+	if status, ok, err := s.idempotency.Get(command.IdempotencyKey); err != nil {
+		return AcceptReturnResult{}, err
+	} else if ok {
+		return AcceptReturnResult{
+			ReturnRequestID: command.ReturnRequestID,
+			Status:          status,
+		}, nil
+	}
+
 	request, err := s.returns.FindByID(command.ReturnRequestID)
 	if err != nil {
 		return AcceptReturnResult{}, err
@@ -61,6 +73,10 @@ func (s AcceptReturnService) Execute(command AcceptReturnCommand) (AcceptReturnR
 	}
 
 	if !eligible {
+		if err := s.idempotency.Save(command.IdempotencyKey, request.Status); err != nil {
+			return AcceptReturnResult{}, err
+		}
+
 		return AcceptReturnResult{
 			ReturnRequestID: request.ID,
 			Status:          request.Status,
@@ -92,6 +108,10 @@ func (s AcceptReturnService) Execute(command AcceptReturnCommand) (AcceptReturnR
 	}
 
 	if err := s.returns.Save(request); err != nil {
+		return AcceptReturnResult{}, err
+	}
+
+	if err := s.idempotency.Save(command.IdempotencyKey, request.Status); err != nil {
 		return AcceptReturnResult{}, err
 	}
 

@@ -56,11 +56,13 @@ func TestAcceptReturnServiceRefundsAndRestocksAcceptedReturn(t *testing.T) {
 		},
 	}
 	restock := &stubInventoryRestock{}
+	idempotency := &stubIdempotencyStore{entries: make(map[string]string)}
 
-	service := NewAcceptReturnService(orders, returns, stubReturnEligibilityPolicy{eligible: true}, stubRefundGateway{}, restock)
+	service := NewAcceptReturnService(orders, returns, stubReturnEligibilityPolicy{eligible: true}, idempotency, stubRefundGateway{}, restock)
 
 	result, err := service.Execute(AcceptReturnCommand{
 		ReturnRequestID: "return-001",
+		IdempotencyKey:  "accept-001",
 		ReviewedBy:      "agent-007",
 		ReviewNote:      "confirmed damage",
 		ProcessedBy:     "finance-001",
@@ -96,10 +98,13 @@ func TestRejectReturnServiceRejectsRequestedReturn(t *testing.T) {
 		},
 	}
 
-	service := NewRejectReturnService(returns)
+	idempotency := &stubIdempotencyStore{entries: make(map[string]string)}
+
+	service := NewRejectReturnService(returns, idempotency)
 
 	result, err := service.Execute(RejectReturnCommand{
 		ReturnRequestID: "return-001",
+		IdempotencyKey:  "reject-001",
 		ReviewedBy:      "agent-008",
 		ReviewNote:      "opened and used",
 	})
@@ -155,11 +160,13 @@ func TestAcceptReturnServiceLeavesRequestUnchangedWhenPolicyBlocksIt(t *testing.
 		},
 	}
 	restock := &stubInventoryRestock{}
+	idempotency := &stubIdempotencyStore{entries: make(map[string]string)}
 
-	service := NewAcceptReturnService(orders, returns, stubReturnEligibilityPolicy{eligible: false}, stubRefundGateway{}, restock)
+	service := NewAcceptReturnService(orders, returns, stubReturnEligibilityPolicy{eligible: false}, idempotency, stubRefundGateway{}, restock)
 
 	result, err := service.Execute(AcceptReturnCommand{
 		ReturnRequestID: "return-001",
+		IdempotencyKey:  "accept-002",
 		ReviewedBy:      "agent-009",
 		ReviewNote:      "policy blocked",
 		ProcessedBy:     "finance-001",
@@ -203,11 +210,13 @@ func TestAcceptReturnServiceAppliesRealWindowPolicy(t *testing.T) {
 		},
 	}
 	restock := &stubInventoryRestock{}
+	idempotency := &stubIdempotencyStore{entries: make(map[string]string)}
 
-	service := NewAcceptReturnService(orders, returns, returneligibility.NewWindowPolicy(), stubRefundGateway{}, restock)
+	service := NewAcceptReturnService(orders, returns, returneligibility.NewWindowPolicy(), idempotency, stubRefundGateway{}, restock)
 
 	result, err := service.Execute(AcceptReturnCommand{
 		ReturnRequestID: "return-002",
+		IdempotencyKey:  "accept-003",
 		ReviewedBy:      "agent-010",
 		ReviewNote:      "within window",
 		ProcessedBy:     "finance-002",
@@ -247,11 +256,13 @@ func TestAcceptReturnServiceBlocksOutOfWindowReturn(t *testing.T) {
 		},
 	}
 	restock := &stubInventoryRestock{}
+	idempotency := &stubIdempotencyStore{entries: make(map[string]string)}
 
-	service := NewAcceptReturnService(orders, returns, returneligibility.NewWindowPolicy(), stubRefundGateway{}, restock)
+	service := NewAcceptReturnService(orders, returns, returneligibility.NewWindowPolicy(), idempotency, stubRefundGateway{}, restock)
 
 	result, err := service.Execute(AcceptReturnCommand{
 		ReturnRequestID: "return-003",
+		IdempotencyKey:  "accept-004",
 		ReviewedBy:      "agent-011",
 		ReviewNote:      "outside window",
 		ProcessedBy:     "finance-003",
@@ -262,5 +273,118 @@ func TestAcceptReturnServiceBlocksOutOfWindowReturn(t *testing.T) {
 
 	if result.Status != domain.ReturnRequestStatusRequested {
 		t.Fatalf("expected status %s, got %s", domain.ReturnRequestStatusRequested, result.Status)
+	}
+}
+
+type stubIdempotencyStore struct {
+	entries map[string]string
+}
+
+func (s *stubIdempotencyStore) Get(key string) (string, bool, error) {
+	status, ok := s.entries[key]
+	return status, ok, nil
+}
+
+func (s *stubIdempotencyStore) Save(key string, status string) error {
+	s.entries[key] = status
+	return nil
+}
+
+func TestAcceptReturnServiceIsIdempotent(t *testing.T) {
+	orders := &stubOrderRepository{
+		order: domain.Order{
+			ID:        "order-004",
+			Status:    domain.OrderStatusShipped,
+			ShippedAt: time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC),
+			Lines: []domain.OrderLine{
+				{
+					ProductSKU:       "sku-002",
+					Quantity:         1,
+					ReturnWindowDays: 30,
+				},
+			},
+		},
+	}
+	returns := &stubReturnRequestStore{
+		found: domain.ReturnRequest{
+			ID:          "return-004",
+			OrderID:     "order-004",
+			Status:      domain.ReturnRequestStatusRequested,
+			Reason:      "damaged on arrival",
+			RequestedAt: time.Date(2026, 6, 15, 10, 0, 0, 0, time.UTC),
+			RequestedBy: "customer-001",
+		},
+	}
+	restock := &stubInventoryRestock{}
+	idempotency := &stubIdempotencyStore{entries: make(map[string]string)}
+
+	service := NewAcceptReturnService(orders, returns, returneligibility.NewWindowPolicy(), idempotency, stubRefundGateway{}, restock)
+
+	first, err := service.Execute(AcceptReturnCommand{
+		ReturnRequestID: "return-004",
+		IdempotencyKey:  "accept-005",
+		ReviewedBy:      "agent-012",
+		ReviewNote:      "within window",
+		ProcessedBy:     "finance-004",
+	})
+	if err != nil {
+		t.Fatalf("expected no error on first call, got %v", err)
+	}
+
+	second, err := service.Execute(AcceptReturnCommand{
+		ReturnRequestID: "return-004",
+		IdempotencyKey:  "accept-005",
+		ReviewedBy:      "agent-012",
+		ReviewNote:      "within window",
+		ProcessedBy:     "finance-004",
+	})
+	if err != nil {
+		t.Fatalf("expected no error on second call, got %v", err)
+	}
+
+	if first.Status != second.Status {
+		t.Fatalf("expected same status on retry, got %s and %s", first.Status, second.Status)
+	}
+
+	if len(restock.items) != 1 {
+		t.Fatalf("expected one restock execution, got %d", len(restock.items))
+	}
+}
+
+func TestRejectReturnServiceIsIdempotent(t *testing.T) {
+	returns := &stubReturnRequestStore{
+		found: domain.ReturnRequest{
+			ID:          "return-005",
+			OrderID:     "order-005",
+			Status:      domain.ReturnRequestStatusRequested,
+			RequestedBy: "customer-001",
+		},
+	}
+	idempotency := &stubIdempotencyStore{entries: make(map[string]string)}
+
+	service := NewRejectReturnService(returns, idempotency)
+
+	first, err := service.Execute(RejectReturnCommand{
+		ReturnRequestID: "return-005",
+		IdempotencyKey:  "reject-002",
+		ReviewedBy:      "agent-013",
+		ReviewNote:      "opened and used",
+	})
+	if err != nil {
+		t.Fatalf("expected no error on first call, got %v", err)
+	}
+
+	second, err := service.Execute(RejectReturnCommand{
+		ReturnRequestID: "return-005",
+		IdempotencyKey:  "reject-002",
+		ReviewedBy:      "agent-013",
+		ReviewNote:      "opened and used",
+	})
+	if err != nil {
+		t.Fatalf("expected no error on second call, got %v", err)
+	}
+
+	if first.Status != second.Status {
+		t.Fatalf("expected same status on retry, got %s and %s", first.Status, second.Status)
 	}
 }
