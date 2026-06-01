@@ -36,15 +36,17 @@ type InventoryRestock interface {
 type AcceptReturnInteractor struct {
 	orders   OrderEditor
 	returns  ReturnRequestEditor
+	policy   ReturnEligibilityPolicy
 	refunds  RefundGateway
 	restock  InventoryRestock
 	output   AcceptReturnOutputBoundary
 }
 
-func NewAcceptReturnInteractor(orders OrderEditor, returns ReturnRequestEditor, refunds RefundGateway, restock InventoryRestock, output AcceptReturnOutputBoundary) AcceptReturnInteractor {
+func NewAcceptReturnInteractor(orders OrderEditor, returns ReturnRequestEditor, policy ReturnEligibilityPolicy, refunds RefundGateway, restock InventoryRestock, output AcceptReturnOutputBoundary) AcceptReturnInteractor {
 	return AcceptReturnInteractor{
 		orders:  orders,
 		returns: returns,
+		policy:  policy,
 		refunds: refunds,
 		restock: restock,
 		output:  output,
@@ -60,6 +62,14 @@ func (uc AcceptReturnInteractor) Execute(input AcceptReturnInput) error {
 	order, err := uc.orders.FindByID(request.OrderID)
 	if err != nil {
 		return err
+	}
+
+	allowed, err := uc.policy.CanAccept(order, request)
+	if err != nil {
+		return err
+	}
+	if !allowed {
+		return entities.ErrQuoteCannotTransition
 	}
 
 	if err := request.Accept(); err != nil {

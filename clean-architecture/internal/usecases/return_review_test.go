@@ -34,6 +34,19 @@ func (o *stubAcceptReturnOutput) Present(output AcceptReturnOutput) error {
 	return nil
 }
 
+type stubReturnEligibilityPolicy struct {
+	allowed bool
+	err     error
+}
+
+func (p stubReturnEligibilityPolicy) CanAccept(order entities.Order, request entities.ReturnRequest) (bool, error) {
+	if p.err != nil {
+		return false, p.err
+	}
+
+	return p.allowed, nil
+}
+
 type stubRejectReturnOutput struct {
 	output RejectReturnOutput
 }
@@ -93,7 +106,7 @@ func TestAcceptReturnInteractorRefundsAndRestocks(t *testing.T) {
 	restock := &stubInventoryRestock{}
 	output := &stubAcceptReturnOutput{}
 
-	interactor := NewAcceptReturnInteractor(orders, returns, stubRefundGateway{}, restock, output)
+	interactor := NewAcceptReturnInteractor(orders, returns, stubReturnEligibilityPolicy{allowed: true}, stubRefundGateway{}, restock, output)
 
 	err := interactor.Execute(AcceptReturnInput{ReturnRequestID: "return-001"})
 	if err != nil {
@@ -106,6 +119,41 @@ func TestAcceptReturnInteractorRefundsAndRestocks(t *testing.T) {
 
 	if len(restock.items) != 1 {
 		t.Fatalf("expected 1 restock item, got %d", len(restock.items))
+	}
+}
+
+func TestAcceptReturnInteractorBlocksPolicyRejectedReturn(t *testing.T) {
+	returns := &stubReturnRequestEditor{
+		request: entities.ReturnRequest{
+			ID:      "return-003",
+			OrderID: "order-001",
+			Reason:  "outside return window",
+			Status:  entities.ReturnRequestStatusRequested,
+		},
+	}
+	orders := &stubOrderEditor{
+		order: entities.Order{
+			ID:            "order-001",
+			CustomerID:    "customer-001",
+			SourceQuoteID: "quote-001",
+			Status:        entities.OrderStatusShipped,
+			Lines: []entities.OrderLine{
+				{SKU: "CHAIR-001", Quantity: 2},
+			},
+		},
+	}
+	restock := &stubInventoryRestock{}
+	output := &stubAcceptReturnOutput{}
+
+	interactor := NewAcceptReturnInteractor(orders, returns, stubReturnEligibilityPolicy{allowed: false}, stubRefundGateway{}, restock, output)
+
+	err := interactor.Execute(AcceptReturnInput{ReturnRequestID: "return-003"})
+	if err != entities.ErrQuoteCannotTransition {
+		t.Fatalf("expected %v, got %v", entities.ErrQuoteCannotTransition, err)
+	}
+
+	if returns.saved.ID != "" {
+		t.Fatal("expected no saved return update when policy blocks acceptance")
 	}
 }
 
