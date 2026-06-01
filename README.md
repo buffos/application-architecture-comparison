@@ -154,6 +154,7 @@ Architectures currently implemented in this repository:
 - `005` Approval policy boundary: [005-approval-policy-boundary.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/005-approval-policy-boundary.md:1)
 - `006` Approve pending quote: [006-approve-pending-quote.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/006-approve-pending-quote.md:1)
 - `007` Convert quote to order: [007-convert-quote-to-order.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/007-convert-quote-to-order.md:1)
+- `008` Order conversion with reservation: [008-order-conversion-with-reservation.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/008-order-conversion-with-reservation.md:1)
 
 ## How To Maintain This File
 

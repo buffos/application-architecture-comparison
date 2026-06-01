@@ -25,16 +25,22 @@ type OrderWriter interface {
 	Save(order entities.Order) error
 }
 
+type InventoryReservation interface {
+	Reserve(items []entities.InventoryReservationItem) error
+}
+
 type ConvertQuoteToOrderInteractor struct {
 	quotes QuoteReader
 	orders OrderWriter
+	inventory InventoryReservation
 	output ConvertQuoteToOrderOutputBoundary
 }
 
-func NewConvertQuoteToOrderInteractor(quotes QuoteReader, orders OrderWriter, output ConvertQuoteToOrderOutputBoundary) ConvertQuoteToOrderInteractor {
+func NewConvertQuoteToOrderInteractor(quotes QuoteReader, orders OrderWriter, inventory InventoryReservation, output ConvertQuoteToOrderOutputBoundary) ConvertQuoteToOrderInteractor {
 	return ConvertQuoteToOrderInteractor{
 		quotes: quotes,
 		orders: orders,
+		inventory: inventory,
 		output: output,
 	}
 }
@@ -47,6 +53,18 @@ func (uc ConvertQuoteToOrderInteractor) Execute(input ConvertQuoteToOrderInput) 
 
 	order, err := entities.NewOrderFromApprovedQuote(quote)
 	if err != nil {
+		return err
+	}
+
+	items := make([]entities.InventoryReservationItem, 0, len(order.Lines))
+	for _, line := range order.Lines {
+		items = append(items, entities.InventoryReservationItem{
+			SKU:      line.SKU,
+			Quantity: line.Quantity,
+		})
+	}
+
+	if err := uc.inventory.Reserve(items); err != nil {
 		return err
 	}
 

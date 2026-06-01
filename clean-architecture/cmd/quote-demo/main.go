@@ -17,6 +17,9 @@ func main() {
 	quoteGateway := memory.NewQuoteGateway()
 	orderGateway := memory.NewOrderGateway()
 	productGateway := memory.NewProductGateway()
+	inventoryReservation := memory.NewInventoryReservation(map[string]int{
+		"CHAIR-001": 5,
+	})
 	approvalPolicy := approvalpolicy.NewCategoryPolicy()
 	createPresenter := presenters.NewCreateDraftQuotePresenter()
 	addLinePresenter := presenters.NewAddQuoteLinePresenter()
@@ -61,7 +64,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	convertInteractor := usecases.NewConvertQuoteToOrderInteractor(quoteGateway, orderGateway, convertPresenter)
+	convertInteractor := usecases.NewConvertQuoteToOrderInteractor(quoteGateway, orderGateway, inventoryReservation, convertPresenter)
 	convertController := controllers.NewConvertQuoteToOrderController(convertInteractor)
 
 	if err := convertController.Handle(createPresenter.ViewModel().QuoteID); err != nil {
