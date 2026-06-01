@@ -6,7 +6,20 @@ import (
 	"onion-architecture/internal/domain"
 )
 
-func TestSubmitQuoteServiceSubmitsQuoteWithLines(t *testing.T) {
+type stubApprovalPolicy struct {
+	requiresApproval bool
+	err              error
+}
+
+func (p stubApprovalPolicy) RequiresApproval(quote domain.Quote) (bool, error) {
+	if p.err != nil {
+		return false, p.err
+	}
+
+	return p.requiresApproval, nil
+}
+
+func TestSubmitQuoteServiceApprovesQuoteWhenPolicyDoesNotRequireReview(t *testing.T) {
 	quotes := &stubQuoteStore{
 		quote: domain.Quote{
 			ID:         "quote-001",
@@ -14,28 +27,29 @@ func TestSubmitQuoteServiceSubmitsQuoteWithLines(t *testing.T) {
 			Status:     domain.QuoteStatusDraft,
 			Lines: []domain.QuoteLine{
 				{
-					ProductSKU:  "sku-001",
-					ProductName: "Desk",
-					Quantity:    2,
-					UnitPrice:   15000,
+					ProductSKU:      "sku-001",
+					ProductName:     "Desk",
+					ProductCategory: "Standard",
+					Quantity:        2,
+					UnitPrice:       15000,
 				},
 			},
 		},
 	}
 
-	service := NewSubmitQuoteService(quotes)
+	service := NewSubmitQuoteService(quotes, stubApprovalPolicy{})
 
 	result, err := service.Execute(SubmitQuoteCommand{QuoteID: "quote-001"})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	if result.Status != domain.QuoteStatusSubmitted {
-		t.Fatalf("expected status %s, got %s", domain.QuoteStatusSubmitted, result.Status)
+	if result.Status != domain.QuoteStatusApproved {
+		t.Fatalf("expected status %s, got %s", domain.QuoteStatusApproved, result.Status)
 	}
 
-	if quotes.saved.Status != domain.QuoteStatusSubmitted {
-		t.Fatalf("expected saved status %s, got %s", domain.QuoteStatusSubmitted, quotes.saved.Status)
+	if quotes.saved.Status != domain.QuoteStatusApproved {
+		t.Fatalf("expected saved status %s, got %s", domain.QuoteStatusApproved, quotes.saved.Status)
 	}
 }
 
@@ -48,10 +62,40 @@ func TestSubmitQuoteServiceRejectsEmptyQuote(t *testing.T) {
 		},
 	}
 
-	service := NewSubmitQuoteService(quotes)
+	service := NewSubmitQuoteService(quotes, stubApprovalPolicy{})
 
 	_, err := service.Execute(SubmitQuoteCommand{QuoteID: "quote-001"})
 	if err != domain.ErrQuoteCannotBeSubmittedWithoutLines {
 		t.Fatalf("expected %v, got %v", domain.ErrQuoteCannotBeSubmittedWithoutLines, err)
+	}
+}
+
+func TestSubmitQuoteServiceMarksQuotePendingApprovalWhenPolicyRequiresReview(t *testing.T) {
+	quotes := &stubQuoteStore{
+		quote: domain.Quote{
+			ID:         "quote-002",
+			CustomerID: "customer-001",
+			Status:     domain.QuoteStatusDraft,
+			Lines: []domain.QuoteLine{
+				{
+					ProductSKU:      "sku-002",
+					ProductName:     "Custom Desk",
+					ProductCategory: "CustomBuild",
+					Quantity:        1,
+					UnitPrice:       45000,
+				},
+			},
+		},
+	}
+
+	service := NewSubmitQuoteService(quotes, stubApprovalPolicy{requiresApproval: true})
+
+	result, err := service.Execute(SubmitQuoteCommand{QuoteID: "quote-002"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if result.Status != domain.QuoteStatusPendingApproval {
+		t.Fatalf("expected status %s, got %s", domain.QuoteStatusPendingApproval, result.Status)
 	}
 }

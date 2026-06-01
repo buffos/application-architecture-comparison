@@ -1,5 +1,7 @@
 package application
 
+import "onion-architecture/internal/domain"
+
 type SubmitQuoteCommand struct {
 	QuoteID string
 }
@@ -13,11 +15,17 @@ type SubmitQuoteResult struct {
 
 type SubmitQuoteService struct {
 	quotes QuoteStore
+	policy ApprovalPolicy
 }
 
-func NewSubmitQuoteService(quotes QuoteStore) SubmitQuoteService {
+type ApprovalPolicy interface {
+	RequiresApproval(quote domain.Quote) (bool, error)
+}
+
+func NewSubmitQuoteService(quotes QuoteStore, policy ApprovalPolicy) SubmitQuoteService {
 	return SubmitQuoteService{
 		quotes: quotes,
+		policy: policy,
 	}
 }
 
@@ -27,7 +35,12 @@ func (s SubmitQuoteService) Execute(command SubmitQuoteCommand) (SubmitQuoteResu
 		return SubmitQuoteResult{}, err
 	}
 
-	if err := quote.Submit(); err != nil {
+	requiresApproval, err := s.policy.RequiresApproval(quote)
+	if err != nil {
+		return SubmitQuoteResult{}, err
+	}
+
+	if err := quote.Submit(requiresApproval); err != nil {
 		return SubmitQuoteResult{}, err
 	}
 

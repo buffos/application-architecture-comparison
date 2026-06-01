@@ -10,19 +10,21 @@ var ErrCustomerIDRequired = errors.New("customer id is required")
 var ErrQuoteNotFound = errors.New("quote not found")
 var ErrQuantityMustBePositive = errors.New("quantity must be positive")
 var ErrQuoteNotEditable = errors.New("quote is not editable")
-var ErrQuoteAlreadySubmitted = errors.New("quote already submitted")
+var ErrQuoteNotSubmittable = errors.New("quote is not submittable")
 var ErrQuoteCannotBeSubmittedWithoutLines = errors.New("quote cannot be submitted without lines")
 
 const QuoteStatusDraft = "Draft"
-const QuoteStatusSubmitted = "Submitted"
+const QuoteStatusPendingApproval = "PendingApproval"
+const QuoteStatusApproved = "Approved"
 
 var quoteSequence uint64
 
 type QuoteLine struct {
-	ProductSKU string
-	ProductName string
-	Quantity   int
-	UnitPrice  int
+	ProductSKU      string
+	ProductName     string
+	ProductCategory string
+	Quantity        int
+	UnitPrice       int
 }
 
 type Quote struct {
@@ -56,10 +58,11 @@ func (q *Quote) AddLine(product Product, quantity int) error {
 	}
 
 	q.Lines = append(q.Lines, QuoteLine{
-		ProductSKU: product.SKU,
-		ProductName: product.Name,
-		Quantity:   quantity,
-		UnitPrice:  product.UnitPrice,
+		ProductSKU:      product.SKU,
+		ProductName:     product.Name,
+		ProductCategory: product.Category,
+		Quantity:        quantity,
+		UnitPrice:       product.UnitPrice,
 	})
 
 	return nil
@@ -74,15 +77,20 @@ func (q Quote) TotalQuantity() int {
 	return total
 }
 
-func (q *Quote) Submit() error {
-	if q.Status == QuoteStatusSubmitted {
-		return ErrQuoteAlreadySubmitted
+func (q *Quote) Submit(requiresApproval bool) error {
+	if q.Status != QuoteStatusDraft {
+		return ErrQuoteNotSubmittable
 	}
 
 	if len(q.Lines) == 0 {
 		return ErrQuoteCannotBeSubmittedWithoutLines
 	}
 
-	q.Status = QuoteStatusSubmitted
+	if requiresApproval {
+		q.Status = QuoteStatusPendingApproval
+		return nil
+	}
+
+	q.Status = QuoteStatusApproved
 	return nil
 }

@@ -7,6 +7,7 @@ import (
 	"onion-architecture/internal/application"
 	"onion-architecture/internal/domain"
 	"onion-architecture/internal/infrastructure/memory"
+	"onion-architecture/internal/infrastructure/policies/approval"
 )
 
 func main() {
@@ -22,18 +23,20 @@ func main() {
 	}
 
 	if err := productRepository.Save(domain.Product{
-		SKU:      "sku-001",
-		Name:     "Desk",
-		Active:   true,
+		SKU:       "sku-001",
+		Name:      "Desk",
+		Category:  "Standard",
+		Active:    true,
 		UnitPrice: 15000,
 	}); err != nil {
 		log.Fatal(err)
 	}
 
+	submissionPolicy := approval.NewCategoryPolicy()
 	service := application.NewCreateDraftQuoteService(quoteRepository, customerRepository)
 	getQuote := application.NewGetQuoteService(quoteRepository)
 	addQuoteLine := application.NewAddQuoteLineService(quoteRepository, productRepository)
-	submitQuote := application.NewSubmitQuoteService(quoteRepository)
+	submitQuote := application.NewSubmitQuoteService(quoteRepository, submissionPolicy)
 
 	result, err := service.Execute(application.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",

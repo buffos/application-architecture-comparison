@@ -27,9 +27,10 @@ func TestGetQuoteServiceReturnsQuoteDetails(t *testing.T) {
 			Status:     domain.QuoteStatusDraft,
 			Lines: []domain.QuoteLine{
 				{
-					ProductSKU: "sku-001",
-					Quantity:   2,
-					UnitPrice:  15000,
+					ProductSKU:      "sku-001",
+					ProductCategory: "Standard",
+					Quantity:        2,
+					UnitPrice:       15000,
 				},
 			},
 		},

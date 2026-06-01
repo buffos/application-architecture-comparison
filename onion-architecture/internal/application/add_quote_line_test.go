@@ -49,9 +49,10 @@ func TestAddQuoteLineServiceAddsLineToDraftQuote(t *testing.T) {
 
 	products := stubProductLookup{
 		product: domain.Product{
-			SKU:      "sku-001",
-			Name:     "Desk",
-			Active:   true,
+			SKU:       "sku-001",
+			Name:      "Desk",
+			Category:  "Standard",
+			Active:    true,
 			UnitPrice: 15000,
 		},
 	}
@@ -91,9 +92,10 @@ func TestAddQuoteLineServiceRejectsInactiveProduct(t *testing.T) {
 
 	products := stubProductLookup{
 		product: domain.Product{
-			SKU:    "sku-002",
-			Name:   "Legacy Desk",
-			Active: false,
+			SKU:      "sku-002",
+			Name:     "Legacy Desk",
+			Category: "Standard",
+			Active:   false,
 		},
 	}
 
@@ -114,7 +116,7 @@ func TestAddQuoteLineServiceRejectsSubmittedQuote(t *testing.T) {
 		quote: domain.Quote{
 			ID:         "quote-001",
 			CustomerID: "customer-001",
-			Status:     domain.QuoteStatusSubmitted,
+			Status:     domain.QuoteStatusApproved,
 		},
 	}
 
@@ -122,6 +124,7 @@ func TestAddQuoteLineServiceRejectsSubmittedQuote(t *testing.T) {
 		product: domain.Product{
 			SKU:       "sku-001",
 			Name:      "Desk",
+			Category:  "Standard",
 			Active:    true,
 			UnitPrice: 15000,
 		},
