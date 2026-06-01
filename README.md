@@ -62,6 +62,7 @@ Examples:
 git checkout layered-001
 git checkout hexagonal-010
 git checkout hexagonal-032
+git checkout clean-001
 ```
 
 To return to the latest working branch state afterward:
@@ -80,6 +81,7 @@ Architectures currently implemented in this repository:
 
 - Layered Architecture
 - Hexagonal Architecture / Ports and Adapters
+- Clean Architecture
 
 ## Lesson Index
 
@@ -139,6 +141,13 @@ Architectures currently implemented in this repository:
 - `031` Partial returns by line: [031-partial-returns-by-line.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/hexagonal-architecture/lessons/031-partial-returns-by-line.md:1)
 - `032` Plugin pricing extension point: [032-plugin-pricing-extension-point.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/hexagonal-architecture/lessons/032-plugin-pricing-extension-point.md:1)
 - `033` Why not stop at hexagonal?: [033-why-not-stop-at-hexagonal.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/hexagonal-architecture/lessons/033-why-not-stop-at-hexagonal.md:1)
+
+### Clean Architecture
+
+#### Lessons
+
+- `000` From hexagonal to clean: [000-from-hexagonal-to-clean.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/000-from-hexagonal-to-clean.md:1)
+- `001` Clean architecture skeleton: [001-clean-architecture-skeleton.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/001-clean-architecture-skeleton.md:1)
 
 ## How To Maintain This File
 
