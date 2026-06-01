@@ -88,3 +88,12 @@ func (q *Quote) Submit(requiresApproval bool) error {
 	q.Status = QuoteStatusApproved
 	return nil
 }
+
+func (q *Quote) Approve() error {
+	if q.Status != QuoteStatusPendingApproval {
+		return ErrQuoteCannotTransition
+	}
+
+	q.Status = QuoteStatusApproved
+	return nil
+}

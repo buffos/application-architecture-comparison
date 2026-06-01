@@ -152,6 +152,7 @@ Architectures currently implemented in this repository:
 - `003` Add quote line with gateways: [003-add-quote-line-with-gateways.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/003-add-quote-line-with-gateways.md:1)
 - `004` Submit quote state transition: [004-submit-quote-state-transition.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/004-submit-quote-state-transition.md:1)
 - `005` Approval policy boundary: [005-approval-policy-boundary.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/005-approval-policy-boundary.md:1)
+- `006` Approve pending quote: [006-approve-pending-quote.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/006-approve-pending-quote.md:1)
 
 ## How To Maintain This File
 
