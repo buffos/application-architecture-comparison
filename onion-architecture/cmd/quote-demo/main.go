@@ -10,6 +10,7 @@ import (
 	"onion-architecture/internal/infrastructure/policies/approval"
 	returneligibility "onion-architecture/internal/infrastructure/policies/returneligibility"
 	"onion-architecture/internal/infrastructure/services/payment"
+	pricinginfra "onion-architecture/internal/infrastructure/services/pricing"
 	timeinfra "onion-architecture/internal/infrastructure/services/time"
 )
 
@@ -17,6 +18,7 @@ func main() {
 	customerRepository := memory.NewCustomerRepository()
 	quoteRepository := memory.NewQuoteRepository()
 	productRepository := memory.NewProductRepository()
+	pluginRepository := memory.NewPluginRepository()
 	orderRepository := memory.NewOrderRepository()
 	shipmentRepository := memory.NewShipmentRepository()
 	inventoryReservation := memory.NewInventoryReservation()
@@ -58,9 +60,10 @@ func main() {
 	_ = returneligibility.NewWindowPolicy()
 	paymentGateway := payment.NewAcceptAllGateway()
 	manualReviewGateway := payment.NewManualReviewGateway()
+	pricingPolicy := pricinginfra.NewPluginPolicy(pricinginfra.NewFixedPolicy(), pluginRepository)
 	service := application.NewCreateDraftQuoteService(quoteRepository, customerRepository)
 	getQuote := application.NewGetQuoteService(quoteRepository)
-	addQuoteLine := application.NewAddQuoteLineService(quoteRepository, productRepository)
+	addQuoteLine := application.NewAddQuoteLineService(quoteRepository, productRepository, pricingPolicy)
 	submitQuote := application.NewSubmitQuoteService(quoteRepository, submissionPolicy)
 	approveQuote := application.NewApproveQuoteService(quoteRepository)
 	convertQuote := application.NewConvertQuoteToOrderService(quoteRepository, orderRepository, inventoryReservation)
@@ -69,6 +72,9 @@ func main() {
 	createShipment := application.NewCreateShipmentService(orderRepository, shipmentRepository, clock)
 	lowStockItemsReport := application.NewLowStockItemsReportService(inventoryReservation)
 	ordersAwaitingApprovalReport := application.NewOrdersAwaitingApprovalReportService(quoteRepository)
+	registerPricingPlugin := application.NewRegisterPricingPluginService(pluginRepository)
+	enablePlugin := application.NewEnablePluginService(pluginRepository)
+	listPlugins := application.NewListPluginsService(pluginRepository)
 
 	result, err := service.Execute(application.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -248,4 +254,46 @@ func main() {
 	}
 
 	fmt.Printf("payment review approved: order=%s status=%s\n", reviewApproval.OrderID, reviewApproval.Status)
+
+	_, err = registerPricingPlugin.Execute(application.RegisterPricingPluginCommand{Name: "seasonal-pricing"})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	enabledPlugin, err := enablePlugin.Execute(application.EnablePluginCommand{Name: "seasonal-pricing"})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("enabled plugin: name=%s type=%s enabled=%t\n", enabledPlugin.Name, enabledPlugin.Type, enabledPlugin.Enabled)
+
+	pluginQuote, err := service.Execute(application.CreateDraftQuoteCommand{
+		CustomerID: "customer-001",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = addQuoteLine.Execute(application.AddQuoteLineCommand{
+		QuoteID:    pluginQuote.QuoteID,
+		ProductSKU: "sku-001",
+		Quantity:   1,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	storedPluginQuote, err := quoteRepository.FindByID(pluginQuote.QuoteID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("plugin-priced quote line: quote=%s unitPrice=%d\n", storedPluginQuote.ID, storedPluginQuote.Lines[0].UnitPrice)
+
+	plugins, err := listPlugins.Execute()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("plugins: %v\n", plugins)
 }

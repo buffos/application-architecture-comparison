@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"onion-architecture/internal/domain"
+	"onion-architecture/internal/infrastructure/services/pricing"
 )
 
 type stubQuoteStore struct {
@@ -57,7 +58,7 @@ func TestAddQuoteLineServiceAddsLineToDraftQuote(t *testing.T) {
 		},
 	}
 
-	service := NewAddQuoteLineService(quotes, products)
+	service := NewAddQuoteLineService(quotes, products, pricing.NewFixedPolicy())
 
 	result, err := service.Execute(AddQuoteLineCommand{
 		QuoteID:    "quote-001",
@@ -99,7 +100,7 @@ func TestAddQuoteLineServiceRejectsInactiveProduct(t *testing.T) {
 		},
 	}
 
-	service := NewAddQuoteLineService(quotes, products)
+	service := NewAddQuoteLineService(quotes, products, pricing.NewFixedPolicy())
 
 	_, err := service.Execute(AddQuoteLineCommand{
 		QuoteID:    "quote-001",
@@ -130,7 +131,7 @@ func TestAddQuoteLineServiceRejectsSubmittedQuote(t *testing.T) {
 		},
 	}
 
-	service := NewAddQuoteLineService(quotes, products)
+	service := NewAddQuoteLineService(quotes, products, pricing.NewFixedPolicy())
 
 	_, err := service.Execute(AddQuoteLineCommand{
 		QuoteID:    "quote-001",

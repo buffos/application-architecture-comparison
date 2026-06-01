@@ -24,15 +24,21 @@ type ProductLookup interface {
 	FindBySKU(sku string) (domain.Product, error)
 }
 
+type PricingPolicy interface {
+	Adjust(product domain.Product) (domain.Product, error)
+}
+
 type AddQuoteLineService struct {
 	quotes   QuoteStore
 	products ProductLookup
+	pricing  PricingPolicy
 }
 
-func NewAddQuoteLineService(quotes QuoteStore, products ProductLookup) AddQuoteLineService {
+func NewAddQuoteLineService(quotes QuoteStore, products ProductLookup, pricing PricingPolicy) AddQuoteLineService {
 	return AddQuoteLineService{
 		quotes:   quotes,
 		products: products,
+		pricing:  pricing,
 	}
 }
 
@@ -48,6 +54,11 @@ func (s AddQuoteLineService) Execute(command AddQuoteLineCommand) (AddQuoteLineR
 	}
 
 	if err := product.EnsureActive(); err != nil {
+		return AddQuoteLineResult{}, err
+	}
+
+	product, err = s.pricing.Adjust(product)
+	if err != nil {
 		return AddQuoteLineResult{}, err
 	}
 
