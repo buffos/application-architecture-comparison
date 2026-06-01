@@ -206,6 +206,7 @@ Architectures currently implemented in this repository:
 - `017` Return actor metadata: [017-return-actor-metadata.md](onion-architecture/lessons/017-return-actor-metadata.md)
 - `018` Return command idempotency: [018-return-command-idempotency.md](onion-architecture/lessons/018-return-command-idempotency.md)
 - `019` Return query surface: [019-return-query-surface.md](onion-architecture/lessons/019-return-query-surface.md)
+- `020` Order query surface: [020-order-query-surface.md](onion-architecture/lessons/020-order-query-surface.md)
 
 ## How To Maintain This File
 
