@@ -15,6 +15,7 @@ type QuoteDetails struct {
 
 type QuoteFinder interface {
 	FindByID(id string) (domain.Quote, error)
+	ListByStatus(status string) ([]domain.Quote, error)
 }
 
 type GetQuoteService struct {

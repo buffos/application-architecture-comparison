@@ -36,3 +36,17 @@ func (r *QuoteRepository) FindByID(id string) (domain.Quote, error) {
 
 	return quote, nil
 }
+
+func (r *QuoteRepository) ListByStatus(status string) ([]domain.Quote, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	result := make([]domain.Quote, 0)
+	for _, quote := range r.quotes {
+		if quote.Status == status {
+			result = append(result, quote)
+		}
+	}
+
+	return result, nil
+}

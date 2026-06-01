@@ -19,6 +19,18 @@ func (f stubQuoteFinder) FindByID(id string) (domain.Quote, error) {
 	return f.quote, nil
 }
 
+func (f stubQuoteFinder) ListByStatus(status string) ([]domain.Quote, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+
+	if f.quote.Status == status {
+		return []domain.Quote{f.quote}, nil
+	}
+
+	return []domain.Quote{}, nil
+}
+
 func TestGetQuoteServiceReturnsQuoteDetails(t *testing.T) {
 	service := NewGetQuoteService(stubQuoteFinder{
 		quote: domain.Quote{
