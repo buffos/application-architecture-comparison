@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync/atomic"
+	"time"
 )
 
 var ErrOrderNotFound = errors.New("order not found")
@@ -25,6 +26,7 @@ type OrderLine struct {
 	ProductCategory string
 	Quantity        int
 	UnitPrice       int
+	ReturnWindowDays int
 }
 
 type Order struct {
@@ -33,6 +35,7 @@ type Order struct {
 	CustomerID string
 	Status     string
 	Lines      []OrderLine
+	ShippedAt  time.Time
 }
 
 func NewOrderFromQuote(quote Quote) (Order, error) {
@@ -49,6 +52,7 @@ func NewOrderFromQuote(quote Quote) (Order, error) {
 			ProductCategory: line.ProductCategory,
 			Quantity:        line.Quantity,
 			UnitPrice:       line.UnitPrice,
+			ReturnWindowDays: line.ReturnWindowDays,
 		})
 	}
 
@@ -78,12 +82,13 @@ func (o Order) EnsureShippable() error {
 	return nil
 }
 
-func (o *Order) MarkShipped() error {
+func (o *Order) MarkShipped(shippedAt time.Time) error {
 	if err := o.EnsureShippable(); err != nil {
 		return err
 	}
 
 	o.Status = OrderStatusShipped
+	o.ShippedAt = shippedAt
 	return nil
 }
 

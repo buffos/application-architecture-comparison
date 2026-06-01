@@ -27,6 +27,7 @@ type QuoteLine struct {
 	ProductCategory string
 	Quantity        int
 	UnitPrice       int
+	ReturnWindowDays int
 }
 
 type Quote struct {
@@ -65,6 +66,7 @@ func (q *Quote) AddLine(product Product, quantity int) error {
 		ProductCategory: product.Category,
 		Quantity:        quantity,
 		UnitPrice:       product.UnitPrice,
+		ReturnWindowDays: product.ReturnWindowDays,
 	})
 
 	return nil

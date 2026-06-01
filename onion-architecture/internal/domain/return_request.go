@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync/atomic"
+	"time"
 )
 
 var ErrReturnRequestNotFound = errors.New("return request not found")
@@ -22,9 +23,10 @@ type ReturnRequest struct {
 	OrderID string
 	Reason  string
 	Status  string
+	RequestedAt time.Time
 }
 
-func NewReturnRequest(orderID string, reason string) (ReturnRequest, error) {
+func NewReturnRequest(orderID string, reason string, requestedAt time.Time) (ReturnRequest, error) {
 	id := atomic.AddUint64(&returnRequestSequence, 1)
 
 	return ReturnRequest{
@@ -32,6 +34,7 @@ func NewReturnRequest(orderID string, reason string) (ReturnRequest, error) {
 		OrderID: orderID,
 		Reason:  reason,
 		Status:  ReturnRequestStatusRequested,
+		RequestedAt: requestedAt,
 	}, nil
 }
 

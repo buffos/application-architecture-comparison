@@ -20,12 +20,14 @@ type ShipmentStore interface {
 type CreateShipmentService struct {
 	orders    OrderRepository
 	shipments ShipmentStore
+	clock     Clock
 }
 
-func NewCreateShipmentService(orders OrderRepository, shipments ShipmentStore) CreateShipmentService {
+func NewCreateShipmentService(orders OrderRepository, shipments ShipmentStore, clock Clock) CreateShipmentService {
 	return CreateShipmentService{
 		orders:    orders,
 		shipments: shipments,
+		clock:     clock,
 	}
 }
 
@@ -40,7 +42,7 @@ func (s CreateShipmentService) Execute(command CreateShipmentCommand) (CreateShi
 		return CreateShipmentResult{}, err
 	}
 
-	if err := order.MarkShipped(); err != nil {
+	if err := order.MarkShipped(s.clock.Now()); err != nil {
 		return CreateShipmentResult{}, err
 	}
 

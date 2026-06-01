@@ -21,12 +21,14 @@ type ReturnRequestStore interface {
 type RequestReturnService struct {
 	orders  OrderRepository
 	returns ReturnRequestStore
+	clock   Clock
 }
 
-func NewRequestReturnService(orders OrderRepository, returns ReturnRequestStore) RequestReturnService {
+func NewRequestReturnService(orders OrderRepository, returns ReturnRequestStore, clock Clock) RequestReturnService {
 	return RequestReturnService{
 		orders:  orders,
 		returns: returns,
+		clock:   clock,
 	}
 }
 
@@ -40,7 +42,7 @@ func (s RequestReturnService) Execute(command RequestReturnCommand) (RequestRetu
 		return RequestReturnResult{}, err
 	}
 
-	request, err := domain.NewReturnRequest(order.ID, command.Reason)
+	request, err := domain.NewReturnRequest(order.ID, command.Reason, s.clock.Now())
 	if err != nil {
 		return RequestReturnResult{}, err
 	}

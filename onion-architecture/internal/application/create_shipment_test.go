@@ -2,8 +2,10 @@ package application
 
 import (
 	"testing"
+	"time"
 
 	"onion-architecture/internal/domain"
+	timeinfra "onion-architecture/internal/infrastructure/services/time"
 )
 
 type stubShipmentStore struct {
@@ -34,8 +36,9 @@ func TestCreateShipmentServiceShipsPaidOrder(t *testing.T) {
 		},
 	}
 	shipments := &stubShipmentStore{}
+	clock := timeinfra.NewFixedClock(time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC))
 
-	service := NewCreateShipmentService(orders, shipments)
+	service := NewCreateShipmentService(orders, shipments, clock)
 
 	result, err := service.Execute(CreateShipmentCommand{OrderID: "order-001"})
 	if err != nil {
@@ -53,6 +56,10 @@ func TestCreateShipmentServiceShipsPaidOrder(t *testing.T) {
 	if orders.saved.Status != domain.OrderStatusShipped {
 		t.Fatalf("expected saved order status %s, got %s", domain.OrderStatusShipped, orders.saved.Status)
 	}
+
+	if !orders.saved.ShippedAt.Equal(clock.Now()) {
+		t.Fatalf("expected shipped at %v, got %v", clock.Now(), orders.saved.ShippedAt)
+	}
 }
 
 func TestCreateShipmentServiceRejectsUnpaidOrder(t *testing.T) {
@@ -65,8 +72,9 @@ func TestCreateShipmentServiceRejectsUnpaidOrder(t *testing.T) {
 		},
 	}
 	shipments := &stubShipmentStore{}
+	clock := timeinfra.NewFixedClock(time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC))
 
-	service := NewCreateShipmentService(orders, shipments)
+	service := NewCreateShipmentService(orders, shipments, clock)
 
 	_, err := service.Execute(CreateShipmentCommand{OrderID: "order-001"})
 	if err != domain.ErrOrderNotShippable {

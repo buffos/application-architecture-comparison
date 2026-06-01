@@ -2,8 +2,10 @@ package application
 
 import (
 	"testing"
+	"time"
 
 	"onion-architecture/internal/domain"
+	timeinfra "onion-architecture/internal/infrastructure/services/time"
 )
 
 type stubReturnRequestStore struct {
@@ -31,11 +33,13 @@ func TestRequestReturnServiceCreatesRequestedReturnForShippedOrder(t *testing.T)
 			QuoteID:    "quote-001",
 			CustomerID: "customer-001",
 			Status:     domain.OrderStatusShipped,
+			ShippedAt:  time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC),
 		},
 	}
 	returns := &stubReturnRequestStore{}
+	clock := timeinfra.NewFixedClock(time.Date(2026, 6, 5, 10, 0, 0, 0, time.UTC))
 
-	service := NewRequestReturnService(orders, returns)
+	service := NewRequestReturnService(orders, returns, clock)
 
 	result, err := service.Execute(RequestReturnCommand{
 		OrderID: "order-001",
@@ -52,6 +56,10 @@ func TestRequestReturnServiceCreatesRequestedReturnForShippedOrder(t *testing.T)
 	if returns.saved.OrderID != "order-001" {
 		t.Fatalf("expected saved order id order-001, got %s", returns.saved.OrderID)
 	}
+
+	if !returns.saved.RequestedAt.Equal(clock.Now()) {
+		t.Fatalf("expected requested at %v, got %v", clock.Now(), returns.saved.RequestedAt)
+	}
 }
 
 func TestRequestReturnServiceRejectsNonShippedOrder(t *testing.T) {
@@ -64,8 +72,9 @@ func TestRequestReturnServiceRejectsNonShippedOrder(t *testing.T) {
 		},
 	}
 	returns := &stubReturnRequestStore{}
+	clock := timeinfra.NewFixedClock(time.Date(2026, 6, 5, 10, 0, 0, 0, time.UTC))
 
-	service := NewRequestReturnService(orders, returns)
+	service := NewRequestReturnService(orders, returns, clock)
 
 	_, err := service.Execute(RequestReturnCommand{
 		OrderID: "order-001",

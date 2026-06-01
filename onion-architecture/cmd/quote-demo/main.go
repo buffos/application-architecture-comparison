@@ -8,7 +8,9 @@ import (
 	"onion-architecture/internal/domain"
 	"onion-architecture/internal/infrastructure/memory"
 	"onion-architecture/internal/infrastructure/policies/approval"
+	returneligibility "onion-architecture/internal/infrastructure/policies/returneligibility"
 	"onion-architecture/internal/infrastructure/services/payment"
+	timeinfra "onion-architecture/internal/infrastructure/services/time"
 )
 
 func main() {
@@ -18,6 +20,7 @@ func main() {
 	orderRepository := memory.NewOrderRepository()
 	shipmentRepository := memory.NewShipmentRepository()
 	inventoryReservation := memory.NewInventoryReservation()
+	clock := timeinfra.NewSystemClock()
 
 	if err := customerRepository.Save(domain.Customer{
 		ID:     "customer-001",
@@ -32,6 +35,7 @@ func main() {
 		Category:  "Standard",
 		Active:    true,
 		UnitPrice: 15000,
+		ReturnWindowDays: 30,
 	}); err != nil {
 		log.Fatal(err)
 	}
@@ -42,6 +46,7 @@ func main() {
 		Category:  "CustomBuild",
 		Active:    true,
 		UnitPrice: 45000,
+		ReturnWindowDays: 30,
 	}); err != nil {
 		log.Fatal(err)
 	}
@@ -49,6 +54,7 @@ func main() {
 	inventoryReservation.Seed("sku-002", 5)
 
 	submissionPolicy := approval.NewCategoryPolicy()
+	_ = returneligibility.NewWindowPolicy()
 	paymentGateway := payment.NewAcceptAllGateway()
 	service := application.NewCreateDraftQuoteService(quoteRepository, customerRepository)
 	getQuote := application.NewGetQuoteService(quoteRepository)
@@ -57,7 +63,7 @@ func main() {
 	approveQuote := application.NewApproveQuoteService(quoteRepository)
 	convertQuote := application.NewConvertQuoteToOrderService(quoteRepository, orderRepository, inventoryReservation)
 	capturePayment := application.NewCapturePaymentService(orderRepository, paymentGateway)
-	createShipment := application.NewCreateShipmentService(orderRepository, shipmentRepository)
+	createShipment := application.NewCreateShipmentService(orderRepository, shipmentRepository, clock)
 
 	result, err := service.Execute(application.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",

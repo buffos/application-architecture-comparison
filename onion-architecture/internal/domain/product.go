@@ -11,6 +11,7 @@ type Product struct {
 	Category  string
 	Active    bool
 	UnitPrice int
+	ReturnWindowDays int
 }
 
 func (p Product) EnsureActive() error {
