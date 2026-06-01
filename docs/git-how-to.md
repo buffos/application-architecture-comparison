@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(clean): complete lesson 026 return rate by category report
+feat(clean): complete lesson 027 low stock items report
 
 # Add tag
 
-git tag -a clean-026 -m "Clean Architecture Lesson 026"
-git push origin clean-026
+git tag -a clean-027 -m "Clean Architecture Lesson 027"
+git push origin clean-027
 
 or
 

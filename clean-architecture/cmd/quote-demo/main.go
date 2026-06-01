@@ -37,6 +37,7 @@ func main() {
 	listCustomersPresenter := presenters.NewListCustomersPresenter()
 	quoteConversionReportPresenter := presenters.NewQuoteConversionReportPresenter()
 	returnRateByCategoryReportPresenter := presenters.NewReturnRateByCategoryReportPresenter()
+	lowStockItemsReportPresenter := presenters.NewLowStockItemsReportPresenter()
 	addLinePresenter := presenters.NewAddQuoteLinePresenter()
 	submitPresenter := presenters.NewSubmitQuotePresenter()
 	convertPresenter := presenters.NewConvertQuoteToOrderPresenter()
@@ -86,6 +87,9 @@ func main() {
 
 	returnRateByCategoryReportInteractor := usecases.NewReturnRateByCategoryReportInteractor(orderGateway, returnRequestGateway, productGateway, returnRateByCategoryReportPresenter)
 	returnRateByCategoryReportController := controllers.NewReturnRateByCategoryReportController(returnRateByCategoryReportInteractor)
+
+	lowStockItemsReportInteractor := usecases.NewLowStockItemsReportInteractor(inventoryReservation, lowStockItemsReportPresenter)
+	lowStockItemsReportController := controllers.NewLowStockItemsReportController(lowStockItemsReportInteractor)
 
 	if err := createController.Handle("customer-001"); err != nil {
 		log.Fatal(err)
@@ -226,6 +230,10 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if err := lowStockItemsReportController.Handle(3); err != nil {
+		log.Fatal(err)
+	}
+
 	fmt.Println(createPresenter.ViewModel().Message)
 	fmt.Println(getCustomerPresenter.ViewModel().Message)
 	fmt.Println(listCustomersPresenter.ViewModel().Message)
@@ -248,4 +256,5 @@ func main() {
 	fmt.Println(listReturnPresenter.ViewModel().Message)
 	fmt.Println(quoteConversionReportPresenter.ViewModel().Message)
 	fmt.Println(returnRateByCategoryReportPresenter.ViewModel().Message)
+	fmt.Println(lowStockItemsReportPresenter.ViewModel().Message)
 }

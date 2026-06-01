@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"sort"
 	"sync"
 
 	"clean-architecture/internal/entities"
@@ -59,4 +60,23 @@ func (r *InventoryReservation) Restock(items []entities.InventoryReservationItem
 	}
 
 	return nil
+}
+
+func (r *InventoryReservation) ListStock() ([]entities.InventoryStockRecord, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	records := make([]entities.InventoryStockRecord, 0, len(r.stock))
+	for sku, quantity := range r.stock {
+		records = append(records, entities.InventoryStockRecord{
+			SKU:      sku,
+			Quantity: quantity,
+		})
+	}
+
+	sort.Slice(records, func(i int, j int) bool {
+		return records[i].SKU < records[j].SKU
+	})
+
+	return records, nil
 }
