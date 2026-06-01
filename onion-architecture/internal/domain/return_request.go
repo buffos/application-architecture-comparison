@@ -7,8 +7,12 @@ import (
 )
 
 var ErrReturnRequestNotFound = errors.New("return request not found")
+var ErrReturnRequestNotAcceptable = errors.New("return request is not acceptable")
+var ErrReturnRequestNotRejectable = errors.New("return request is not rejectable")
 
 const ReturnRequestStatusRequested = "Requested"
+const ReturnRequestStatusAccepted = "Accepted"
+const ReturnRequestStatusRejected = "Rejected"
 const ReturnRequestStatusRefunded = "Refunded"
 
 var returnRequestSequence uint64
@@ -29,4 +33,31 @@ func NewReturnRequest(orderID string, reason string) (ReturnRequest, error) {
 		Reason:  reason,
 		Status:  ReturnRequestStatusRequested,
 	}, nil
+}
+
+func (r *ReturnRequest) Accept() error {
+	if r.Status != ReturnRequestStatusRequested {
+		return ErrReturnRequestNotAcceptable
+	}
+
+	r.Status = ReturnRequestStatusAccepted
+	return nil
+}
+
+func (r *ReturnRequest) Reject() error {
+	if r.Status != ReturnRequestStatusRequested {
+		return ErrReturnRequestNotRejectable
+	}
+
+	r.Status = ReturnRequestStatusRejected
+	return nil
+}
+
+func (r *ReturnRequest) MarkRefunded() error {
+	if r.Status != ReturnRequestStatusAccepted {
+		return ErrReturnRequestNotAcceptable
+	}
+
+	r.Status = ReturnRequestStatusRefunded
+	return nil
 }

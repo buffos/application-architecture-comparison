@@ -24,3 +24,15 @@ func (r *ReturnRequestRepository) Save(request domain.ReturnRequest) error {
 	r.requests[request.ID] = request
 	return nil
 }
+
+func (r *ReturnRequestRepository) FindByID(id string) (domain.ReturnRequest, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	request, ok := r.requests[id]
+	if !ok {
+		return domain.ReturnRequest{}, domain.ErrReturnRequestNotFound
+	}
+
+	return request, nil
+}

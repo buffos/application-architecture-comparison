@@ -15,29 +15,18 @@ type RequestReturnResult struct {
 
 type ReturnRequestStore interface {
 	Save(request domain.ReturnRequest) error
-}
-
-type RefundGateway interface {
-	Refund(order domain.Order) error
-}
-
-type InventoryRestock interface {
-	Restock(items []domain.InventoryRestockItem) error
+	FindByID(id string) (domain.ReturnRequest, error)
 }
 
 type RequestReturnService struct {
-	orders   OrderRepository
-	returns  ReturnRequestStore
-	refunds  RefundGateway
-	restock  InventoryRestock
+	orders  OrderRepository
+	returns ReturnRequestStore
 }
 
-func NewRequestReturnService(orders OrderRepository, returns ReturnRequestStore, refunds RefundGateway, restock InventoryRestock) RequestReturnService {
+func NewRequestReturnService(orders OrderRepository, returns ReturnRequestStore) RequestReturnService {
 	return RequestReturnService{
 		orders:  orders,
 		returns: returns,
-		refunds: refunds,
-		restock: restock,
 	}
 }
 
@@ -51,28 +40,10 @@ func (s RequestReturnService) Execute(command RequestReturnCommand) (RequestRetu
 		return RequestReturnResult{}, err
 	}
 
-	if err := s.refunds.Refund(order); err != nil {
-		return RequestReturnResult{}, err
-	}
-
-	items := make([]domain.InventoryRestockItem, 0, len(order.Lines))
-	for _, line := range order.Lines {
-		items = append(items, domain.InventoryRestockItem{
-			ProductSKU: line.ProductSKU,
-			Quantity:   line.Quantity,
-		})
-	}
-
-	if err := s.restock.Restock(items); err != nil {
-		return RequestReturnResult{}, err
-	}
-
 	request, err := domain.NewReturnRequest(order.ID, command.Reason)
 	if err != nil {
 		return RequestReturnResult{}, err
 	}
-
-	request.Status = domain.ReturnRequestStatusRefunded
 
 	if err := s.returns.Save(request); err != nil {
 		return RequestReturnResult{}, err
