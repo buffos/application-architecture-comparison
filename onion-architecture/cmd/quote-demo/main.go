@@ -14,6 +14,7 @@ func main() {
 	customerRepository := memory.NewCustomerRepository()
 	quoteRepository := memory.NewQuoteRepository()
 	productRepository := memory.NewProductRepository()
+	orderRepository := memory.NewOrderRepository()
 
 	if err := customerRepository.Save(domain.Customer{
 		ID:     "customer-001",
@@ -48,6 +49,7 @@ func main() {
 	addQuoteLine := application.NewAddQuoteLineService(quoteRepository, productRepository)
 	submitQuote := application.NewSubmitQuoteService(quoteRepository, submissionPolicy)
 	approveQuote := application.NewApproveQuoteService(quoteRepository)
+	convertQuote := application.NewConvertQuoteToOrderService(quoteRepository, orderRepository)
 
 	result, err := service.Execute(application.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -86,6 +88,15 @@ func main() {
 	}
 
 	fmt.Printf("approved quote: id=%s lines=%d items=%d status=%s\n", approvalResult.QuoteID, approvalResult.LineCount, approvalResult.TotalItems, approvalResult.Status)
+
+	orderResult, err := convertQuote.Execute(application.ConvertQuoteToOrderCommand{
+		QuoteID: result.QuoteID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("converted quote: order=%s quote=%s customer=%s status=%s lines=%d\n", orderResult.OrderID, orderResult.QuoteID, orderResult.CustomerID, orderResult.Status, orderResult.LineCount)
 
 	details, err := getQuote.Execute(application.GetQuoteQuery{QuoteID: result.QuoteID})
 	if err != nil {
