@@ -10,6 +10,7 @@ type QuoteDetails struct {
 	QuoteID    string
 	CustomerID string
 	Status     string
+	LineCount  int
 }
 
 type QuoteFinder interface {
@@ -36,5 +37,6 @@ func (s GetQuoteService) Execute(query GetQuoteQuery) (QuoteDetails, error) {
 		QuoteID:    quote.ID,
 		CustomerID: quote.CustomerID,
 		Status:     quote.Status,
+		LineCount:  len(quote.Lines),
 	}, nil
 }

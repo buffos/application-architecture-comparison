@@ -25,6 +25,13 @@ func TestGetQuoteServiceReturnsQuoteDetails(t *testing.T) {
 			ID:         "quote-001",
 			CustomerID: "customer-001",
 			Status:     domain.QuoteStatusDraft,
+			Lines: []domain.QuoteLine{
+				{
+					ProductSKU: "sku-001",
+					Quantity:   2,
+					UnitPrice:  15000,
+				},
+			},
 		},
 	})
 
@@ -39,6 +46,10 @@ func TestGetQuoteServiceReturnsQuoteDetails(t *testing.T) {
 
 	if result.Status != domain.QuoteStatusDraft {
 		t.Fatalf("expected status %s, got %s", domain.QuoteStatusDraft, result.Status)
+	}
+
+	if result.LineCount != 1 {
+		t.Fatalf("expected line count 1, got %d", result.LineCount)
 	}
 }
 

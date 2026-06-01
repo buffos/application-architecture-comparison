@@ -189,6 +189,7 @@ Architectures currently implemented in this repository:
 - `000` From clean to onion: [000-from-clean-to-onion.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/onion-architecture/lessons/000-from-clean-to-onion.md:1)
 - `001` Onion architecture skeleton: [001-onion-architecture-skeleton.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/onion-architecture/lessons/001-onion-architecture-skeleton.md:1)
 - `002` Query application service: [002-query-application-service.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/onion-architecture/lessons/002-query-application-service.md:1)
+- `003` Add quote line with product lookup: [003-add-quote-line-with-product-lookup.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/onion-architecture/lessons/003-add-quote-line-with-product-lookup.md:1)
 
 ## How To Maintain This File
 
