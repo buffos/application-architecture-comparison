@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"sort"
 	"sync"
 
 	"clean-architecture/internal/entities"
@@ -35,4 +36,24 @@ func (g *OrderGateway) FindByID(id string) (entities.Order, error) {
 	}
 
 	return order, nil
+}
+
+func (g *OrderGateway) ListByStatus(status string) ([]entities.Order, error) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	orders := make([]entities.Order, 0, len(g.orders))
+	for _, order := range g.orders {
+		if status != "" && order.Status != status {
+			continue
+		}
+
+		orders = append(orders, order)
+	}
+
+	sort.Slice(orders, func(i int, j int) bool {
+		return orders[i].ID < orders[j].ID
+	})
+
+	return orders, nil
 }

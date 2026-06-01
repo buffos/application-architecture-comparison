@@ -36,6 +36,8 @@ func main() {
 	capturePresenter := presenters.NewCapturePaymentPresenter()
 	shipmentPresenter := presenters.NewCreateShipmentPresenter()
 	getPresenter := presenters.NewGetQuotePresenter()
+	getOrderPresenter := presenters.NewGetOrderPresenter()
+	listOrdersPresenter := presenters.NewListOrdersPresenter()
 	requestReturnPresenter := presenters.NewRequestReturnPresenter()
 	getReturnPresenter := presenters.NewGetReturnRequestPresenter()
 	listReturnPresenter := presenters.NewListReturnRequestsPresenter()
@@ -102,6 +104,12 @@ func main() {
 	getInteractor := usecases.NewGetQuoteInteractor(quoteGateway, getPresenter)
 	getController := controllers.NewGetQuoteController(getInteractor)
 
+	getOrderInteractor := usecases.NewGetOrderInteractor(orderGateway, getOrderPresenter)
+	getOrderController := controllers.NewGetOrderController(getOrderInteractor)
+
+	listOrdersInteractor := usecases.NewListOrdersInteractor(orderGateway, listOrdersPresenter)
+	listOrdersController := controllers.NewListOrdersController(listOrdersInteractor)
+
 	requestReturnInteractor := usecases.NewRequestReturnInteractor(orderGateway, returnRequestGateway, clock, requestReturnPresenter)
 	requestReturnController := controllers.NewRequestReturnController(requestReturnInteractor)
 
@@ -112,6 +120,14 @@ func main() {
 	listReturnController := controllers.NewListReturnRequestsController(listReturnInteractor)
 
 	if err := getController.Handle(createPresenter.ViewModel().QuoteID); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := getOrderController.Handle(convertPresenter.ViewModel().OrderID); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := listOrdersController.Handle(entities.OrderStatusShipped); err != nil {
 		log.Fatal(err)
 	}
 
@@ -134,6 +150,8 @@ func main() {
 	fmt.Println(capturePresenter.ViewModel().Message)
 	fmt.Println(shipmentPresenter.ViewModel().Message)
 	fmt.Println(getPresenter.ViewModel().Message)
+	fmt.Println(getOrderPresenter.ViewModel().Message)
+	fmt.Println(listOrdersPresenter.ViewModel().Message)
 	fmt.Println(requestReturnPresenter.ViewModel().Message)
 	fmt.Println(getReturnPresenter.ViewModel().Message)
 	fmt.Println(listReturnPresenter.ViewModel().Message)
