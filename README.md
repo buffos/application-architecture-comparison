@@ -82,6 +82,7 @@ Architectures currently implemented in this repository:
 - Layered Architecture
 - Hexagonal Architecture / Ports and Adapters
 - Clean Architecture
+- Onion Architecture
 
 ## Lesson Index
 
@@ -180,6 +181,13 @@ Architectures currently implemented in this repository:
 - `031` Partial returns by line: [031-partial-returns-by-line.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/031-partial-returns-by-line.md:1)
 - `032` Plugin pricing extension point: [032-plugin-pricing-extension-point.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/032-plugin-pricing-extension-point.md:1)
 - `033` Why not stop at clean?: [033-why-not-stop-at-clean.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/033-why-not-stop-at-clean.md:1)
+
+### Onion Architecture
+
+#### Lessons
+
+- `000` From clean to onion: [000-from-clean-to-onion.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/onion-architecture/lessons/000-from-clean-to-onion.md:1)
+- `001` Onion architecture skeleton: [001-onion-architecture-skeleton.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/onion-architecture/lessons/001-onion-architecture-skeleton.md:1)
 
 ## How To Maintain This File
 
