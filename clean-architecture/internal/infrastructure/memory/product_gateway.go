@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"sort"
 	"sync"
 
 	"clean-architecture/internal/entities"
@@ -35,4 +36,27 @@ func (g *ProductGateway) FindBySKU(sku string) (entities.Product, error) {
 	}
 
 	return product, nil
+}
+
+func (g *ProductGateway) List(category string, availableOnly bool) ([]entities.Product, error) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	products := make([]entities.Product, 0, len(g.products))
+	for _, product := range g.products {
+		if category != "" && product.Category != category {
+			continue
+		}
+		if availableOnly && !product.Available {
+			continue
+		}
+
+		products = append(products, product)
+	}
+
+	sort.Slice(products, func(i int, j int) bool {
+		return products[i].SKU < products[j].SKU
+	})
+
+	return products, nil
 }

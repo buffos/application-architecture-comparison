@@ -37,6 +37,8 @@ func main() {
 	shipmentPresenter := presenters.NewCreateShipmentPresenter()
 	getPresenter := presenters.NewGetQuotePresenter()
 	listQuotesPresenter := presenters.NewListQuotesPresenter()
+	getProductPresenter := presenters.NewGetProductPresenter()
+	listProductsPresenter := presenters.NewListProductsPresenter()
 	getOrderPresenter := presenters.NewGetOrderPresenter()
 	listOrdersPresenter := presenters.NewListOrdersPresenter()
 	getShipmentPresenter := presenters.NewGetShipmentPresenter()
@@ -110,6 +112,12 @@ func main() {
 	listQuotesInteractor := usecases.NewListQuotesInteractor(quoteGateway, listQuotesPresenter)
 	listQuotesController := controllers.NewListQuotesController(listQuotesInteractor)
 
+	getProductInteractor := usecases.NewGetProductInteractor(productGateway, getProductPresenter)
+	getProductController := controllers.NewGetProductController(getProductInteractor)
+
+	listProductsInteractor := usecases.NewListProductsInteractor(productGateway, listProductsPresenter)
+	listProductsController := controllers.NewListProductsController(listProductsInteractor)
+
 	getOrderInteractor := usecases.NewGetOrderInteractor(orderGateway, getOrderPresenter)
 	getOrderController := controllers.NewGetOrderController(getOrderInteractor)
 
@@ -136,6 +144,14 @@ func main() {
 	}
 
 	if err := listQuotesController.Handle(entities.QuoteStatusApproved); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := getProductController.Handle("CHAIR-001"); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := listProductsController.Handle("Standard", true); err != nil {
 		log.Fatal(err)
 	}
 
@@ -175,6 +191,8 @@ func main() {
 	fmt.Println(shipmentPresenter.ViewModel().Message)
 	fmt.Println(getPresenter.ViewModel().Message)
 	fmt.Println(listQuotesPresenter.ViewModel().Message)
+	fmt.Println(getProductPresenter.ViewModel().Message)
+	fmt.Println(listProductsPresenter.ViewModel().Message)
 	fmt.Println(getOrderPresenter.ViewModel().Message)
 	fmt.Println(listOrdersPresenter.ViewModel().Message)
 	fmt.Println(getShipmentPresenter.ViewModel().Message)
