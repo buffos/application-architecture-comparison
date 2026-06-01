@@ -196,6 +196,7 @@ Architectures currently implemented in this repository:
 - `007` Convert quote to order: [007-convert-quote-to-order.md](onion-architecture/lessons/007-convert-quote-to-order.md)
 - `008` Order conversion with reservation: [008-order-conversion-with-reservation.md](onion-architecture/lessons/008-order-conversion-with-reservation.md)
 - `009` Payment gateway and order capture: [009-payment-gateway-and-order-capture.md](onion-architecture/lessons/009-payment-gateway-and-order-capture.md)
+- `010` Shipment creation after payment: [010-shipment-creation-after-payment.md](onion-architecture/lessons/010-shipment-creation-after-payment.md)
 
 ## How To Maintain This File
 

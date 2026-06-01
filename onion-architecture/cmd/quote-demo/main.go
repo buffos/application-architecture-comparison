@@ -16,6 +16,7 @@ func main() {
 	quoteRepository := memory.NewQuoteRepository()
 	productRepository := memory.NewProductRepository()
 	orderRepository := memory.NewOrderRepository()
+	shipmentRepository := memory.NewShipmentRepository()
 	inventoryReservation := memory.NewInventoryReservation()
 
 	if err := customerRepository.Save(domain.Customer{
@@ -56,6 +57,7 @@ func main() {
 	approveQuote := application.NewApproveQuoteService(quoteRepository)
 	convertQuote := application.NewConvertQuoteToOrderService(quoteRepository, orderRepository, inventoryReservation)
 	capturePayment := application.NewCapturePaymentService(orderRepository, paymentGateway)
+	createShipment := application.NewCreateShipmentService(orderRepository, shipmentRepository)
 
 	result, err := service.Execute(application.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -112,6 +114,15 @@ func main() {
 	}
 
 	fmt.Printf("captured payment: order=%s quote=%s customer=%s status=%s lines=%d\n", paymentResult.OrderID, paymentResult.QuoteID, paymentResult.CustomerID, paymentResult.Status, paymentResult.LineCount)
+
+	shipmentResult, err := createShipment.Execute(application.CreateShipmentCommand{
+		OrderID: orderResult.OrderID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("created shipment: shipment=%s order=%s orderStatus=%s lines=%d\n", shipmentResult.ShipmentID, shipmentResult.OrderID, shipmentResult.OrderStatus, shipmentResult.LineCount)
 
 	details, err := getQuote.Execute(application.GetQuoteQuery{QuoteID: result.QuoteID})
 	if err != nil {
