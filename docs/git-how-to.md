@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(onion): complete lesson 005 approval policy boundary
+feat(onion): complete lesson 006 approve pending quote
 
 # Add tag
 
-git tag -a onion-005 -m "Onion Architecture Lesson 005"
-git push origin onion-005
+git tag -a onion-006 -m "Onion Architecture Lesson 006"
+git push origin onion-006
 
 or
 

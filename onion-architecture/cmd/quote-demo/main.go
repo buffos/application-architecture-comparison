@@ -32,11 +32,22 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if err := productRepository.Save(domain.Product{
+		SKU:       "sku-002",
+		Name:      "Custom Desk",
+		Category:  "CustomBuild",
+		Active:    true,
+		UnitPrice: 45000,
+	}); err != nil {
+		log.Fatal(err)
+	}
+
 	submissionPolicy := approval.NewCategoryPolicy()
 	service := application.NewCreateDraftQuoteService(quoteRepository, customerRepository)
 	getQuote := application.NewGetQuoteService(quoteRepository)
 	addQuoteLine := application.NewAddQuoteLineService(quoteRepository, productRepository)
 	submitQuote := application.NewSubmitQuoteService(quoteRepository, submissionPolicy)
+	approveQuote := application.NewApproveQuoteService(quoteRepository)
 
 	result, err := service.Execute(application.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -49,8 +60,8 @@ func main() {
 
 	lineResult, err := addQuoteLine.Execute(application.AddQuoteLineCommand{
 		QuoteID:    result.QuoteID,
-		ProductSKU: "sku-001",
-		Quantity:   2,
+		ProductSKU: "sku-002",
+		Quantity:   1,
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -66,6 +77,15 @@ func main() {
 	}
 
 	fmt.Printf("submitted quote: id=%s lines=%d items=%d status=%s\n", submitResult.QuoteID, submitResult.LineCount, submitResult.TotalItems, submitResult.Status)
+
+	approvalResult, err := approveQuote.Execute(application.ApproveQuoteCommand{
+		QuoteID: result.QuoteID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("approved quote: id=%s lines=%d items=%d status=%s\n", approvalResult.QuoteID, approvalResult.LineCount, approvalResult.TotalItems, approvalResult.Status)
 
 	details, err := getQuote.Execute(application.GetQuoteQuery{QuoteID: result.QuoteID})
 	if err != nil {
