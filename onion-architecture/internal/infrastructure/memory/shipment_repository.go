@@ -24,3 +24,29 @@ func (r *ShipmentRepository) Save(shipment domain.Shipment) error {
 	r.shipments[shipment.ID] = shipment
 	return nil
 }
+
+func (r *ShipmentRepository) FindByID(id string) (domain.Shipment, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	shipment, ok := r.shipments[id]
+	if !ok {
+		return domain.Shipment{}, domain.ErrShipmentNotFound
+	}
+
+	return shipment, nil
+}
+
+func (r *ShipmentRepository) ListByOrderID(orderID string) ([]domain.Shipment, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	result := make([]domain.Shipment, 0)
+	for _, shipment := range r.shipments {
+		if shipment.OrderID == orderID {
+			result = append(result, shipment)
+		}
+	}
+
+	return result, nil
+}
