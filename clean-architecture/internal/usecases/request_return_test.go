@@ -46,7 +46,7 @@ func (o *stubRequestReturnOutput) Present(output RequestReturnOutput) error {
 	return nil
 }
 
-func TestRequestReturnInteractorCreatesRefundedReturnForShippedOrder(t *testing.T) {
+func TestRequestReturnInteractorCreatesRequestedReturnForShippedOrder(t *testing.T) {
 	orders := &stubOrderEditor{
 		order: entities.Order{
 			ID:            "order-001",
@@ -59,10 +59,9 @@ func TestRequestReturnInteractorCreatesRefundedReturnForShippedOrder(t *testing.
 		},
 	}
 	returns := &stubReturnRequestWriter{}
-	restock := &stubInventoryRestock{}
 	output := &stubRequestReturnOutput{}
 
-	interactor := NewRequestReturnInteractor(orders, returns, stubRefundGateway{}, restock, output)
+	interactor := NewRequestReturnInteractor(orders, returns, output)
 
 	err := interactor.Execute(RequestReturnInput{OrderID: "order-001", Reason: "damaged item"})
 	if err != nil {
@@ -73,16 +72,8 @@ func TestRequestReturnInteractorCreatesRefundedReturnForShippedOrder(t *testing.
 		t.Fatalf("expected order id order-001, got %s", returns.saved.OrderID)
 	}
 
-	if returns.saved.Status != entities.ReturnRequestStatusRefunded {
-		t.Fatalf("expected status %s, got %s", entities.ReturnRequestStatusRefunded, returns.saved.Status)
-	}
-
-	if len(restock.items) != 1 {
-		t.Fatalf("expected 1 restock item, got %d", len(restock.items))
-	}
-
-	if restock.items[0].SKU != "CHAIR-001" {
-		t.Fatalf("expected restocked sku CHAIR-001, got %s", restock.items[0].SKU)
+	if returns.saved.Status != entities.ReturnRequestStatusRequested {
+		t.Fatalf("expected status %s, got %s", entities.ReturnRequestStatusRequested, returns.saved.Status)
 	}
 }
 
@@ -96,10 +87,9 @@ func TestRequestReturnInteractorRejectsNonShippedOrder(t *testing.T) {
 		},
 	}
 	returns := &stubReturnRequestWriter{}
-	restock := &stubInventoryRestock{}
 	output := &stubRequestReturnOutput{}
 
-	interactor := NewRequestReturnInteractor(orders, returns, stubRefundGateway{}, restock, output)
+	interactor := NewRequestReturnInteractor(orders, returns, output)
 
 	err := interactor.Execute(RequestReturnInput{OrderID: "order-002", Reason: "changed mind"})
 	if err != entities.ErrOrderNotReturnable {

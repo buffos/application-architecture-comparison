@@ -24,3 +24,15 @@ func (g *ReturnRequestGateway) Save(request entities.ReturnRequest) error {
 	g.requests[request.ID] = request
 	return nil
 }
+
+func (g *ReturnRequestGateway) FindByID(id string) (entities.ReturnRequest, error) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	request, ok := g.requests[id]
+	if !ok {
+		return entities.ReturnRequest{}, entities.ErrQuoteNotFound
+	}
+
+	return request, nil
+}

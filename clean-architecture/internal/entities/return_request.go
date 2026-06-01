@@ -5,6 +5,9 @@ import (
 	"sync/atomic"
 )
 
+const ReturnRequestStatusRequested = "Requested"
+const ReturnRequestStatusAccepted = "Accepted"
+const ReturnRequestStatusRejected = "Rejected"
 const ReturnRequestStatusRefunded = "Refunded"
 
 var returnSequence uint64
@@ -29,6 +32,33 @@ func NewReturnRequestFromShippedOrder(order Order, reason string) (ReturnRequest
 		ID:      fmt.Sprintf("return-%03d", id),
 		OrderID: order.ID,
 		Reason:  reason,
-		Status:  ReturnRequestStatusRefunded,
+		Status:  ReturnRequestStatusRequested,
 	}, nil
+}
+
+func (r *ReturnRequest) Accept() error {
+	if r.Status != ReturnRequestStatusRequested {
+		return ErrQuoteCannotTransition
+	}
+
+	r.Status = ReturnRequestStatusAccepted
+	return nil
+}
+
+func (r *ReturnRequest) Reject() error {
+	if r.Status != ReturnRequestStatusRequested {
+		return ErrQuoteCannotTransition
+	}
+
+	r.Status = ReturnRequestStatusRejected
+	return nil
+}
+
+func (r *ReturnRequest) MarkRefunded() error {
+	if r.Status != ReturnRequestStatusAccepted {
+		return ErrQuoteCannotTransition
+	}
+
+	r.Status = ReturnRequestStatusRefunded
+	return nil
 }
