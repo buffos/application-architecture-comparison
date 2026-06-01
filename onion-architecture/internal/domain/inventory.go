@@ -8,3 +8,8 @@ type InventoryReservationItem struct {
 	ProductSKU string
 	Quantity   int
 }
+
+type InventoryReleaseItem struct {
+	ProductSKU string
+	Quantity   int
+}

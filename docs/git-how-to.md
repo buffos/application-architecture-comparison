@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(onion): complete lesson 010 shipment creation after payment
+feat(onion): complete lesson 011 order cancellation and release
 
 # Add tag
 
-git tag -a onion-010 -m "Onion Architecture Lesson 010"
-git push origin onion-010
+git tag -a onion-011 -m "Onion Architecture Lesson 011"
+git push origin onion-011
 
 or
 

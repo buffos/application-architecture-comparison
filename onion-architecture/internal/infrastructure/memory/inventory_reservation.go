@@ -40,3 +40,14 @@ func (r *InventoryReservation) Reserve(items []domain.InventoryReservationItem) 
 
 	return nil
 }
+
+func (r *InventoryReservation) Release(items []domain.InventoryReleaseItem) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, item := range items {
+		r.stock[item.ProductSKU] += item.Quantity
+	}
+
+	return nil
+}
