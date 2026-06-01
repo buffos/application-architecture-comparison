@@ -13,3 +13,8 @@ type InventoryReleaseItem struct {
 	ProductSKU string
 	Quantity   int
 }
+
+type InventoryRestockItem struct {
+	ProductSKU string
+	Quantity   int
+}

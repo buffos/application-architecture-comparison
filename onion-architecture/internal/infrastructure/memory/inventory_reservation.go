@@ -51,3 +51,14 @@ func (r *InventoryReservation) Release(items []domain.InventoryReleaseItem) erro
 
 	return nil
 }
+
+func (r *InventoryReservation) Restock(items []domain.InventoryRestockItem) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, item := range items {
+		r.stock[item.ProductSKU] += item.Quantity
+	}
+
+	return nil
+}

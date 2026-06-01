@@ -199,6 +199,7 @@ Architectures currently implemented in this repository:
 - `010` Shipment creation after payment: [010-shipment-creation-after-payment.md](onion-architecture/lessons/010-shipment-creation-after-payment.md)
 - `011` Order cancellation and release: [011-order-cancellation-and-release.md](onion-architecture/lessons/011-order-cancellation-and-release.md)
 - `012` Return request and refund boundary: [012-return-request-and-refund-boundary.md](onion-architecture/lessons/012-return-request-and-refund-boundary.md)
+- `013` Return restocking boundary: [013-return-restocking-boundary.md](onion-architecture/lessons/013-return-restocking-boundary.md)
 
 ## How To Maintain This File
 

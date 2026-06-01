@@ -21,17 +21,23 @@ type RefundGateway interface {
 	Refund(order domain.Order) error
 }
 
-type RequestReturnService struct {
-	orders  OrderRepository
-	returns ReturnRequestStore
-	refunds RefundGateway
+type InventoryRestock interface {
+	Restock(items []domain.InventoryRestockItem) error
 }
 
-func NewRequestReturnService(orders OrderRepository, returns ReturnRequestStore, refunds RefundGateway) RequestReturnService {
+type RequestReturnService struct {
+	orders   OrderRepository
+	returns  ReturnRequestStore
+	refunds  RefundGateway
+	restock  InventoryRestock
+}
+
+func NewRequestReturnService(orders OrderRepository, returns ReturnRequestStore, refunds RefundGateway, restock InventoryRestock) RequestReturnService {
 	return RequestReturnService{
 		orders:  orders,
 		returns: returns,
 		refunds: refunds,
+		restock: restock,
 	}
 }
 
@@ -46,6 +52,18 @@ func (s RequestReturnService) Execute(command RequestReturnCommand) (RequestRetu
 	}
 
 	if err := s.refunds.Refund(order); err != nil {
+		return RequestReturnResult{}, err
+	}
+
+	items := make([]domain.InventoryRestockItem, 0, len(order.Lines))
+	for _, line := range order.Lines {
+		items = append(items, domain.InventoryRestockItem{
+			ProductSKU: line.ProductSKU,
+			Quantity:   line.Quantity,
+		})
+	}
+
+	if err := s.restock.Restock(items); err != nil {
 		return RequestReturnResult{}, err
 	}
 

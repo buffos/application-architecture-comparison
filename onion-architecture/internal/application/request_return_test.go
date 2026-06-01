@@ -23,6 +23,20 @@ func (g stubRefundGateway) Refund(order domain.Order) error {
 	return g.err
 }
 
+type stubInventoryRestock struct {
+	items []domain.InventoryRestockItem
+	err   error
+}
+
+func (s *stubInventoryRestock) Restock(items []domain.InventoryRestockItem) error {
+	if s.err != nil {
+		return s.err
+	}
+
+	s.items = items
+	return nil
+}
+
 func TestRequestReturnServiceCreatesRefundedReturnForShippedOrder(t *testing.T) {
 	orders := &stubOrderRepository{
 		order: domain.Order{
@@ -33,8 +47,9 @@ func TestRequestReturnServiceCreatesRefundedReturnForShippedOrder(t *testing.T) 
 		},
 	}
 	returns := &stubReturnRequestStore{}
+	restock := &stubInventoryRestock{}
 
-	service := NewRequestReturnService(orders, returns, stubRefundGateway{})
+	service := NewRequestReturnService(orders, returns, stubRefundGateway{}, restock)
 
 	result, err := service.Execute(RequestReturnCommand{
 		OrderID: "order-001",
@@ -51,6 +66,10 @@ func TestRequestReturnServiceCreatesRefundedReturnForShippedOrder(t *testing.T) 
 	if returns.saved.OrderID != "order-001" {
 		t.Fatalf("expected saved order id order-001, got %s", returns.saved.OrderID)
 	}
+
+	if len(restock.items) != 0 {
+		t.Fatalf("expected no restock items for empty order lines, got %d", len(restock.items))
+	}
 }
 
 func TestRequestReturnServiceRejectsNonShippedOrder(t *testing.T) {
@@ -63,8 +82,9 @@ func TestRequestReturnServiceRejectsNonShippedOrder(t *testing.T) {
 		},
 	}
 	returns := &stubReturnRequestStore{}
+	restock := &stubInventoryRestock{}
 
-	service := NewRequestReturnService(orders, returns, stubRefundGateway{})
+	service := NewRequestReturnService(orders, returns, stubRefundGateway{}, restock)
 
 	_, err := service.Execute(RequestReturnCommand{
 		OrderID: "order-001",
@@ -72,5 +92,45 @@ func TestRequestReturnServiceRejectsNonShippedOrder(t *testing.T) {
 	})
 	if err != domain.ErrOrderNotReturnable {
 		t.Fatalf("expected %v, got %v", domain.ErrOrderNotReturnable, err)
+	}
+}
+
+func TestRequestReturnServiceRestocksInventoryFromReturnedLines(t *testing.T) {
+	orders := &stubOrderRepository{
+		order: domain.Order{
+			ID:         "order-001",
+			QuoteID:    "quote-001",
+			CustomerID: "customer-001",
+			Status:     domain.OrderStatusShipped,
+			Lines: []domain.OrderLine{
+				{
+					ProductSKU:      "sku-002",
+					ProductName:     "Custom Desk",
+					ProductCategory: "CustomBuild",
+					Quantity:        2,
+					UnitPrice:       45000,
+				},
+			},
+		},
+	}
+	returns := &stubReturnRequestStore{}
+	restock := &stubInventoryRestock{}
+
+	service := NewRequestReturnService(orders, returns, stubRefundGateway{}, restock)
+
+	_, err := service.Execute(RequestReturnCommand{
+		OrderID: "order-001",
+		Reason:  "damaged on arrival",
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(restock.items) != 1 {
+		t.Fatalf("expected one restock item, got %d", len(restock.items))
+	}
+
+	if restock.items[0].Quantity != 2 {
+		t.Fatalf("expected restock quantity 2, got %d", restock.items[0].Quantity)
 	}
 }
