@@ -17,3 +17,12 @@ func (c RequestReturnController) Handle(orderID string, reason string, requested
 		RequestedBy: requestedBy,
 	})
 }
+
+func (c RequestReturnController) HandlePartial(orderID string, reason string, lines []usecases.RequestReturnLineInput, requestedBy string) error {
+	return c.useCase.Execute(usecases.RequestReturnInput{
+		OrderID:     orderID,
+		Reason:      reason,
+		Lines:       lines,
+		RequestedBy: requestedBy,
+	})
+}

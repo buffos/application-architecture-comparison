@@ -21,7 +21,7 @@ type stubRefundGateway struct {
 	calls int
 }
 
-func (g *stubRefundGateway) Refund(order entities.Order) error {
+func (g *stubRefundGateway) Refund(order entities.Order, request entities.ReturnRequest) error {
 	g.calls++
 	return g.err
 }
@@ -83,7 +83,7 @@ func TestRequestReturnInteractorCreatesRequestedReturnForShippedOrder(t *testing
 			SourceQuoteID: "quote-001",
 			Status:        entities.OrderStatusShipped,
 			Lines: []entities.OrderLine{
-				{SKU: "CHAIR-001", ProductName: "Office Chair", Quantity: 2},
+				{SKU: "CHAIR-001", ProductName: "Office Chair", Quantity: 2, ShippedQuantity: 2},
 			},
 		},
 	}
@@ -108,6 +108,45 @@ func TestRequestReturnInteractorCreatesRequestedReturnForShippedOrder(t *testing
 
 	if returns.saved.RequestedBy != "customer-001" {
 		t.Fatalf("expected requester customer-001, got %s", returns.saved.RequestedBy)
+	}
+}
+
+func TestRequestReturnInteractorCreatesPartialReturnForShippedQuantity(t *testing.T) {
+	orders := &stubOrderEditor{
+		order: entities.Order{
+			ID:            "order-003",
+			CustomerID:    "customer-001",
+			SourceQuoteID: "quote-001",
+			Status:        entities.OrderStatusPartiallyShipped,
+			Lines: []entities.OrderLine{
+				{SKU: "CHAIR-001", ProductName: "Office Chair", Quantity: 5, ShippedQuantity: 3, ReturnedQuantity: 1},
+			},
+		},
+	}
+	returns := &stubReturnRequestWriter{}
+	output := &stubRequestReturnOutput{}
+	clock := stubClock{now: time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC)}
+
+	interactor := NewRequestReturnInteractor(orders, returns, clock, output)
+
+	err := interactor.Execute(RequestReturnInput{
+		OrderID: "order-003",
+		Reason:  "wrong size",
+		Lines: []RequestReturnLineInput{
+			{SKU: "CHAIR-001", Quantity: 2},
+		},
+		RequestedBy: "customer-001",
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(returns.saved.Lines) != 1 {
+		t.Fatalf("expected 1 return line, got %d", len(returns.saved.Lines))
+	}
+
+	if returns.saved.Lines[0].Quantity != 2 {
+		t.Fatalf("expected return quantity 2, got %d", returns.saved.Lines[0].Quantity)
 	}
 }
 

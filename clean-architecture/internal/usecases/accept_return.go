@@ -29,7 +29,7 @@ type ReturnRequestEditor interface {
 }
 
 type RefundGateway interface {
-	Refund(order entities.Order) error
+	Refund(order entities.Order, request entities.ReturnRequest) error
 }
 
 type InventoryRestock interface {
@@ -100,12 +100,12 @@ func (uc AcceptReturnInteractor) Execute(input AcceptReturnInput) error {
 		return err
 	}
 
-	if err := uc.refunds.Refund(order); err != nil {
+	if err := uc.refunds.Refund(order, request); err != nil {
 		return err
 	}
 
-	items := make([]entities.InventoryReservationItem, 0, len(order.Lines))
-	for _, line := range order.Lines {
+	items := make([]entities.InventoryReservationItem, 0, len(request.Lines))
+	for _, line := range request.Lines {
 		items = append(items, entities.InventoryReservationItem{
 			SKU:      line.SKU,
 			Quantity: line.Quantity,
@@ -120,7 +120,15 @@ func (uc AcceptReturnInteractor) Execute(input AcceptReturnInput) error {
 		return err
 	}
 
+	if err := order.ApplyReturn(request.Lines); err != nil {
+		return err
+	}
+
 	if err := uc.returns.Save(request); err != nil {
+		return err
+	}
+
+	if err := uc.orders.Save(order); err != nil {
 		return err
 	}
 

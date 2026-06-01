@@ -3,9 +3,15 @@ package usecases
 import "clean-architecture/internal/entities"
 
 type RequestReturnInput struct {
-	OrderID string
-	Reason  string
+	OrderID     string
+	Reason      string
+	Lines       []RequestReturnLineInput
 	RequestedBy string
+}
+
+type RequestReturnLineInput struct {
+	SKU      string
+	Quantity int
 }
 
 type RequestReturnOutput struct {
@@ -27,10 +33,10 @@ type ReturnRequestWriter interface {
 }
 
 type RequestReturnInteractor struct {
-	orders   OrderEditor
-	returns  ReturnRequestWriter
-	clock    Clock
-	output   RequestReturnOutputBoundary
+	orders  OrderEditor
+	returns ReturnRequestWriter
+	clock   Clock
+	output  RequestReturnOutputBoundary
 }
 
 func NewRequestReturnInteractor(orders OrderEditor, returns ReturnRequestWriter, clock Clock, output RequestReturnOutputBoundary) RequestReturnInteractor {
@@ -48,7 +54,24 @@ func (uc RequestReturnInteractor) Execute(input RequestReturnInput) error {
 		return err
 	}
 
-	request, err := entities.NewReturnRequestFromShippedOrder(order, input.Reason, uc.clock.Now(), input.RequestedBy)
+	requestLines := make([]entities.ReturnRequestLine, 0, len(input.Lines))
+	for _, line := range input.Lines {
+		productName := ""
+		for _, orderLine := range order.Lines {
+			if orderLine.SKU == line.SKU {
+				productName = orderLine.ProductName
+				break
+			}
+		}
+
+		requestLines = append(requestLines, entities.ReturnRequestLine{
+			SKU:         line.SKU,
+			ProductName: productName,
+			Quantity:    line.Quantity,
+		})
+	}
+
+	request, err := entities.NewReturnRequestFromShippedOrder(order, input.Reason, requestLines, uc.clock.Now(), input.RequestedBy)
 	if err != nil {
 		return err
 	}

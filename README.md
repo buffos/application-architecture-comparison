@@ -177,6 +177,7 @@ Architectures currently implemented in this repository:
 - `028` Orders awaiting approval report: [028-orders-awaiting-approval-report.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/028-orders-awaiting-approval-report.md:1)
 - `029` Payment review workflow: [029-payment-review-workflow.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/029-payment-review-workflow.md:1)
 - `030` Partial shipment support: [030-partial-shipment-support.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/030-partial-shipment-support.md:1)
+- `031` Partial returns by line: [031-partial-returns-by-line.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/031-partial-returns-by-line.md:1)
 
 ## How To Maintain This File
 

@@ -17,10 +17,17 @@ var returnSequence uint64
 var ErrOrderNotReturnable = ErrQuoteCannotTransition
 var ErrActorRequired = errors.New("actor is required")
 
+type ReturnRequestLine struct {
+	SKU         string
+	ProductName string
+	Quantity    int
+}
+
 type ReturnRequest struct {
 	ID          string
 	OrderID     string
 	Reason      string
+	Lines       []ReturnRequestLine
 	Status      string
 	RequestedAt time.Time
 	RequestedBy string
@@ -29,12 +36,58 @@ type ReturnRequest struct {
 	ReviewNote  string
 }
 
-func NewReturnRequestFromShippedOrder(order Order, reason string, requestedAt time.Time, requestedBy string) (ReturnRequest, error) {
-	if order.Status != OrderStatusShipped {
+func NewReturnRequestFromShippedOrder(order Order, reason string, lines []ReturnRequestLine, requestedAt time.Time, requestedBy string) (ReturnRequest, error) {
+	if order.Status != OrderStatusShipped && order.Status != OrderStatusPartiallyShipped {
 		return ReturnRequest{}, ErrOrderNotReturnable
 	}
 	if requestedBy == "" {
 		return ReturnRequest{}, ErrActorRequired
+	}
+
+	requestLines := lines
+	if len(requestLines) == 0 {
+		requestLines = make([]ReturnRequestLine, 0, len(order.Lines))
+		for _, line := range order.Lines {
+			returnable := line.ShippedQuantity - line.ReturnedQuantity
+			if returnable <= 0 {
+				continue
+			}
+
+			requestLines = append(requestLines, ReturnRequestLine{
+				SKU:         line.SKU,
+				ProductName: line.ProductName,
+				Quantity:    returnable,
+			})
+		}
+	}
+
+	if len(requestLines) == 0 {
+		return ReturnRequest{}, ErrOrderNotReturnable
+	}
+
+	for _, requestLine := range requestLines {
+		if requestLine.Quantity <= 0 {
+			return ReturnRequest{}, ErrQuoteCannotTransition
+		}
+
+		matched := false
+		for _, orderLine := range order.Lines {
+			if orderLine.SKU != requestLine.SKU {
+				continue
+			}
+
+			returnable := orderLine.ShippedQuantity - orderLine.ReturnedQuantity
+			if requestLine.Quantity > returnable {
+				return ReturnRequest{}, ErrQuoteCannotTransition
+			}
+
+			matched = true
+			break
+		}
+
+		if !matched {
+			return ReturnRequest{}, ErrQuoteCannotTransition
+		}
 	}
 
 	id := atomic.AddUint64(&returnSequence, 1)
@@ -43,6 +96,7 @@ func NewReturnRequestFromShippedOrder(order Order, reason string, requestedAt ti
 		ID:          fmt.Sprintf("return-%03d", id),
 		OrderID:     order.ID,
 		Reason:      reason,
+		Lines:       requestLines,
 		Status:      ReturnRequestStatusRequested,
 		RequestedAt: requestedAt,
 		RequestedBy: requestedBy,

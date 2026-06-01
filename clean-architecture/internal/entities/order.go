@@ -22,6 +22,7 @@ type OrderLine struct {
 	ProductName      string
 	Quantity         int
 	ShippedQuantity  int
+	ReturnedQuantity int
 	UnitPrice        int
 	LineTotal        int
 	ReturnWindowDays int
@@ -185,5 +186,53 @@ func (o *Order) Cancel() error {
 	}
 
 	o.Status = OrderStatusCancelled
+	return nil
+}
+
+func (o *Order) ApplyReturn(lines []ReturnRequestLine) error {
+	if o.Status != OrderStatusShipped && o.Status != OrderStatusPartiallyShipped {
+		return ErrQuoteCannotTransition
+	}
+
+	if len(lines) == 0 {
+		return ErrQuoteCannotTransition
+	}
+
+	for _, returnLine := range lines {
+		if returnLine.Quantity <= 0 {
+			return ErrQuoteCannotTransition
+		}
+
+		matched := false
+		for idx := range o.Lines {
+			orderLine := &o.Lines[idx]
+			if orderLine.SKU != returnLine.SKU {
+				continue
+			}
+
+			returnable := orderLine.ShippedQuantity - orderLine.ReturnedQuantity
+			if returnLine.Quantity > returnable {
+				return ErrQuoteCannotTransition
+			}
+
+			matched = true
+			break
+		}
+
+		if !matched {
+			return ErrQuoteCannotTransition
+		}
+	}
+
+	for _, returnLine := range lines {
+		for idx := range o.Lines {
+			orderLine := &o.Lines[idx]
+			if orderLine.SKU == returnLine.SKU {
+				orderLine.ReturnedQuantity += returnLine.Quantity
+				break
+			}
+		}
+	}
+
 	return nil
 }

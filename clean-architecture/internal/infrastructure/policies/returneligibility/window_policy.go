@@ -15,13 +15,27 @@ func (p WindowPolicy) CanAccept(order entities.Order, request entities.ReturnReq
 		return false, nil
 	}
 
-	for _, line := range order.Lines {
-		if line.ReturnWindowDays <= 0 {
-			return false, nil
+	for _, requestLine := range request.Lines {
+		matched := false
+		for _, orderLine := range order.Lines {
+			if orderLine.SKU != requestLine.SKU {
+				continue
+			}
+
+			if orderLine.ReturnWindowDays <= 0 {
+				return false, nil
+			}
+
+			deadline := order.ShippedAt.AddDate(0, 0, orderLine.ReturnWindowDays)
+			if request.RequestedAt.After(deadline) {
+				return false, nil
+			}
+
+			matched = true
+			break
 		}
 
-		deadline := order.ShippedAt.AddDate(0, 0, line.ReturnWindowDays)
-		if request.RequestedAt.After(deadline) {
+		if !matched {
 			return false, nil
 		}
 	}

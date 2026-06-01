@@ -66,7 +66,7 @@ func TestRequestReturnInteractorCreatesRequestedReturn(t *testing.T) {
 			Status:        entities.OrderStatusShipped,
 			ShippedAt:     timePtr(time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)),
 			Lines: []entities.OrderLine{
-				{SKU: "CHAIR-001", Quantity: 2, ReturnWindowDays: 30},
+				{SKU: "CHAIR-001", Quantity: 2, ShippedQuantity: 2, ReturnWindowDays: 30},
 			},
 		},
 	}
@@ -99,6 +99,9 @@ func TestAcceptReturnInteractorRefundsAndRestocks(t *testing.T) {
 			Status:      entities.ReturnRequestStatusRequested,
 			RequestedAt: time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC),
 			RequestedBy: "customer-001",
+			Lines: []entities.ReturnRequestLine{
+				{SKU: "CHAIR-001", ProductName: "Office Chair", Quantity: 2},
+			},
 		},
 	}
 	orders := &stubOrderEditor{
@@ -109,7 +112,7 @@ func TestAcceptReturnInteractorRefundsAndRestocks(t *testing.T) {
 			Status:        entities.OrderStatusShipped,
 			ShippedAt:     timePtr(time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)),
 			Lines: []entities.OrderLine{
-				{SKU: "CHAIR-001", Quantity: 2, ReturnWindowDays: 30},
+				{SKU: "CHAIR-001", Quantity: 2, ShippedQuantity: 2, ReturnWindowDays: 30},
 			},
 		},
 	}
@@ -132,6 +135,9 @@ func TestAcceptReturnInteractorRefundsAndRestocks(t *testing.T) {
 	if len(restock.items) != 1 {
 		t.Fatalf("expected 1 restock item, got %d", len(restock.items))
 	}
+	if restock.items[0].Quantity != 2 {
+		t.Fatalf("expected restock quantity 2, got %d", restock.items[0].Quantity)
+	}
 
 	if returns.saved.ReviewedBy != "reviewer-001" {
 		t.Fatalf("expected reviewer reviewer-001, got %s", returns.saved.ReviewedBy)
@@ -140,6 +146,9 @@ func TestAcceptReturnInteractorRefundsAndRestocks(t *testing.T) {
 	if returns.saved.ProcessedBy != "finance-001" {
 		t.Fatalf("expected processor finance-001, got %s", returns.saved.ProcessedBy)
 	}
+	if orders.saved.Lines[0].ReturnedQuantity != 2 {
+		t.Fatalf("expected returned quantity 2, got %d", orders.saved.Lines[0].ReturnedQuantity)
+	}
 
 	if refunds.calls != 1 {
 		t.Fatalf("expected 1 refund call, got %d", refunds.calls)
@@ -147,6 +156,53 @@ func TestAcceptReturnInteractorRefundsAndRestocks(t *testing.T) {
 
 	if idempotency.records["accept-return:accept-001"] != "return-001" {
 		t.Fatal("expected idempotency record to be saved for accepted return")
+	}
+}
+
+func TestAcceptReturnInteractorRestocksOnlyAcceptedReturnLines(t *testing.T) {
+	returns := &stubReturnRequestEditor{
+		request: entities.ReturnRequest{
+			ID:          "return-006",
+			OrderID:     "order-006",
+			Reason:      "wrong size",
+			Status:      entities.ReturnRequestStatusRequested,
+			RequestedAt: time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC),
+			RequestedBy: "customer-001",
+			Lines: []entities.ReturnRequestLine{
+				{SKU: "CHAIR-001", ProductName: "Office Chair", Quantity: 2},
+			},
+		},
+	}
+	orders := &stubOrderEditor{
+		order: entities.Order{
+			ID:            "order-006",
+			CustomerID:    "customer-001",
+			SourceQuoteID: "quote-001",
+			Status:        entities.OrderStatusPartiallyShipped,
+			ShippedAt:     timePtr(time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)),
+			Lines: []entities.OrderLine{
+				{SKU: "CHAIR-001", Quantity: 5, ShippedQuantity: 4, ReturnedQuantity: 1, ReturnWindowDays: 30},
+			},
+		},
+	}
+	restock := &stubInventoryRestock{}
+	output := &stubAcceptReturnOutput{}
+	refunds := &stubRefundGateway{}
+	idempotency := &stubIdempotencyStore{}
+
+	interactor := NewAcceptReturnInteractor(idempotency, orders, returns, stubReturnEligibilityPolicy{allowed: true}, refunds, restock, output)
+
+	err := interactor.Execute(AcceptReturnInput{ReturnRequestID: "return-006", IdempotencyKey: "accept-006", ReviewedBy: "reviewer-001", ProcessedBy: "finance-001"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(restock.items) != 1 || restock.items[0].Quantity != 2 {
+		t.Fatalf("expected one restock item with quantity 2, got %+v", restock.items)
+	}
+
+	if orders.saved.Lines[0].ReturnedQuantity != 3 {
+		t.Fatalf("expected returned quantity 3, got %d", orders.saved.Lines[0].ReturnedQuantity)
 	}
 }
 
@@ -159,6 +215,9 @@ func TestAcceptReturnInteractorBlocksPolicyRejectedReturn(t *testing.T) {
 			Status:      entities.ReturnRequestStatusRequested,
 			RequestedAt: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC),
 			RequestedBy: "customer-001",
+			Lines: []entities.ReturnRequestLine{
+				{SKU: "CHAIR-001", ProductName: "Office Chair", Quantity: 2},
+			},
 		},
 	}
 	orders := &stubOrderEditor{
@@ -169,7 +228,7 @@ func TestAcceptReturnInteractorBlocksPolicyRejectedReturn(t *testing.T) {
 			Status:        entities.OrderStatusShipped,
 			ShippedAt:     timePtr(time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC)),
 			Lines: []entities.OrderLine{
-				{SKU: "CHAIR-001", Quantity: 2, ReturnWindowDays: 30},
+				{SKU: "CHAIR-001", Quantity: 2, ShippedQuantity: 2, ReturnWindowDays: 30},
 			},
 		},
 	}
@@ -201,6 +260,9 @@ func TestRejectReturnInteractorPreventsRefundAndRestock(t *testing.T) {
 			Reason:      "changed mind",
 			Status:      entities.ReturnRequestStatusRequested,
 			RequestedBy: "customer-001",
+			Lines: []entities.ReturnRequestLine{
+				{SKU: "CHAIR-001", ProductName: "Office Chair", Quantity: 1},
+			},
 		},
 	}
 	output := &stubRejectReturnOutput{}
@@ -239,6 +301,9 @@ func TestAcceptReturnInteractorReusesSavedResultOnDuplicateKey(t *testing.T) {
 			RequestedBy: "customer-001",
 			ReviewedBy:  "reviewer-001",
 			ProcessedBy: "finance-001",
+			Lines: []entities.ReturnRequestLine{
+				{SKU: "CHAIR-001", ProductName: "Office Chair", Quantity: 1},
+			},
 		},
 	}
 	orders := &stubOrderEditor{}
@@ -288,6 +353,9 @@ func TestRejectReturnInteractorReusesSavedResultOnDuplicateKey(t *testing.T) {
 			Status:     entities.ReturnRequestStatusRejected,
 			ReviewedBy: "reviewer-002",
 			ReviewNote: "damaged evidence missing",
+			Lines: []entities.ReturnRequestLine{
+				{SKU: "CHAIR-001", ProductName: "Office Chair", Quantity: 1},
+			},
 		},
 	}
 	output := &stubRejectReturnOutput{}

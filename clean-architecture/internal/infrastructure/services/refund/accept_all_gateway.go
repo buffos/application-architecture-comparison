@@ -8,6 +8,6 @@ func NewAcceptAllGateway() AcceptAllGateway {
 	return AcceptAllGateway{}
 }
 
-func (g AcceptAllGateway) Refund(order entities.Order) error {
+func (g AcceptAllGateway) Refund(order entities.Order, request entities.ReturnRequest) error {
 	return nil
 }
