@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(onion): complete lesson 033 why not stop at onion
+feat(modular-monolith): complete lesson 001 modular monolith skeleton
 
 # Add tag
 
-git tag -a onion-033 -m "Onion Architecture Lesson 033"
-git push origin onion-033
+git tag -a modular-monolith-001 -m "Modular Monolith Lesson 001"
+git push origin modular-monolith-001
 
 or
 

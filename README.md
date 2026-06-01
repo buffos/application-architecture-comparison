@@ -83,6 +83,7 @@ Architectures currently implemented in this repository:
 - Hexagonal Architecture / Ports and Adapters
 - Clean Architecture
 - Onion Architecture
+- Modular Monolith
 
 ## Lesson Index
 
@@ -220,6 +221,13 @@ Architectures currently implemented in this repository:
 - `031` Partial returns by line: [031-partial-returns-by-line.md](onion-architecture/lessons/031-partial-returns-by-line.md)
 - `032` Plugin pricing extension point: [032-plugin-pricing-extension-point.md](onion-architecture/lessons/032-plugin-pricing-extension-point.md)
 - `033` Why not stop at onion?: [033-why-not-stop-at-onion.md](onion-architecture/lessons/033-why-not-stop-at-onion.md)
+
+### Modular Monolith
+
+#### Lessons
+
+- `000` From onion to modular monolith: [000-from-onion-to-modular-monolith.md](modular-monolith/lessons/000-from-onion-to-modular-monolith.md)
+- `001` Modular monolith skeleton: [001-modular-monolith-skeleton.md](modular-monolith/lessons/001-modular-monolith-skeleton.md)
 
 ## How To Maintain This File
 
