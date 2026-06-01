@@ -149,6 +149,7 @@ Architectures currently implemented in this repository:
 - `000` From hexagonal to clean: [000-from-hexagonal-to-clean.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/000-from-hexagonal-to-clean.md:1)
 - `001` Clean architecture skeleton: [001-clean-architecture-skeleton.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/001-clean-architecture-skeleton.md:1)
 - `002` Query use case and presenter: [002-query-use-case-and-presenter.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/002-query-use-case-and-presenter.md:1)
+- `003` Add quote line with gateways: [003-add-quote-line-with-gateways.md](/abs/path/c:/Users/buffo/Code/architecture/01.application.architectures/clean-architecture/lessons/003-add-quote-line-with-gateways.md:1)
 
 ## How To Maintain This File
 

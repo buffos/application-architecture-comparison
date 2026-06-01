@@ -34,6 +34,9 @@ func TestGetQuoteInteractorLoadsQuoteAndPresentsIt(t *testing.T) {
 			ID:         "quote-123",
 			CustomerID: "customer-001",
 			Status:     entities.QuoteStatusDraft,
+			Lines: []entities.QuoteLine{
+				{SKU: "CHAIR-001", Quantity: 2},
+			},
 		},
 	}
 	output := &stubGetQuoteOutput{}
@@ -51,6 +54,10 @@ func TestGetQuoteInteractorLoadsQuoteAndPresentsIt(t *testing.T) {
 
 	if output.output.CustomerID != "customer-001" {
 		t.Fatalf("expected customer id customer-001, got %s", output.output.CustomerID)
+	}
+
+	if output.output.Lines != 1 {
+		t.Fatalf("expected 1 line, got %d", output.output.Lines)
 	}
 }
 

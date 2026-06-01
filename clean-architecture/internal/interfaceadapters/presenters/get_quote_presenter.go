@@ -11,6 +11,7 @@ type GetQuoteViewModel struct {
 	QuoteID    string
 	CustomerID string
 	Status     string
+	Lines      int
 }
 
 type GetQuotePresenter struct {
@@ -23,10 +24,11 @@ func NewGetQuotePresenter() *GetQuotePresenter {
 
 func (p *GetQuotePresenter) Present(output usecases.GetQuoteOutput) error {
 	p.viewModel = GetQuoteViewModel{
-		Message:    fmt.Sprintf("loaded quote: id=%s customer=%s status=%s", output.QuoteID, output.CustomerID, output.Status),
+		Message:    fmt.Sprintf("loaded quote: id=%s customer=%s lines=%d status=%s", output.QuoteID, output.CustomerID, output.Lines, output.Status),
 		QuoteID:    output.QuoteID,
 		CustomerID: output.CustomerID,
 		Status:     output.Status,
+		Lines:      output.Lines,
 	}
 
 	return nil

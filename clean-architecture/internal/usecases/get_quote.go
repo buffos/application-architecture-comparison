@@ -10,6 +10,7 @@ type GetQuoteOutput struct {
 	QuoteID    string
 	CustomerID string
 	Status     string
+	Lines      int
 }
 
 // GetQuoteInputBoundary is the interface the usecase implements
@@ -48,5 +49,6 @@ func (uc GetQuoteInteractor) Execute(input GetQuoteInput) error {
 		QuoteID:    quote.ID,
 		CustomerID: quote.CustomerID,
 		Status:     quote.Status,
+		Lines:      len(quote.Lines),
 	})
 }
