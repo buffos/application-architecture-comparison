@@ -13,7 +13,7 @@ func (p WindowPolicy) IsEligible(request domain.ReturnRequest, order domain.Orde
 		return false, nil
 	}
 
-	for _, line := range order.Lines {
+	for _, line := range request.Lines {
 		if line.ReturnWindowDays <= 0 {
 			return false, nil
 		}

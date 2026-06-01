@@ -46,6 +46,15 @@ func TestRequestReturnServiceCreatesRequestedReturnForShippedOrder(t *testing.T)
 			CustomerID: "customer-001",
 			Status:     domain.OrderStatusShipped,
 			ShippedAt:  time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC),
+			Lines: []domain.OrderLine{
+				{
+					ProductSKU:       "sku-002",
+					ProductCategory:  "CustomBuild",
+					Quantity:         1,
+					ShippedQuantity:  1,
+					ReturnWindowDays: 30,
+				},
+			},
 		},
 	}
 	returns := &stubReturnRequestStore{}
@@ -57,6 +66,9 @@ func TestRequestReturnServiceCreatesRequestedReturnForShippedOrder(t *testing.T)
 		OrderID:     "order-001",
 		Reason:      "damaged on arrival",
 		RequestedBy: "customer-001",
+		Lines: []RequestReturnLine{
+			{ProductSKU: "sku-002", Quantity: 1},
+		},
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -86,6 +98,13 @@ func TestRequestReturnServiceRejectsNonShippedOrder(t *testing.T) {
 			QuoteID:    "quote-001",
 			CustomerID: "customer-001",
 			Status:     domain.OrderStatusPaid,
+			Lines: []domain.OrderLine{
+				{
+					ProductSKU:      "sku-002",
+					ProductCategory: "CustomBuild",
+					Quantity:        1,
+				},
+			},
 		},
 	}
 	returns := &stubReturnRequestStore{}
@@ -97,6 +116,9 @@ func TestRequestReturnServiceRejectsNonShippedOrder(t *testing.T) {
 		OrderID:     "order-001",
 		Reason:      "changed mind",
 		RequestedBy: "customer-001",
+		Lines: []RequestReturnLine{
+			{ProductSKU: "sku-002", Quantity: 1},
+		},
 	})
 	if err != domain.ErrOrderNotReturnable {
 		t.Fatalf("expected %v, got %v", domain.ErrOrderNotReturnable, err)
@@ -109,6 +131,15 @@ func TestRequestReturnServiceRejectsMissingActor(t *testing.T) {
 			ID:        "order-001",
 			Status:    domain.OrderStatusShipped,
 			ShippedAt: time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC),
+			Lines: []domain.OrderLine{
+				{
+					ProductSKU:       "sku-002",
+					ProductCategory:  "CustomBuild",
+					Quantity:         1,
+					ShippedQuantity:  1,
+					ReturnWindowDays: 30,
+				},
+			},
 		},
 	}
 	returns := &stubReturnRequestStore{}
@@ -119,6 +150,9 @@ func TestRequestReturnServiceRejectsMissingActor(t *testing.T) {
 	_, err := service.Execute(RequestReturnCommand{
 		OrderID: "order-001",
 		Reason:  "damaged on arrival",
+		Lines: []RequestReturnLine{
+			{ProductSKU: "sku-002", Quantity: 1},
+		},
 	})
 	if err != domain.ErrActorRequired {
 		t.Fatalf("expected %v, got %v", domain.ErrActorRequired, err)

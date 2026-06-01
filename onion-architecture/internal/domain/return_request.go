@@ -19,11 +19,19 @@ const ReturnRequestStatusRefunded = "Refunded"
 
 var returnRequestSequence uint64
 
+type ReturnRequestLine struct {
+	ProductSKU       string
+	ProductCategory  string
+	Quantity         int
+	ReturnWindowDays int
+}
+
 type ReturnRequest struct {
 	ID          string
 	OrderID     string
 	Reason      string
 	Status      string
+	Lines       []ReturnRequestLine
 	RequestedAt time.Time
 	RequestedBy string
 	ReviewedBy  string
@@ -31,9 +39,13 @@ type ReturnRequest struct {
 	ReviewNote  string
 }
 
-func NewReturnRequest(orderID string, reason string, requestedAt time.Time, requestedBy string) (ReturnRequest, error) {
+func NewReturnRequest(orderID string, reason string, lines []ReturnRequestLine, requestedAt time.Time, requestedBy string) (ReturnRequest, error) {
 	if requestedBy == "" {
 		return ReturnRequest{}, ErrActorRequired
+	}
+
+	if len(lines) == 0 {
+		return ReturnRequest{}, ErrReturnRequestHasNoLines
 	}
 
 	id := atomic.AddUint64(&returnRequestSequence, 1)
@@ -43,6 +55,7 @@ func NewReturnRequest(orderID string, reason string, requestedAt time.Time, requ
 		OrderID:     orderID,
 		Reason:      reason,
 		Status:      ReturnRequestStatusRequested,
+		Lines:       append([]ReturnRequestLine(nil), lines...),
 		RequestedAt: requestedAt,
 		RequestedBy: requestedBy,
 	}, nil

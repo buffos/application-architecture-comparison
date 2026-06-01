@@ -3,10 +3,10 @@ package application
 import "onion-architecture/internal/domain"
 
 type ReturnRateByCategoryRow struct {
-	Category        string
-	ShippedQuantity int
+	Category         string
+	ShippedQuantity  int
 	ReturnedQuantity int
-	ReturnRate      float64
+	ReturnRate       float64
 }
 
 type ReturnRateByCategoryReportService struct {
@@ -27,6 +27,11 @@ func (s ReturnRateByCategoryReportService) Execute() ([]ReturnRateByCategoryRow,
 		return nil, err
 	}
 
+	partiallyShippedOrders, err := s.orders.ListByStatus(domain.OrderStatusPartiallyShipped)
+	if err != nil {
+		return nil, err
+	}
+
 	refundedReturns, err := s.returns.ListByStatus(domain.ReturnRequestStatusRefunded)
 	if err != nil {
 		return nil, err
@@ -38,27 +43,22 @@ func (s ReturnRateByCategoryReportService) Execute() ([]ReturnRateByCategoryRow,
 	}
 
 	byCategory := make(map[string]*totals)
-	ordersByID := make(map[string]domain.Order)
+	allShippedOrders := append([]domain.Order{}, shippedOrders...)
+	allShippedOrders = append(allShippedOrders, partiallyShippedOrders...)
 
-	for _, order := range shippedOrders {
-		ordersByID[order.ID] = order
+	for _, order := range allShippedOrders {
 		for _, line := range order.Lines {
 			entry := byCategory[line.ProductCategory]
 			if entry == nil {
 				entry = &totals{}
 				byCategory[line.ProductCategory] = entry
 			}
-			entry.shipped += line.Quantity
+			entry.shipped += line.ShippedQuantity
 		}
 	}
 
 	for _, request := range refundedReturns {
-		order, ok := ordersByID[request.OrderID]
-		if !ok {
-			continue
-		}
-
-		for _, line := range order.Lines {
+		for _, line := range request.Lines {
 			entry := byCategory[line.ProductCategory]
 			if entry == nil {
 				entry = &totals{}

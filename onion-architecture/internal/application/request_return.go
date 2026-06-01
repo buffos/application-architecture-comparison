@@ -6,6 +6,12 @@ type RequestReturnCommand struct {
 	OrderID     string
 	Reason      string
 	RequestedBy string
+	Lines       []RequestReturnLine
+}
+
+type RequestReturnLine struct {
+	ProductSKU string
+	Quantity   int
 }
 
 type RequestReturnResult struct {
@@ -43,7 +49,20 @@ func (s RequestReturnService) Execute(command RequestReturnCommand) (RequestRetu
 		return RequestReturnResult{}, err
 	}
 
-	request, err := domain.NewReturnRequest(order.ID, command.Reason, s.clock.Now(), command.RequestedBy)
+	requestedLines := make([]domain.ReturnRequestLine, 0, len(command.Lines))
+	for _, line := range command.Lines {
+		requestedLines = append(requestedLines, domain.ReturnRequestLine{
+			ProductSKU: line.ProductSKU,
+			Quantity:   line.Quantity,
+		})
+	}
+
+	resolvedLines, err := order.ResolveReturnLines(requestedLines)
+	if err != nil {
+		return RequestReturnResult{}, err
+	}
+
+	request, err := domain.NewReturnRequest(order.ID, command.Reason, resolvedLines, s.clock.Now(), command.RequestedBy)
 	if err != nil {
 		return RequestReturnResult{}, err
 	}

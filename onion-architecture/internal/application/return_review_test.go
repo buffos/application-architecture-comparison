@@ -33,13 +33,15 @@ func (s *stubInventoryRestock) Restock(items []domain.InventoryRestockItem) erro
 func TestAcceptReturnServiceRefundsAndRestocksAcceptedReturn(t *testing.T) {
 	orders := &stubOrderRepository{
 		order: domain.Order{
-			ID:         "order-001",
-			Status:     domain.OrderStatusShipped,
-			ShippedAt:  time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC),
+			ID:        "order-001",
+			Status:    domain.OrderStatusPartiallyShipped,
+			ShippedAt: time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC),
 			Lines: []domain.OrderLine{
 				{
 					ProductSKU:       "sku-002",
+					ProductCategory:  "CustomBuild",
 					Quantity:         2,
+					ShippedQuantity:  2,
 					ReturnWindowDays: 30,
 				},
 			},
@@ -53,6 +55,9 @@ func TestAcceptReturnServiceRefundsAndRestocksAcceptedReturn(t *testing.T) {
 			Reason:      "damaged on arrival",
 			RequestedAt: time.Date(2026, 6, 5, 10, 0, 0, 0, time.UTC),
 			RequestedBy: "customer-001",
+			Lines: []domain.ReturnRequestLine{
+				{ProductSKU: "sku-002", ProductCategory: "CustomBuild", Quantity: 2, ReturnWindowDays: 30},
+			},
 		},
 	}
 	restock := &stubInventoryRestock{}
@@ -137,13 +142,15 @@ func (p stubReturnEligibilityPolicy) IsEligible(request domain.ReturnRequest, or
 func TestAcceptReturnServiceLeavesRequestUnchangedWhenPolicyBlocksIt(t *testing.T) {
 	orders := &stubOrderRepository{
 		order: domain.Order{
-			ID:     "order-001",
-			Status: domain.OrderStatusShipped,
+			ID:        "order-001",
+			Status:    domain.OrderStatusPartiallyShipped,
 			ShippedAt: time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC),
 			Lines: []domain.OrderLine{
 				{
 					ProductSKU:       "sku-002",
+					ProductCategory:  "CustomBuild",
 					Quantity:         2,
+					ShippedQuantity:  2,
 					ReturnWindowDays: 30,
 				},
 			},
@@ -157,6 +164,9 @@ func TestAcceptReturnServiceLeavesRequestUnchangedWhenPolicyBlocksIt(t *testing.
 			Reason:      "outside return window",
 			RequestedAt: time.Date(2026, 7, 5, 10, 0, 0, 0, time.UTC),
 			RequestedBy: "customer-001",
+			Lines: []domain.ReturnRequestLine{
+				{ProductSKU: "sku-002", ProductCategory: "CustomBuild", Quantity: 2, ReturnWindowDays: 30},
+			},
 		},
 	}
 	restock := &stubInventoryRestock{}
@@ -188,12 +198,14 @@ func TestAcceptReturnServiceAppliesRealWindowPolicy(t *testing.T) {
 	orders := &stubOrderRepository{
 		order: domain.Order{
 			ID:        "order-002",
-			Status:    domain.OrderStatusShipped,
+			Status:    domain.OrderStatusPartiallyShipped,
 			ShippedAt: time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC),
 			Lines: []domain.OrderLine{
 				{
 					ProductSKU:       "sku-002",
+					ProductCategory:  "CustomBuild",
 					Quantity:         1,
+					ShippedQuantity:  1,
 					ReturnWindowDays: 30,
 				},
 			},
@@ -207,6 +219,9 @@ func TestAcceptReturnServiceAppliesRealWindowPolicy(t *testing.T) {
 			Reason:      "damaged on arrival",
 			RequestedAt: time.Date(2026, 6, 15, 10, 0, 0, 0, time.UTC),
 			RequestedBy: "customer-001",
+			Lines: []domain.ReturnRequestLine{
+				{ProductSKU: "sku-002", ProductCategory: "CustomBuild", Quantity: 1, ReturnWindowDays: 30},
+			},
 		},
 	}
 	restock := &stubInventoryRestock{}
@@ -234,12 +249,14 @@ func TestAcceptReturnServiceBlocksOutOfWindowReturn(t *testing.T) {
 	orders := &stubOrderRepository{
 		order: domain.Order{
 			ID:        "order-003",
-			Status:    domain.OrderStatusShipped,
+			Status:    domain.OrderStatusPartiallyShipped,
 			ShippedAt: time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC),
 			Lines: []domain.OrderLine{
 				{
 					ProductSKU:       "sku-002",
+					ProductCategory:  "CustomBuild",
 					Quantity:         1,
+					ShippedQuantity:  1,
 					ReturnWindowDays: 30,
 				},
 			},
@@ -253,6 +270,9 @@ func TestAcceptReturnServiceBlocksOutOfWindowReturn(t *testing.T) {
 			Reason:      "damaged on arrival",
 			RequestedAt: time.Date(2026, 7, 5, 10, 0, 0, 0, time.UTC),
 			RequestedBy: "customer-001",
+			Lines: []domain.ReturnRequestLine{
+				{ProductSKU: "sku-002", ProductCategory: "CustomBuild", Quantity: 1, ReturnWindowDays: 30},
+			},
 		},
 	}
 	restock := &stubInventoryRestock{}
@@ -294,12 +314,14 @@ func TestAcceptReturnServiceIsIdempotent(t *testing.T) {
 	orders := &stubOrderRepository{
 		order: domain.Order{
 			ID:        "order-004",
-			Status:    domain.OrderStatusShipped,
+			Status:    domain.OrderStatusPartiallyShipped,
 			ShippedAt: time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC),
 			Lines: []domain.OrderLine{
 				{
 					ProductSKU:       "sku-002",
+					ProductCategory:  "CustomBuild",
 					Quantity:         1,
+					ShippedQuantity:  1,
 					ReturnWindowDays: 30,
 				},
 			},
@@ -313,6 +335,9 @@ func TestAcceptReturnServiceIsIdempotent(t *testing.T) {
 			Reason:      "damaged on arrival",
 			RequestedAt: time.Date(2026, 6, 15, 10, 0, 0, 0, time.UTC),
 			RequestedBy: "customer-001",
+			Lines: []domain.ReturnRequestLine{
+				{ProductSKU: "sku-002", ProductCategory: "CustomBuild", Quantity: 1, ReturnWindowDays: 30},
+			},
 		},
 	}
 	restock := &stubInventoryRestock{}
@@ -358,6 +383,9 @@ func TestRejectReturnServiceIsIdempotent(t *testing.T) {
 			OrderID:     "order-005",
 			Status:      domain.ReturnRequestStatusRequested,
 			RequestedBy: "customer-001",
+			Lines: []domain.ReturnRequestLine{
+				{ProductSKU: "sku-002", ProductCategory: "CustomBuild", Quantity: 1, ReturnWindowDays: 30},
+			},
 		},
 	}
 	idempotency := &stubIdempotencyStore{entries: make(map[string]string)}

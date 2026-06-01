@@ -13,15 +13,15 @@ func TestReturnRateByCategoryReportServiceComputesCategoryMetrics(t *testing.T) 
 				ID:     "order-001",
 				Status: domain.OrderStatusShipped,
 				Lines: []domain.OrderLine{
-					{ProductCategory: "CustomBuild", Quantity: 2},
-					{ProductCategory: "Standard", Quantity: 1},
+					{ProductCategory: "CustomBuild", Quantity: 2, ShippedQuantity: 2},
+					{ProductCategory: "Standard", Quantity: 1, ShippedQuantity: 1},
 				},
 			},
 			{
 				ID:     "order-002",
 				Status: domain.OrderStatusShipped,
 				Lines: []domain.OrderLine{
-					{ProductCategory: "Standard", Quantity: 3},
+					{ProductCategory: "Standard", Quantity: 3, ShippedQuantity: 3},
 				},
 			},
 		},
@@ -33,6 +33,9 @@ func TestReturnRateByCategoryReportServiceComputesCategoryMetrics(t *testing.T) 
 				ID:      "return-001",
 				OrderID: "order-001",
 				Status:  domain.ReturnRequestStatusRefunded,
+				Lines: []domain.ReturnRequestLine{
+					{ProductSKU: "sku-001", ProductCategory: "CustomBuild", Quantity: 2, ReturnWindowDays: 30},
+				},
 			},
 		},
 	}

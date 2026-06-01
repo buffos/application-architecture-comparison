@@ -28,22 +28,22 @@ type AcceptReturnResult struct {
 }
 
 type AcceptReturnService struct {
-	orders  OrderRepository
-	returns ReturnRequestStore
-	policy  ReturnEligibilityPolicy
+	orders      OrderRepository
+	returns     ReturnRequestStore
+	policy      ReturnEligibilityPolicy
 	idempotency IdempotencyStore
-	refunds RefundGateway
-	restock InventoryRestock
+	refunds     RefundGateway
+	restock     InventoryRestock
 }
 
 func NewAcceptReturnService(orders OrderRepository, returns ReturnRequestStore, policy ReturnEligibilityPolicy, idempotency IdempotencyStore, refunds RefundGateway, restock InventoryRestock) AcceptReturnService {
 	return AcceptReturnService{
-		orders:  orders,
-		returns: returns,
-		policy:  policy,
+		orders:      orders,
+		returns:     returns,
+		policy:      policy,
 		idempotency: idempotency,
-		refunds: refunds,
-		restock: restock,
+		refunds:     refunds,
+		restock:     restock,
 	}
 }
 
@@ -91,8 +91,8 @@ func (s AcceptReturnService) Execute(command AcceptReturnCommand) (AcceptReturnR
 		return AcceptReturnResult{}, err
 	}
 
-	items := make([]domain.InventoryRestockItem, 0, len(order.Lines))
-	for _, line := range order.Lines {
+	items := make([]domain.InventoryRestockItem, 0, len(request.Lines))
+	for _, line := range request.Lines {
 		items = append(items, domain.InventoryRestockItem{
 			ProductSKU: line.ProductSKU,
 			Quantity:   line.Quantity,
@@ -103,7 +103,15 @@ func (s AcceptReturnService) Execute(command AcceptReturnCommand) (AcceptReturnR
 		return AcceptReturnResult{}, err
 	}
 
+	if err := order.ApplyReturn(request.Lines); err != nil {
+		return AcceptReturnResult{}, err
+	}
+
 	if err := request.MarkRefunded(command.ProcessedBy); err != nil {
+		return AcceptReturnResult{}, err
+	}
+
+	if err := s.orders.Save(order); err != nil {
 		return AcceptReturnResult{}, err
 	}
 

@@ -13,6 +13,10 @@ var ErrOrderNotPaymentReviewable = errors.New("order is not awaiting payment rev
 var ErrOrderNotShippable = errors.New("order is not shippable")
 var ErrOrderNotCancellable = errors.New("order is not cancellable")
 var ErrOrderNotReturnable = errors.New("order is not returnable")
+var ErrReturnLineNotFound = errors.New("return line not found")
+var ErrReturnQuantityMustBePositive = errors.New("return quantity must be positive")
+var ErrReturnQuantityExceedsReturnable = errors.New("return quantity exceeds returnable quantity")
+var ErrReturnRequestHasNoLines = errors.New("return request has no lines")
 
 const OrderStatusPendingPayment = "PendingPayment"
 const OrderStatusPaymentReview = "PaymentReview"
@@ -29,6 +33,7 @@ type OrderLine struct {
 	ProductCategory  string
 	Quantity         int
 	ShippedQuantity  int
+	ReturnedQuantity int
 	UnitPrice        int
 	ReturnWindowDays int
 }
@@ -160,8 +165,79 @@ func (o *Order) Cancel() error {
 }
 
 func (o Order) EnsureReturnable() error {
-	if o.Status != OrderStatusShipped {
+	if o.Status != OrderStatusShipped && o.Status != OrderStatusPartiallyShipped {
 		return ErrOrderNotReturnable
+	}
+
+	for _, line := range o.Lines {
+		if line.ShippedQuantity-line.ReturnedQuantity > 0 {
+			return nil
+		}
+	}
+
+	return ErrOrderNotReturnable
+}
+
+func (o Order) ResolveReturnLines(requested []ReturnRequestLine) ([]ReturnRequestLine, error) {
+	if err := o.EnsureReturnable(); err != nil {
+		return nil, err
+	}
+
+	if len(requested) == 0 {
+		return nil, ErrReturnRequestHasNoLines
+	}
+
+	remainingBySKU := make(map[string]int, len(o.Lines))
+	linesBySKU := make(map[string]OrderLine, len(o.Lines))
+	for _, line := range o.Lines {
+		remaining := line.ShippedQuantity - line.ReturnedQuantity
+		if remaining > 0 {
+			remainingBySKU[line.ProductSKU] = remaining
+			linesBySKU[line.ProductSKU] = line
+		}
+	}
+
+	accumulated := make(map[string]int)
+	result := make([]ReturnRequestLine, 0, len(requested))
+	for _, requestedLine := range requested {
+		if requestedLine.Quantity <= 0 {
+			return nil, ErrReturnQuantityMustBePositive
+		}
+
+		line, ok := linesBySKU[requestedLine.ProductSKU]
+		if !ok {
+			return nil, ErrReturnLineNotFound
+		}
+
+		accumulated[requestedLine.ProductSKU] += requestedLine.Quantity
+		if accumulated[requestedLine.ProductSKU] > remainingBySKU[requestedLine.ProductSKU] {
+			return nil, ErrReturnQuantityExceedsReturnable
+		}
+
+		result = append(result, ReturnRequestLine{
+			ProductSKU:       line.ProductSKU,
+			ProductCategory:  line.ProductCategory,
+			Quantity:         requestedLine.Quantity,
+			ReturnWindowDays: line.ReturnWindowDays,
+		})
+	}
+
+	return result, nil
+}
+
+func (o *Order) ApplyReturn(lines []ReturnRequestLine) error {
+	resolved, err := o.ResolveReturnLines(lines)
+	if err != nil {
+		return err
+	}
+
+	returnedBySKU := make(map[string]int, len(resolved))
+	for _, line := range resolved {
+		returnedBySKU[line.ProductSKU] += line.Quantity
+	}
+
+	for i := range o.Lines {
+		o.Lines[i].ReturnedQuantity += returnedBySKU[o.Lines[i].ProductSKU]
 	}
 
 	return nil
