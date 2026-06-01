@@ -215,6 +215,7 @@ Architectures currently implemented in this repository:
 - `026` Return rate by category report: [026-return-rate-by-category-report.md](onion-architecture/lessons/026-return-rate-by-category-report.md)
 - `027` Low stock items report: [027-low-stock-items-report.md](onion-architecture/lessons/027-low-stock-items-report.md)
 - `028` Orders awaiting approval report: [028-orders-awaiting-approval-report.md](onion-architecture/lessons/028-orders-awaiting-approval-report.md)
+- `029` Payment review workflow: [029-payment-review-workflow.md](onion-architecture/lessons/029-payment-review-workflow.md)
 
 ## How To Maintain This File
 

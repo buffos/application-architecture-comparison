@@ -1,10 +1,10 @@
 package application
 
 type QuoteConversionReport struct {
-	TotalQuotes      int
-	ApprovedQuotes   int
-	ConvertedQuotes  int
-	ConversionRate   float64
+	TotalQuotes     int
+	ApprovedQuotes  int
+	ConvertedQuotes int
+	ConversionRate  float64
 }
 
 type QuoteConversionReportService struct {
@@ -45,6 +45,11 @@ func (s QuoteConversionReportService) Execute() (QuoteConversionReport, error) {
 		return QuoteConversionReport{}, err
 	}
 
+	paymentReview, err := s.orders.ListByStatus("PaymentReview")
+	if err != nil {
+		return QuoteConversionReport{}, err
+	}
+
 	shipped, err := s.orders.ListByStatus("Shipped")
 	if err != nil {
 		return QuoteConversionReport{}, err
@@ -52,7 +57,7 @@ func (s QuoteConversionReportService) Execute() (QuoteConversionReport, error) {
 
 	totalQuotes := len(drafts)
 	approvedQuotes := len(approved) + len(pendingApproval)
-	convertedQuotes := len(pendingPayment) + len(paid) + len(shipped)
+	convertedQuotes := len(pendingPayment) + len(paymentReview) + len(paid) + len(shipped)
 
 	rate := 0.0
 	if approvedQuotes > 0 {

@@ -2,6 +2,9 @@ package application
 
 import "onion-architecture/internal/domain"
 
+const PaymentCaptureOutcomeApproved = "Approved"
+const PaymentCaptureOutcomeReview = "Review"
+
 type CapturePaymentCommand struct {
 	OrderID string
 }
@@ -20,11 +23,11 @@ type OrderRepository interface {
 }
 
 type PaymentGateway interface {
-	Capture(order domain.Order) error
+	Capture(order domain.Order) (string, error)
 }
 
 type CapturePaymentService struct {
-	orders  OrderRepository
+	orders   OrderRepository
 	payments PaymentGateway
 }
 
@@ -41,12 +44,22 @@ func (s CapturePaymentService) Execute(command CapturePaymentCommand) (CapturePa
 		return CapturePaymentResult{}, err
 	}
 
-	if err := s.payments.Capture(order); err != nil {
+	outcome, err := s.payments.Capture(order)
+	if err != nil {
 		return CapturePaymentResult{}, err
 	}
 
-	if err := order.MarkPaid(); err != nil {
-		return CapturePaymentResult{}, err
+	switch outcome {
+	case PaymentCaptureOutcomeApproved:
+		if err := order.MarkPaid(); err != nil {
+			return CapturePaymentResult{}, err
+		}
+	case PaymentCaptureOutcomeReview:
+		if err := order.MarkPaymentReview(); err != nil {
+			return CapturePaymentResult{}, err
+		}
+	default:
+		return CapturePaymentResult{}, domain.ErrOrderNotPayable
 	}
 
 	if err := s.orders.Save(order); err != nil {

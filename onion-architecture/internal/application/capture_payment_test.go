@@ -26,11 +26,12 @@ func (r *stubOrderRepository) Save(order domain.Order) error {
 }
 
 type stubPaymentGateway struct {
-	err error
+	outcome string
+	err     error
 }
 
-func (g stubPaymentGateway) Capture(order domain.Order) error {
-	return g.err
+func (g stubPaymentGateway) Capture(order domain.Order) (string, error) {
+	return g.outcome, g.err
 }
 
 func TestCapturePaymentServiceMarksPendingOrderPaid(t *testing.T) {
@@ -52,7 +53,7 @@ func TestCapturePaymentServiceMarksPendingOrderPaid(t *testing.T) {
 		},
 	}
 
-	service := NewCapturePaymentService(orders, stubPaymentGateway{})
+	service := NewCapturePaymentService(orders, stubPaymentGateway{outcome: PaymentCaptureOutcomeApproved})
 
 	result, err := service.Execute(CapturePaymentCommand{OrderID: "order-001"})
 	if err != nil {
@@ -78,10 +79,36 @@ func TestCapturePaymentServiceRejectsAlreadyPaidOrder(t *testing.T) {
 		},
 	}
 
-	service := NewCapturePaymentService(orders, stubPaymentGateway{})
+	service := NewCapturePaymentService(orders, stubPaymentGateway{outcome: PaymentCaptureOutcomeApproved})
 
 	_, err := service.Execute(CapturePaymentCommand{OrderID: "order-001"})
 	if err != domain.ErrOrderNotPayable {
 		t.Fatalf("expected %v, got %v", domain.ErrOrderNotPayable, err)
+	}
+}
+
+func TestCapturePaymentServiceMovesOrderToPaymentReview(t *testing.T) {
+	orders := &stubOrderRepository{
+		order: domain.Order{
+			ID:         "order-001",
+			QuoteID:    "quote-001",
+			CustomerID: "customer-001",
+			Status:     domain.OrderStatusPendingPayment,
+		},
+	}
+
+	service := NewCapturePaymentService(orders, stubPaymentGateway{outcome: PaymentCaptureOutcomeReview})
+
+	result, err := service.Execute(CapturePaymentCommand{OrderID: "order-001"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if result.Status != domain.OrderStatusPaymentReview {
+		t.Fatalf("expected status %s, got %s", domain.OrderStatusPaymentReview, result.Status)
+	}
+
+	if orders.saved.Status != domain.OrderStatusPaymentReview {
+		t.Fatalf("expected saved status %s, got %s", domain.OrderStatusPaymentReview, orders.saved.Status)
 	}
 }

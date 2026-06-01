@@ -57,6 +57,7 @@ func main() {
 	submissionPolicy := approval.NewCategoryPolicy()
 	_ = returneligibility.NewWindowPolicy()
 	paymentGateway := payment.NewAcceptAllGateway()
+	manualReviewGateway := payment.NewManualReviewGateway()
 	service := application.NewCreateDraftQuoteService(quoteRepository, customerRepository)
 	getQuote := application.NewGetQuoteService(quoteRepository)
 	addQuoteLine := application.NewAddQuoteLineService(quoteRepository, productRepository)
@@ -64,6 +65,7 @@ func main() {
 	approveQuote := application.NewApproveQuoteService(quoteRepository)
 	convertQuote := application.NewConvertQuoteToOrderService(quoteRepository, orderRepository, inventoryReservation)
 	capturePayment := application.NewCapturePaymentService(orderRepository, paymentGateway)
+	approvePaymentReview := application.NewApprovePaymentReviewService(orderRepository)
 	createShipment := application.NewCreateShipmentService(orderRepository, shipmentRepository, clock)
 	lowStockItemsReport := application.NewLowStockItemsReportService(inventoryReservation)
 	ordersAwaitingApprovalReport := application.NewOrdersAwaitingApprovalReportService(quoteRepository)
@@ -178,4 +180,60 @@ func main() {
 	}
 
 	fmt.Printf("orders awaiting approval: %v\n", approvalQueue)
+
+	reviewQuote, err := service.Execute(application.CreateDraftQuoteCommand{
+		CustomerID: "customer-001",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = addQuoteLine.Execute(application.AddQuoteLineCommand{
+		QuoteID:    reviewQuote.QuoteID,
+		ProductSKU: "sku-002",
+		Quantity:   1,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = submitQuote.Execute(application.SubmitQuoteCommand{
+		QuoteID: reviewQuote.QuoteID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = approveQuote.Execute(application.ApproveQuoteCommand{
+		QuoteID: reviewQuote.QuoteID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	reviewOrder, err := convertQuote.Execute(application.ConvertQuoteToOrderCommand{
+		QuoteID: reviewQuote.QuoteID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	reviewCapture := application.NewCapturePaymentService(orderRepository, manualReviewGateway)
+	reviewResult, err := reviewCapture.Execute(application.CapturePaymentCommand{
+		OrderID: reviewOrder.OrderID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("payment sent to review: order=%s status=%s\n", reviewResult.OrderID, reviewResult.Status)
+
+	reviewApproval, err := approvePaymentReview.Execute(application.ApprovePaymentReviewCommand{
+		OrderID: reviewOrder.OrderID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("payment review approved: order=%s status=%s\n", reviewApproval.OrderID, reviewApproval.Status)
 }

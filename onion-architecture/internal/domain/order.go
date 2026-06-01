@@ -9,11 +9,13 @@ import (
 
 var ErrOrderNotFound = errors.New("order not found")
 var ErrOrderNotPayable = errors.New("order is not payable")
+var ErrOrderNotPaymentReviewable = errors.New("order is not awaiting payment review")
 var ErrOrderNotShippable = errors.New("order is not shippable")
 var ErrOrderNotCancellable = errors.New("order is not cancellable")
 var ErrOrderNotReturnable = errors.New("order is not returnable")
 
 const OrderStatusPendingPayment = "PendingPayment"
+const OrderStatusPaymentReview = "PaymentReview"
 const OrderStatusPaid = "Paid"
 const OrderStatusShipped = "Shipped"
 const OrderStatusCancelled = "Cancelled"
@@ -21,11 +23,11 @@ const OrderStatusCancelled = "Cancelled"
 var orderSequence uint64
 
 type OrderLine struct {
-	ProductSKU      string
-	ProductName     string
-	ProductCategory string
-	Quantity        int
-	UnitPrice       int
+	ProductSKU       string
+	ProductName      string
+	ProductCategory  string
+	Quantity         int
+	UnitPrice        int
 	ReturnWindowDays int
 }
 
@@ -47,11 +49,11 @@ func NewOrderFromQuote(quote Quote) (Order, error) {
 	lines := make([]OrderLine, 0, len(quote.Lines))
 	for _, line := range quote.Lines {
 		lines = append(lines, OrderLine{
-			ProductSKU:      line.ProductSKU,
-			ProductName:     line.ProductName,
-			ProductCategory: line.ProductCategory,
-			Quantity:        line.Quantity,
-			UnitPrice:       line.UnitPrice,
+			ProductSKU:       line.ProductSKU,
+			ProductName:      line.ProductName,
+			ProductCategory:  line.ProductCategory,
+			Quantity:         line.Quantity,
+			UnitPrice:        line.UnitPrice,
 			ReturnWindowDays: line.ReturnWindowDays,
 		})
 	}
@@ -68,6 +70,24 @@ func NewOrderFromQuote(quote Quote) (Order, error) {
 func (o *Order) MarkPaid() error {
 	if o.Status != OrderStatusPendingPayment {
 		return ErrOrderNotPayable
+	}
+
+	o.Status = OrderStatusPaid
+	return nil
+}
+
+func (o *Order) MarkPaymentReview() error {
+	if o.Status != OrderStatusPendingPayment {
+		return ErrOrderNotPayable
+	}
+
+	o.Status = OrderStatusPaymentReview
+	return nil
+}
+
+func (o *Order) ApprovePaymentReview() error {
+	if o.Status != OrderStatusPaymentReview {
+		return ErrOrderNotPaymentReviewable
 	}
 
 	o.Status = OrderStatusPaid

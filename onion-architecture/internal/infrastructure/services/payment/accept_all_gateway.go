@@ -8,6 +8,6 @@ func NewAcceptAllGateway() AcceptAllGateway {
 	return AcceptAllGateway{}
 }
 
-func (g AcceptAllGateway) Capture(order domain.Order) error {
-	return nil
+func (g AcceptAllGateway) Capture(order domain.Order) (string, error) {
+	return "Approved", nil
 }

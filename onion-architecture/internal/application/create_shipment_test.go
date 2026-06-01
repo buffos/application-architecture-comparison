@@ -81,3 +81,23 @@ func TestCreateShipmentServiceRejectsUnpaidOrder(t *testing.T) {
 		t.Fatalf("expected %v, got %v", domain.ErrOrderNotShippable, err)
 	}
 }
+
+func TestCreateShipmentServiceRejectsOrderInPaymentReview(t *testing.T) {
+	orders := &stubOrderRepository{
+		order: domain.Order{
+			ID:         "order-001",
+			QuoteID:    "quote-001",
+			CustomerID: "customer-001",
+			Status:     domain.OrderStatusPaymentReview,
+		},
+	}
+	shipments := &stubShipmentStore{}
+	clock := timeinfra.NewFixedClock(time.Date(2026, 6, 1, 10, 0, 0, 0, time.UTC))
+
+	service := NewCreateShipmentService(orders, shipments, clock)
+
+	_, err := service.Execute(CreateShipmentCommand{OrderID: "order-001"})
+	if err != domain.ErrOrderNotShippable {
+		t.Fatalf("expected %v, got %v", domain.ErrOrderNotShippable, err)
+	}
+}
