@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(clean): complete lesson 025 quote conversion report
+feat(clean): complete lesson 026 return rate by category report
 
 # Add tag
 
-git tag -a clean-025 -m "Clean Architecture Lesson 025"
-git push origin clean-025
+git tag -a clean-026 -m "Clean Architecture Lesson 026"
+git push origin clean-026
 
 or
 

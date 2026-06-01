@@ -9,6 +9,7 @@ import (
 	approvalpolicy "clean-architecture/internal/infrastructure/policies/approval"
 	returneligibility "clean-architecture/internal/infrastructure/policies/returneligibility"
 	paymentservice "clean-architecture/internal/infrastructure/services/payment"
+	refundservice "clean-architecture/internal/infrastructure/services/refund"
 	timeadapter "clean-architecture/internal/infrastructure/services/time"
 	"clean-architecture/internal/interfaceadapters/controllers"
 	"clean-architecture/internal/interfaceadapters/presenters"
@@ -21,18 +22,21 @@ func main() {
 	orderGateway := memory.NewOrderGateway()
 	shipmentGateway := memory.NewShipmentGateway()
 	returnRequestGateway := memory.NewReturnRequestGateway()
+	idempotencyStore := memory.NewIdempotencyStore()
 	productGateway := memory.NewProductGateway()
 	inventoryReservation := memory.NewInventoryReservation(map[string]int{
 		"CHAIR-001": 5,
 	})
 	approvalPolicy := approvalpolicy.NewCategoryPolicy()
 	clock := timeadapter.NewSystemClock()
-	_ = returneligibility.NewWindowPolicy()
+	returnEligibilityPolicy := returneligibility.NewWindowPolicy()
 	paymentGateway := paymentservice.NewAcceptAllGateway()
+	refundGateway := refundservice.NewAcceptAllGateway()
 	createPresenter := presenters.NewCreateDraftQuotePresenter()
 	getCustomerPresenter := presenters.NewGetCustomerPresenter()
 	listCustomersPresenter := presenters.NewListCustomersPresenter()
 	quoteConversionReportPresenter := presenters.NewQuoteConversionReportPresenter()
+	returnRateByCategoryReportPresenter := presenters.NewReturnRateByCategoryReportPresenter()
 	addLinePresenter := presenters.NewAddQuoteLinePresenter()
 	submitPresenter := presenters.NewSubmitQuotePresenter()
 	convertPresenter := presenters.NewConvertQuoteToOrderPresenter()
@@ -47,6 +51,7 @@ func main() {
 	getShipmentPresenter := presenters.NewGetShipmentPresenter()
 	listShipmentsPresenter := presenters.NewListShipmentsPresenter()
 	requestReturnPresenter := presenters.NewRequestReturnPresenter()
+	acceptReturnPresenter := presenters.NewAcceptReturnPresenter()
 	getReturnPresenter := presenters.NewGetReturnRequestPresenter()
 	listReturnPresenter := presenters.NewListReturnRequestsPresenter()
 
@@ -78,6 +83,9 @@ func main() {
 
 	quoteConversionReportInteractor := usecases.NewQuoteConversionReportInteractor(quoteGateway, orderGateway, quoteConversionReportPresenter)
 	quoteConversionReportController := controllers.NewQuoteConversionReportController(quoteConversionReportInteractor)
+
+	returnRateByCategoryReportInteractor := usecases.NewReturnRateByCategoryReportInteractor(orderGateway, returnRequestGateway, productGateway, returnRateByCategoryReportPresenter)
+	returnRateByCategoryReportController := controllers.NewReturnRateByCategoryReportController(returnRateByCategoryReportInteractor)
 
 	if err := createController.Handle("customer-001"); err != nil {
 		log.Fatal(err)
@@ -153,6 +161,9 @@ func main() {
 	requestReturnInteractor := usecases.NewRequestReturnInteractor(orderGateway, returnRequestGateway, clock, requestReturnPresenter)
 	requestReturnController := controllers.NewRequestReturnController(requestReturnInteractor)
 
+	acceptReturnInteractor := usecases.NewAcceptReturnInteractor(idempotencyStore, orderGateway, returnRequestGateway, returnEligibilityPolicy, refundGateway, inventoryReservation, acceptReturnPresenter)
+	acceptReturnController := controllers.NewAcceptReturnController(acceptReturnInteractor)
+
 	getReturnInteractor := usecases.NewGetReturnRequestInteractor(returnRequestGateway, getReturnPresenter)
 	getReturnController := controllers.NewGetReturnRequestController(getReturnInteractor)
 
@@ -195,11 +206,15 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if err := acceptReturnController.Handle(requestReturnPresenter.ViewModel().ReturnRequestID, "accept-return-001", "reviewer-001", "finance-001"); err != nil {
+		log.Fatal(err)
+	}
+
 	if err := getReturnController.Handle(requestReturnPresenter.ViewModel().ReturnRequestID); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := listReturnController.Handle(entities.ReturnRequestStatusRequested); err != nil {
+	if err := listReturnController.Handle(entities.ReturnRequestStatusRefunded); err != nil {
 		log.Fatal(err)
 	}
 
@@ -207,10 +222,13 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if err := returnRateByCategoryReportController.Handle(); err != nil {
+		log.Fatal(err)
+	}
+
 	fmt.Println(createPresenter.ViewModel().Message)
 	fmt.Println(getCustomerPresenter.ViewModel().Message)
 	fmt.Println(listCustomersPresenter.ViewModel().Message)
-	fmt.Println(quoteConversionReportPresenter.ViewModel().Message)
 	fmt.Println(addLinePresenter.ViewModel().Message)
 	fmt.Println(submitPresenter.ViewModel().Message)
 	fmt.Println(convertPresenter.ViewModel().Message)
@@ -225,6 +243,9 @@ func main() {
 	fmt.Println(getShipmentPresenter.ViewModel().Message)
 	fmt.Println(listShipmentsPresenter.ViewModel().Message)
 	fmt.Println(requestReturnPresenter.ViewModel().Message)
+	fmt.Println(acceptReturnPresenter.ViewModel().Message)
 	fmt.Println(getReturnPresenter.ViewModel().Message)
 	fmt.Println(listReturnPresenter.ViewModel().Message)
+	fmt.Println(quoteConversionReportPresenter.ViewModel().Message)
+	fmt.Println(returnRateByCategoryReportPresenter.ViewModel().Message)
 }
