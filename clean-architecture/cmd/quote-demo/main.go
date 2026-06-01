@@ -15,11 +15,13 @@ import (
 func main() {
 	customerGateway := memory.NewCustomerGateway()
 	quoteGateway := memory.NewQuoteGateway()
+	orderGateway := memory.NewOrderGateway()
 	productGateway := memory.NewProductGateway()
 	approvalPolicy := approvalpolicy.NewCategoryPolicy()
 	createPresenter := presenters.NewCreateDraftQuotePresenter()
 	addLinePresenter := presenters.NewAddQuoteLinePresenter()
 	submitPresenter := presenters.NewSubmitQuotePresenter()
+	convertPresenter := presenters.NewConvertQuoteToOrderPresenter()
 	getPresenter := presenters.NewGetQuotePresenter()
 
 	if err := customerGateway.Save(entities.Customer{
@@ -59,6 +61,13 @@ func main() {
 		log.Fatal(err)
 	}
 
+	convertInteractor := usecases.NewConvertQuoteToOrderInteractor(quoteGateway, orderGateway, convertPresenter)
+	convertController := controllers.NewConvertQuoteToOrderController(convertInteractor)
+
+	if err := convertController.Handle(createPresenter.ViewModel().QuoteID); err != nil {
+		log.Fatal(err)
+	}
+
 	getInteractor := usecases.NewGetQuoteInteractor(quoteGateway, getPresenter)
 	getController := controllers.NewGetQuoteController(getInteractor)
 
@@ -69,5 +78,6 @@ func main() {
 	fmt.Println(createPresenter.ViewModel().Message)
 	fmt.Println(addLinePresenter.ViewModel().Message)
 	fmt.Println(submitPresenter.ViewModel().Message)
+	fmt.Println(convertPresenter.ViewModel().Message)
 	fmt.Println(getPresenter.ViewModel().Message)
 }

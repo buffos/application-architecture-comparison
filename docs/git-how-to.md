@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(clean): complete lesson 006 approve pending quote
+feat(clean): complete lesson 007 convert quote to order
 
 # Add tag
 
-git tag -a clean-006 -m "Clean Architecture Lesson 006"
-git push origin clean-006
+git tag -a clean-007 -m "Clean Architecture Lesson 007"
+git push origin clean-007
 
 or
 
