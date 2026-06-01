@@ -8,6 +8,7 @@ import (
 	"onion-architecture/internal/domain"
 	"onion-architecture/internal/infrastructure/memory"
 	"onion-architecture/internal/infrastructure/policies/approval"
+	"onion-architecture/internal/infrastructure/services/payment"
 )
 
 func main() {
@@ -47,12 +48,14 @@ func main() {
 	inventoryReservation.Seed("sku-002", 5)
 
 	submissionPolicy := approval.NewCategoryPolicy()
+	paymentGateway := payment.NewAcceptAllGateway()
 	service := application.NewCreateDraftQuoteService(quoteRepository, customerRepository)
 	getQuote := application.NewGetQuoteService(quoteRepository)
 	addQuoteLine := application.NewAddQuoteLineService(quoteRepository, productRepository)
 	submitQuote := application.NewSubmitQuoteService(quoteRepository, submissionPolicy)
 	approveQuote := application.NewApproveQuoteService(quoteRepository)
 	convertQuote := application.NewConvertQuoteToOrderService(quoteRepository, orderRepository, inventoryReservation)
+	capturePayment := application.NewCapturePaymentService(orderRepository, paymentGateway)
 
 	result, err := service.Execute(application.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -100,6 +103,15 @@ func main() {
 	}
 
 	fmt.Printf("converted quote: order=%s quote=%s customer=%s status=%s lines=%d\n", orderResult.OrderID, orderResult.QuoteID, orderResult.CustomerID, orderResult.Status, orderResult.LineCount)
+
+	paymentResult, err := capturePayment.Execute(application.CapturePaymentCommand{
+		OrderID: orderResult.OrderID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("captured payment: order=%s quote=%s customer=%s status=%s lines=%d\n", paymentResult.OrderID, paymentResult.QuoteID, paymentResult.CustomerID, paymentResult.Status, paymentResult.LineCount)
 
 	details, err := getQuote.Execute(application.GetQuoteQuery{QuoteID: result.QuoteID})
 	if err != nil {

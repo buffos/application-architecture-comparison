@@ -195,6 +195,7 @@ Architectures currently implemented in this repository:
 - `006` Approve pending quote: [006-approve-pending-quote.md](onion-architecture/lessons/006-approve-pending-quote.md)
 - `007` Convert quote to order: [007-convert-quote-to-order.md](onion-architecture/lessons/007-convert-quote-to-order.md)
 - `008` Order conversion with reservation: [008-order-conversion-with-reservation.md](onion-architecture/lessons/008-order-conversion-with-reservation.md)
+- `009` Payment gateway and order capture: [009-payment-gateway-and-order-capture.md](onion-architecture/lessons/009-payment-gateway-and-order-capture.md)
 
 ## How To Maintain This File
 
