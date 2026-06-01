@@ -46,11 +46,12 @@ func TestAcceptReturnServiceRefundsAndRestocksAcceptedReturn(t *testing.T) {
 			ID:      "return-001",
 			OrderID: "order-001",
 			Status:  domain.ReturnRequestStatusRequested,
+			Reason:  "damaged on arrival",
 		},
 	}
 	restock := &stubInventoryRestock{}
 
-	service := NewAcceptReturnService(orders, returns, stubRefundGateway{}, restock)
+	service := NewAcceptReturnService(orders, returns, stubReturnEligibilityPolicy{eligible: true}, stubRefundGateway{}, restock)
 
 	result, err := service.Execute(AcceptReturnCommand{ReturnRequestID: "return-001"})
 	if err != nil {
@@ -84,5 +85,57 @@ func TestRejectReturnServiceRejectsRequestedReturn(t *testing.T) {
 
 	if result.Status != domain.ReturnRequestStatusRejected {
 		t.Fatalf("expected status %s, got %s", domain.ReturnRequestStatusRejected, result.Status)
+	}
+}
+
+type stubReturnEligibilityPolicy struct {
+	eligible bool
+	err      error
+}
+
+func (p stubReturnEligibilityPolicy) IsEligible(request domain.ReturnRequest, order domain.Order) (bool, error) {
+	if p.err != nil {
+		return false, p.err
+	}
+
+	return p.eligible, nil
+}
+
+func TestAcceptReturnServiceLeavesRequestUnchangedWhenPolicyBlocksIt(t *testing.T) {
+	orders := &stubOrderRepository{
+		order: domain.Order{
+			ID:     "order-001",
+			Status: domain.OrderStatusShipped,
+			Lines: []domain.OrderLine{
+				{
+					ProductSKU: "sku-002",
+					Quantity:   2,
+				},
+			},
+		},
+	}
+	returns := &stubReturnRequestStore{
+		found: domain.ReturnRequest{
+			ID:      "return-001",
+			OrderID: "order-001",
+			Status:  domain.ReturnRequestStatusRequested,
+			Reason:  "outside return window",
+		},
+	}
+	restock := &stubInventoryRestock{}
+
+	service := NewAcceptReturnService(orders, returns, stubReturnEligibilityPolicy{eligible: false}, stubRefundGateway{}, restock)
+
+	result, err := service.Execute(AcceptReturnCommand{ReturnRequestID: "return-001"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if result.Status != domain.ReturnRequestStatusRequested {
+		t.Fatalf("expected status %s, got %s", domain.ReturnRequestStatusRequested, result.Status)
+	}
+
+	if len(restock.items) != 0 {
+		t.Fatalf("expected no restock items when policy blocks return, got %d", len(restock.items))
 	}
 }

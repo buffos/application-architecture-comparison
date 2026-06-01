@@ -10,6 +10,10 @@ type InventoryRestock interface {
 	Restock(items []domain.InventoryRestockItem) error
 }
 
+type ReturnEligibilityPolicy interface {
+	IsEligible(request domain.ReturnRequest, order domain.Order) (bool, error)
+}
+
 type AcceptReturnCommand struct {
 	ReturnRequestID string
 }
@@ -22,14 +26,16 @@ type AcceptReturnResult struct {
 type AcceptReturnService struct {
 	orders  OrderRepository
 	returns ReturnRequestStore
+	policy  ReturnEligibilityPolicy
 	refunds RefundGateway
 	restock InventoryRestock
 }
 
-func NewAcceptReturnService(orders OrderRepository, returns ReturnRequestStore, refunds RefundGateway, restock InventoryRestock) AcceptReturnService {
+func NewAcceptReturnService(orders OrderRepository, returns ReturnRequestStore, policy ReturnEligibilityPolicy, refunds RefundGateway, restock InventoryRestock) AcceptReturnService {
 	return AcceptReturnService{
 		orders:  orders,
 		returns: returns,
+		policy:  policy,
 		refunds: refunds,
 		restock: restock,
 	}
@@ -44,6 +50,18 @@ func (s AcceptReturnService) Execute(command AcceptReturnCommand) (AcceptReturnR
 	order, err := s.orders.FindByID(request.OrderID)
 	if err != nil {
 		return AcceptReturnResult{}, err
+	}
+
+	eligible, err := s.policy.IsEligible(request, order)
+	if err != nil {
+		return AcceptReturnResult{}, err
+	}
+
+	if !eligible {
+		return AcceptReturnResult{
+			ReturnRequestID: request.ID,
+			Status:          request.Status,
+		}, nil
 	}
 
 	if err := request.Accept(); err != nil {
