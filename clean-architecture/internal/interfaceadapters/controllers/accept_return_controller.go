@@ -10,9 +10,10 @@ func NewAcceptReturnController(useCase usecases.AcceptReturnInputBoundary) Accep
 	return AcceptReturnController{useCase: useCase}
 }
 
-func (c AcceptReturnController) Handle(returnRequestID string, reviewedBy string, processedBy string) error {
+func (c AcceptReturnController) Handle(returnRequestID string, idempotencyKey string, reviewedBy string, processedBy string) error {
 	return c.useCase.Execute(usecases.AcceptReturnInput{
 		ReturnRequestID: returnRequestID,
+		IdempotencyKey:  idempotencyKey,
 		ReviewedBy:      reviewedBy,
 		ProcessedBy:     processedBy,
 	})

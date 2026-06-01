@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(clean): complete lesson 017 return actor metadata
+feat(clean): complete lesson 018 return command idempotency
 
 # Add tag
 
-git tag -a clean-017 -m "Clean Architecture Lesson 017"
-git push origin clean-017
+git tag -a clean-018 -m "Clean Architecture Lesson 018"
+git push origin clean-018
 
 or
 

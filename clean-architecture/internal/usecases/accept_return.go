@@ -4,6 +4,7 @@ import "clean-architecture/internal/entities"
 
 type AcceptReturnInput struct {
 	ReturnRequestID string
+	IdempotencyKey  string
 	ReviewedBy      string
 	ProcessedBy     string
 }
@@ -36,26 +37,47 @@ type InventoryRestock interface {
 }
 
 type AcceptReturnInteractor struct {
-	orders   OrderEditor
-	returns  ReturnRequestEditor
-	policy   ReturnEligibilityPolicy
-	refunds  RefundGateway
-	restock  InventoryRestock
-	output   AcceptReturnOutputBoundary
+	idempotency IdempotencyStore
+	orders      OrderEditor
+	returns     ReturnRequestEditor
+	policy      ReturnEligibilityPolicy
+	refunds     RefundGateway
+	restock     InventoryRestock
+	output      AcceptReturnOutputBoundary
 }
 
-func NewAcceptReturnInteractor(orders OrderEditor, returns ReturnRequestEditor, policy ReturnEligibilityPolicy, refunds RefundGateway, restock InventoryRestock, output AcceptReturnOutputBoundary) AcceptReturnInteractor {
+func NewAcceptReturnInteractor(idempotency IdempotencyStore, orders OrderEditor, returns ReturnRequestEditor, policy ReturnEligibilityPolicy, refunds RefundGateway, restock InventoryRestock, output AcceptReturnOutputBoundary) AcceptReturnInteractor {
 	return AcceptReturnInteractor{
-		orders:  orders,
-		returns: returns,
-		policy:  policy,
-		refunds: refunds,
-		restock: restock,
-		output:  output,
+		idempotency: idempotency,
+		orders:      orders,
+		returns:     returns,
+		policy:      policy,
+		refunds:     refunds,
+		restock:     restock,
+		output:      output,
 	}
 }
 
 func (uc AcceptReturnInteractor) Execute(input AcceptReturnInput) error {
+	if input.IdempotencyKey == "" {
+		return ErrIdempotencyKeyRequired
+	}
+
+	if existingID, found, err := uc.idempotency.Find("accept-return", input.IdempotencyKey); err != nil {
+		return err
+	} else if found {
+		request, err := uc.returns.FindByID(existingID)
+		if err != nil {
+			return err
+		}
+
+		return uc.output.Present(AcceptReturnOutput{
+			ReturnRequestID: request.ID,
+			OrderID:         request.OrderID,
+			Status:          request.Status,
+		})
+	}
+
 	request, err := uc.returns.FindByID(input.ReturnRequestID)
 	if err != nil {
 		return err
@@ -99,6 +121,10 @@ func (uc AcceptReturnInteractor) Execute(input AcceptReturnInput) error {
 	}
 
 	if err := uc.returns.Save(request); err != nil {
+		return err
+	}
+
+	if err := uc.idempotency.Save("accept-return", input.IdempotencyKey, request.ID); err != nil {
 		return err
 	}
 

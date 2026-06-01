@@ -17,10 +17,12 @@ func (g *stubReturnRequestWriter) Save(request entities.ReturnRequest) error {
 }
 
 type stubRefundGateway struct {
-	err error
+	err   error
+	calls int
 }
 
-func (g stubRefundGateway) Refund(order entities.Order) error {
+func (g *stubRefundGateway) Refund(order entities.Order) error {
+	g.calls++
 	return g.err
 }
 
@@ -35,6 +37,32 @@ func (r *stubInventoryRestock) Restock(items []entities.InventoryReservationItem
 	}
 
 	r.items = items
+	return nil
+}
+
+type stubIdempotencyStore struct {
+	records   map[string]string
+	findCalls int
+	saveCalls int
+}
+
+func (s *stubIdempotencyStore) Find(commandName string, key string) (string, bool, error) {
+	s.findCalls++
+	if s.records == nil {
+		return "", false, nil
+	}
+
+	resultID, ok := s.records[commandName+":"+key]
+	return resultID, ok, nil
+}
+
+func (s *stubIdempotencyStore) Save(commandName string, key string, resultID string) error {
+	s.saveCalls++
+	if s.records == nil {
+		s.records = make(map[string]string)
+	}
+
+	s.records[commandName+":"+key] = resultID
 	return nil
 }
 

@@ -10,9 +10,10 @@ func NewRejectReturnController(useCase usecases.RejectReturnInputBoundary) Rejec
 	return RejectReturnController{useCase: useCase}
 }
 
-func (c RejectReturnController) Handle(returnRequestID string, reviewedBy string, reviewNote string) error {
+func (c RejectReturnController) Handle(returnRequestID string, idempotencyKey string, reviewedBy string, reviewNote string) error {
 	return c.useCase.Execute(usecases.RejectReturnInput{
 		ReturnRequestID: returnRequestID,
+		IdempotencyKey:  idempotencyKey,
 		ReviewedBy:      reviewedBy,
 		ReviewNote:      reviewNote,
 	})
