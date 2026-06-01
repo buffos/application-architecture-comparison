@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(clean): complete lesson 029 payment review workflow
+feat(clean): complete lesson 030 partial shipment support
 
 # Add tag
 
-git tag -a clean-029 -m "Clean Architecture Lesson 029"
-git push origin clean-029
+git tag -a clean-030 -m "Clean Architecture Lesson 030"
+git push origin clean-030
 
 or
 

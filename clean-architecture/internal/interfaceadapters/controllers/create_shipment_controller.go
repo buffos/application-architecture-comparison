@@ -15,3 +15,10 @@ func (c CreateShipmentController) Handle(orderID string) error {
 		OrderID: orderID,
 	})
 }
+
+func (c CreateShipmentController) HandlePartial(orderID string, lines []usecases.CreateShipmentLineInput) error {
+	return c.useCase.Execute(usecases.CreateShipmentInput{
+		OrderID: orderID,
+		Lines:   lines,
+	})
+}

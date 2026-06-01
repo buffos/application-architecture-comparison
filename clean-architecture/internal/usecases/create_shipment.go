@@ -4,6 +4,12 @@ import "clean-architecture/internal/entities"
 
 type CreateShipmentInput struct {
 	OrderID string
+	Lines   []CreateShipmentLineInput
+}
+
+type CreateShipmentLineInput struct {
+	SKU      string
+	Quantity int
 }
 
 type CreateShipmentOutput struct {
@@ -47,12 +53,29 @@ func (uc CreateShipmentInteractor) Execute(input CreateShipmentInput) error {
 		return err
 	}
 
-	shipment, err := entities.NewShipmentFromPaidOrder(order)
+	requestedLines := make([]entities.ShipmentLine, 0, len(input.Lines))
+	for _, line := range input.Lines {
+		productName := ""
+		for _, orderLine := range order.Lines {
+			if orderLine.SKU == line.SKU {
+				productName = orderLine.ProductName
+				break
+			}
+		}
+
+		requestedLines = append(requestedLines, entities.ShipmentLine{
+			SKU:         line.SKU,
+			ProductName: productName,
+			Quantity:    line.Quantity,
+		})
+	}
+
+	shipment, err := entities.NewShipmentFromOrder(order, requestedLines)
 	if err != nil {
 		return err
 	}
 
-	if err := order.MarkShippedAt(uc.clock.Now()); err != nil {
+	if err := order.ApplyShipment(shipment.Lines, uc.clock.Now()); err != nil {
 		return err
 	}
 

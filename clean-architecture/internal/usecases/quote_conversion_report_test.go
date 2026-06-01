@@ -59,7 +59,8 @@ func TestQuoteConversionReportInteractorBuildsProjection(t *testing.T) {
 				entities.OrderStatusShipped: {
 					{ID: "order-003"},
 				},
-				entities.OrderStatusCancelled: {},
+				entities.OrderStatusPartiallyShipped: {},
+				entities.OrderStatusCancelled:        {},
 			},
 		},
 		output,

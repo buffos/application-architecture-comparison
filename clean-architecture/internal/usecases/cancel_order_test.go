@@ -82,3 +82,26 @@ func TestCancelOrderInteractorRejectsShippedOrder(t *testing.T) {
 		t.Fatalf("expected %v, got %v", entities.ErrQuoteCannotTransition, err)
 	}
 }
+
+func TestCancelOrderInteractorRejectsPartiallyShippedOrder(t *testing.T) {
+	orders := &stubOrderEditor{
+		order: entities.Order{
+			ID:            "order-003",
+			CustomerID:    "customer-001",
+			SourceQuoteID: "quote-001",
+			Status:        entities.OrderStatusPartiallyShipped,
+			Lines: []entities.OrderLine{
+				{SKU: "CHAIR-001", Quantity: 2, ShippedQuantity: 1},
+			},
+		},
+	}
+	inventory := &stubInventoryRelease{}
+	output := &stubCancelOrderOutput{}
+
+	interactor := NewCancelOrderInteractor(orders, inventory, output)
+
+	err := interactor.Execute(CancelOrderInput{OrderID: "order-003"})
+	if err != entities.ErrQuoteCannotTransition {
+		t.Fatalf("expected %v, got %v", entities.ErrQuoteCannotTransition, err)
+	}
+}

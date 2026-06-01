@@ -22,25 +22,37 @@ type Shipment struct {
 	Lines   []ShipmentLine
 }
 
-func NewShipmentFromPaidOrder(order Order) (Shipment, error) {
-	if order.Status != OrderStatusPaid {
+func NewShipmentFromOrder(order Order, lines []ShipmentLine) (Shipment, error) {
+	if order.Status != OrderStatusPaid && order.Status != OrderStatusPartiallyShipped {
 		return Shipment{}, ErrQuoteCannotTransition
 	}
 
 	id := atomic.AddUint64(&shipmentSequence, 1)
-	lines := make([]ShipmentLine, 0, len(order.Lines))
-	for _, line := range order.Lines {
-		lines = append(lines, ShipmentLine{
-			SKU:         line.SKU,
-			ProductName: line.ProductName,
-			Quantity:    line.Quantity,
-		})
+	shipmentLines := lines
+	if len(shipmentLines) == 0 {
+		shipmentLines = make([]ShipmentLine, 0, len(order.Lines))
+		for _, line := range order.Lines {
+			remaining := line.Quantity - line.ShippedQuantity
+			if remaining <= 0 {
+				continue
+			}
+
+			shipmentLines = append(shipmentLines, ShipmentLine{
+				SKU:         line.SKU,
+				ProductName: line.ProductName,
+				Quantity:    remaining,
+			})
+		}
+	}
+
+	if len(shipmentLines) == 0 {
+		return Shipment{}, ErrQuoteCannotTransition
 	}
 
 	return Shipment{
 		ID:      fmt.Sprintf("shipment-%03d", id),
 		OrderID: order.ID,
 		Status:  ShipmentStatusCreated,
-		Lines:   lines,
+		Lines:   shipmentLines,
 	}, nil
 }

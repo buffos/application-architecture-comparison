@@ -55,6 +55,9 @@ func TestCreateShipmentInteractorCreatesShipmentForPaidOrder(t *testing.T) {
 	if orders.saved.Status != entities.OrderStatusShipped {
 		t.Fatalf("expected order status %s, got %s", entities.OrderStatusShipped, orders.saved.Status)
 	}
+	if orders.saved.Lines[0].ShippedQuantity != 2 {
+		t.Fatalf("expected shipped quantity 2, got %d", orders.saved.Lines[0].ShippedQuantity)
+	}
 	if orders.saved.ShippedAt == nil {
 		t.Fatal("expected shipped timestamp to be set")
 	}
@@ -82,6 +85,83 @@ func TestCreateShipmentInteractorRejectsUnpaidOrder(t *testing.T) {
 	err := interactor.Execute(CreateShipmentInput{OrderID: "order-002"})
 	if err != entities.ErrQuoteCannotTransition {
 		t.Fatalf("expected %v, got %v", entities.ErrQuoteCannotTransition, err)
+	}
+}
+
+func TestCreateShipmentInteractorCreatesPartialShipment(t *testing.T) {
+	orders := &stubOrderEditor{
+		order: entities.Order{
+			ID:            "order-004",
+			CustomerID:    "customer-001",
+			SourceQuoteID: "quote-001",
+			Status:        entities.OrderStatusPaid,
+			Lines: []entities.OrderLine{
+				{SKU: "CHAIR-001", ProductName: "Office Chair", Quantity: 5},
+			},
+		},
+	}
+	shipments := &stubShipmentWriter{}
+	output := &stubCreateShipmentOutput{}
+	clock := stubClock{now: time.Date(2026, 6, 5, 9, 0, 0, 0, time.UTC)}
+
+	interactor := NewCreateShipmentInteractor(orders, shipments, clock, output)
+
+	err := interactor.Execute(CreateShipmentInput{
+		OrderID: "order-004",
+		Lines: []CreateShipmentLineInput{
+			{SKU: "CHAIR-001", Quantity: 2},
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if shipments.saved.Lines[0].Quantity != 2 {
+		t.Fatalf("expected shipped quantity 2, got %d", shipments.saved.Lines[0].Quantity)
+	}
+
+	if orders.saved.Status != entities.OrderStatusPartiallyShipped {
+		t.Fatalf("expected order status %s, got %s", entities.OrderStatusPartiallyShipped, orders.saved.Status)
+	}
+
+	if orders.saved.Lines[0].ShippedQuantity != 2 {
+		t.Fatalf("expected shipped quantity 2, got %d", orders.saved.Lines[0].ShippedQuantity)
+	}
+}
+
+func TestCreateShipmentInteractorAllowsShippingRemainingLinesAfterPartial(t *testing.T) {
+	orders := &stubOrderEditor{
+		order: entities.Order{
+			ID:            "order-005",
+			CustomerID:    "customer-001",
+			SourceQuoteID: "quote-001",
+			Status:        entities.OrderStatusPartiallyShipped,
+			Lines: []entities.OrderLine{
+				{SKU: "CHAIR-001", ProductName: "Office Chair", Quantity: 5, ShippedQuantity: 2},
+			},
+		},
+	}
+	shipments := &stubShipmentWriter{}
+	output := &stubCreateShipmentOutput{}
+	clock := stubClock{now: time.Date(2026, 6, 6, 9, 0, 0, 0, time.UTC)}
+
+	interactor := NewCreateShipmentInteractor(orders, shipments, clock, output)
+
+	err := interactor.Execute(CreateShipmentInput{OrderID: "order-005"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if shipments.saved.Lines[0].Quantity != 3 {
+		t.Fatalf("expected shipped quantity 3, got %d", shipments.saved.Lines[0].Quantity)
+	}
+
+	if orders.saved.Status != entities.OrderStatusShipped {
+		t.Fatalf("expected order status %s, got %s", entities.OrderStatusShipped, orders.saved.Status)
+	}
+
+	if orders.saved.Lines[0].ShippedQuantity != 5 {
+		t.Fatalf("expected shipped quantity 5, got %d", orders.saved.Lines[0].ShippedQuantity)
 	}
 }
 

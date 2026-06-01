@@ -9,6 +9,7 @@ import (
 const OrderStatusPendingPayment = "PendingPayment"
 const OrderStatusPaymentReview = "PaymentReview"
 const OrderStatusPaid = "Paid"
+const OrderStatusPartiallyShipped = "PartiallyShipped"
 const OrderStatusShipped = "Shipped"
 const OrderStatusCancelled = "Cancelled"
 
@@ -20,6 +21,7 @@ type OrderLine struct {
 	SKU              string
 	ProductName      string
 	Quantity         int
+	ShippedQuantity  int
 	UnitPrice        int
 	LineTotal        int
 	ReturnWindowDays int
@@ -89,14 +91,7 @@ func (o *Order) ApprovePaymentReview() error {
 }
 
 func (o *Order) MarkShipped() error {
-	if o.Status != OrderStatusPaid {
-		return ErrQuoteCannotTransition
-	}
-
-	o.Status = OrderStatusShipped
-	now := time.Now()
-	o.ShippedAt = &now
-	return nil
+	return o.MarkShippedAt(time.Now())
 }
 
 func (o *Order) MarkShippedAt(at time.Time) error {
@@ -104,14 +99,84 @@ func (o *Order) MarkShippedAt(at time.Time) error {
 		return ErrQuoteCannotTransition
 	}
 
-	o.Status = OrderStatusShipped
+	lines := make([]ShipmentLine, 0, len(o.Lines))
+	for _, line := range o.Lines {
+		lines = append(lines, ShipmentLine{
+			SKU:         line.SKU,
+			ProductName: line.ProductName,
+			Quantity:    line.Quantity - line.ShippedQuantity,
+		})
+	}
+
+	return o.ApplyShipment(lines, at)
+}
+
+func (o *Order) ApplyShipment(lines []ShipmentLine, at time.Time) error {
+	if o.Status != OrderStatusPaid && o.Status != OrderStatusPartiallyShipped {
+		return ErrQuoteCannotTransition
+	}
+
+	if len(lines) == 0 {
+		return ErrQuoteCannotTransition
+	}
+
+	for _, shipmentLine := range lines {
+		if shipmentLine.Quantity <= 0 {
+			return ErrQuoteCannotTransition
+		}
+
+		matched := false
+		for idx := range o.Lines {
+			orderLine := &o.Lines[idx]
+			if orderLine.SKU != shipmentLine.SKU {
+				continue
+			}
+
+			remaining := orderLine.Quantity - orderLine.ShippedQuantity
+			if shipmentLine.Quantity > remaining {
+				return ErrQuoteCannotTransition
+			}
+
+			matched = true
+			break
+		}
+
+		if !matched {
+			return ErrQuoteCannotTransition
+		}
+	}
+
+	for _, shipmentLine := range lines {
+		for idx := range o.Lines {
+			orderLine := &o.Lines[idx]
+			if orderLine.SKU == shipmentLine.SKU {
+				orderLine.ShippedQuantity += shipmentLine.Quantity
+				break
+			}
+		}
+	}
+
+	allShipped := true
+	for _, line := range o.Lines {
+		if line.ShippedQuantity < line.Quantity {
+			allShipped = false
+			break
+		}
+	}
+
 	copy := at
 	o.ShippedAt = &copy
+	if allShipped {
+		o.Status = OrderStatusShipped
+	} else {
+		o.Status = OrderStatusPartiallyShipped
+	}
+
 	return nil
 }
 
 func (o *Order) Cancel() error {
-	if o.Status == OrderStatusShipped {
+	if o.Status == OrderStatusShipped || o.Status == OrderStatusPartiallyShipped {
 		return ErrQuoteCannotTransition
 	}
 

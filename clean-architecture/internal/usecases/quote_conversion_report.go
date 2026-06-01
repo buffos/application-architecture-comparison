@@ -74,13 +74,18 @@ func (uc QuoteConversionReportInteractor) Execute(input QuoteConversionReportInp
 		return err
 	}
 
+	partiallyShippedOrders, err := uc.orders.ListByStatus(entities.OrderStatusPartiallyShipped)
+	if err != nil {
+		return err
+	}
+
 	cancelledOrders, err := uc.orders.ListByStatus(entities.OrderStatusCancelled)
 	if err != nil {
 		return err
 	}
 
 	totalQuotes := len(draftQuotes) + len(pendingApprovalQuotes) + len(approvedQuotes)
-	convertedQuotes := len(pendingPaymentOrders) + len(paidOrders) + len(shippedOrders) + len(cancelledOrders)
+	convertedQuotes := len(pendingPaymentOrders) + len(paidOrders) + len(partiallyShippedOrders) + len(shippedOrders) + len(cancelledOrders)
 
 	var conversionRate float64
 	if totalQuotes > 0 {
