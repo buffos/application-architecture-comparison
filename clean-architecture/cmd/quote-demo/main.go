@@ -32,6 +32,7 @@ func main() {
 	createPresenter := presenters.NewCreateDraftQuotePresenter()
 	getCustomerPresenter := presenters.NewGetCustomerPresenter()
 	listCustomersPresenter := presenters.NewListCustomersPresenter()
+	quoteConversionReportPresenter := presenters.NewQuoteConversionReportPresenter()
 	addLinePresenter := presenters.NewAddQuoteLinePresenter()
 	submitPresenter := presenters.NewSubmitQuotePresenter()
 	convertPresenter := presenters.NewConvertQuoteToOrderPresenter()
@@ -74,6 +75,9 @@ func main() {
 
 	listCustomersInteractor := usecases.NewListCustomersInteractor(customerGateway, listCustomersPresenter)
 	listCustomersController := controllers.NewListCustomersController(listCustomersInteractor)
+
+	quoteConversionReportInteractor := usecases.NewQuoteConversionReportInteractor(quoteGateway, orderGateway, quoteConversionReportPresenter)
+	quoteConversionReportController := controllers.NewQuoteConversionReportController(quoteConversionReportInteractor)
 
 	if err := createController.Handle("customer-001"); err != nil {
 		log.Fatal(err)
@@ -199,9 +203,14 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if err := quoteConversionReportController.Handle(); err != nil {
+		log.Fatal(err)
+	}
+
 	fmt.Println(createPresenter.ViewModel().Message)
 	fmt.Println(getCustomerPresenter.ViewModel().Message)
 	fmt.Println(listCustomersPresenter.ViewModel().Message)
+	fmt.Println(quoteConversionReportPresenter.ViewModel().Message)
 	fmt.Println(addLinePresenter.ViewModel().Message)
 	fmt.Println(submitPresenter.ViewModel().Message)
 	fmt.Println(convertPresenter.ViewModel().Message)
