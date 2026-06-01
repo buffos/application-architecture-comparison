@@ -15,6 +15,7 @@ func main() {
 	quoteRepository := memory.NewQuoteRepository()
 	productRepository := memory.NewProductRepository()
 	orderRepository := memory.NewOrderRepository()
+	inventoryReservation := memory.NewInventoryReservation()
 
 	if err := customerRepository.Save(domain.Customer{
 		ID:     "customer-001",
@@ -43,13 +44,15 @@ func main() {
 		log.Fatal(err)
 	}
 
+	inventoryReservation.Seed("sku-002", 5)
+
 	submissionPolicy := approval.NewCategoryPolicy()
 	service := application.NewCreateDraftQuoteService(quoteRepository, customerRepository)
 	getQuote := application.NewGetQuoteService(quoteRepository)
 	addQuoteLine := application.NewAddQuoteLineService(quoteRepository, productRepository)
 	submitQuote := application.NewSubmitQuoteService(quoteRepository, submissionPolicy)
 	approveQuote := application.NewApproveQuoteService(quoteRepository)
-	convertQuote := application.NewConvertQuoteToOrderService(quoteRepository, orderRepository)
+	convertQuote := application.NewConvertQuoteToOrderService(quoteRepository, orderRepository, inventoryReservation)
 
 	result, err := service.Execute(application.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",

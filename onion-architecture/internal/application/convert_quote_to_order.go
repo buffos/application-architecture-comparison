@@ -18,15 +18,21 @@ type OrderStore interface {
 	Save(order domain.Order) error
 }
 
+type InventoryReservation interface {
+	Reserve(items []domain.InventoryReservationItem) error
+}
+
 type ConvertQuoteToOrderService struct {
 	quotes QuoteFinder
 	orders OrderStore
+	inventory InventoryReservation
 }
 
-func NewConvertQuoteToOrderService(quotes QuoteFinder, orders OrderStore) ConvertQuoteToOrderService {
+func NewConvertQuoteToOrderService(quotes QuoteFinder, orders OrderStore, inventory InventoryReservation) ConvertQuoteToOrderService {
 	return ConvertQuoteToOrderService{
-		quotes: quotes,
-		orders: orders,
+		quotes:    quotes,
+		orders:    orders,
+		inventory: inventory,
 	}
 }
 
@@ -38,6 +44,18 @@ func (s ConvertQuoteToOrderService) Execute(command ConvertQuoteToOrderCommand) 
 
 	order, err := domain.NewOrderFromQuote(quote)
 	if err != nil {
+		return ConvertQuoteToOrderResult{}, err
+	}
+
+	items := make([]domain.InventoryReservationItem, 0, len(order.Lines))
+	for _, line := range order.Lines {
+		items = append(items, domain.InventoryReservationItem{
+			ProductSKU: line.ProductSKU,
+			Quantity:   line.Quantity,
+		})
+	}
+
+	if err := s.inventory.Reserve(items); err != nil {
 		return ConvertQuoteToOrderResult{}, err
 	}
 
