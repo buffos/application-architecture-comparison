@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(onion): complete lesson 022 quote list query surface
+feat(onion): complete lesson 023 product query surface
 
 # Add tag
 
-git tag -a onion-022 -m "Onion Architecture Lesson 022"
-git push origin onion-022
+git tag -a onion-023 -m "Onion Architecture Lesson 023"
+git push origin onion-023
 
 or
 

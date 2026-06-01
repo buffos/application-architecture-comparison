@@ -209,6 +209,7 @@ Architectures currently implemented in this repository:
 - `020` Order query surface: [020-order-query-surface.md](onion-architecture/lessons/020-order-query-surface.md)
 - `021` Shipment query surface: [021-shipment-query-surface.md](onion-architecture/lessons/021-shipment-query-surface.md)
 - `022` Quote list query surface: [022-quote-list-query-surface.md](onion-architecture/lessons/022-quote-list-query-surface.md)
+- `023` Product query surface: [023-product-query-surface.md](onion-architecture/lessons/023-product-query-surface.md)
 
 ## How To Maintain This File
 
