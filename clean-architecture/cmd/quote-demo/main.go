@@ -36,6 +36,7 @@ func main() {
 	capturePresenter := presenters.NewCapturePaymentPresenter()
 	shipmentPresenter := presenters.NewCreateShipmentPresenter()
 	getPresenter := presenters.NewGetQuotePresenter()
+	listQuotesPresenter := presenters.NewListQuotesPresenter()
 	getOrderPresenter := presenters.NewGetOrderPresenter()
 	listOrdersPresenter := presenters.NewListOrdersPresenter()
 	getShipmentPresenter := presenters.NewGetShipmentPresenter()
@@ -106,6 +107,9 @@ func main() {
 	getInteractor := usecases.NewGetQuoteInteractor(quoteGateway, getPresenter)
 	getController := controllers.NewGetQuoteController(getInteractor)
 
+	listQuotesInteractor := usecases.NewListQuotesInteractor(quoteGateway, listQuotesPresenter)
+	listQuotesController := controllers.NewListQuotesController(listQuotesInteractor)
+
 	getOrderInteractor := usecases.NewGetOrderInteractor(orderGateway, getOrderPresenter)
 	getOrderController := controllers.NewGetOrderController(getOrderInteractor)
 
@@ -128,6 +132,10 @@ func main() {
 	listReturnController := controllers.NewListReturnRequestsController(listReturnInteractor)
 
 	if err := getController.Handle(createPresenter.ViewModel().QuoteID); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := listQuotesController.Handle(entities.QuoteStatusApproved); err != nil {
 		log.Fatal(err)
 	}
 
@@ -166,6 +174,7 @@ func main() {
 	fmt.Println(capturePresenter.ViewModel().Message)
 	fmt.Println(shipmentPresenter.ViewModel().Message)
 	fmt.Println(getPresenter.ViewModel().Message)
+	fmt.Println(listQuotesPresenter.ViewModel().Message)
 	fmt.Println(getOrderPresenter.ViewModel().Message)
 	fmt.Println(listOrdersPresenter.ViewModel().Message)
 	fmt.Println(getShipmentPresenter.ViewModel().Message)
