@@ -36,3 +36,18 @@ func (r *CustomerRepository) FindByID(id string) (customers.Customer, error) {
 
 	return customer, nil
 }
+
+func (r *CustomerRepository) List(activeOnly bool) ([]customers.Customer, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	list := make([]customers.Customer, 0, len(r.customers))
+	for _, customer := range r.customers {
+		if activeOnly && !customer.Active {
+			continue
+		}
+		list = append(list, customer)
+	}
+
+	return list, nil
+}

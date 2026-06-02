@@ -12,5 +12,6 @@ type Customer struct {
 
 type Repository interface {
 	FindByID(id string) (Customer, error)
+	List(activeOnly bool) ([]Customer, error)
 	Save(customer Customer) error
 }

@@ -152,6 +152,24 @@ func main() {
 
 	fmt.Printf("listed active standard products: count=%d\n", len(productList))
 
+	customerDetails, err := customerModule.GetCustomer(customers.GetCustomerQuery{
+		CustomerID: "customer-001",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("loaded customer: id=%s active=%t\n", customerDetails.CustomerID, customerDetails.Active)
+
+	customerList, err := customerModule.ListCustomers(customers.ListCustomersQuery{
+		ActiveOnly: true,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("listed active customers: count=%d\n", len(customerList))
+
 	pendingResult, err := quoteModule.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
 	})
