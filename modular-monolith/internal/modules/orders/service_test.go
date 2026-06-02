@@ -23,6 +23,16 @@ func (r *stubOrderRepository) FindByID(id string) (Order, error) {
 	return r.saved, nil
 }
 
+func (r *stubOrderRepository) ListByStatus(status string) ([]Order, error) {
+	if r.saved.ID == "" {
+		return nil, nil
+	}
+	if status == "" || r.saved.Status == status {
+		return []Order{r.saved}, nil
+	}
+	return nil, nil
+}
+
 type stubApprovedQuoteSource struct {
 	quote quotes.ApprovedQuote
 	err   error

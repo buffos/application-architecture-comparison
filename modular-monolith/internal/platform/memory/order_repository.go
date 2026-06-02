@@ -36,3 +36,17 @@ func (r *OrderRepository) FindByID(id string) (orders.Order, error) {
 
 	return order, nil
 }
+
+func (r *OrderRepository) ListByStatus(status string) ([]orders.Order, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	list := make([]orders.Order, 0, len(r.orders))
+	for _, order := range r.orders {
+		if status == "" || order.Status == status {
+			list = append(list, order)
+		}
+	}
+
+	return list, nil
+}
