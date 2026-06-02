@@ -56,9 +56,9 @@ func TestGetReturnRequestLoadsStoredRequest(t *testing.T) {
 		CustomerID: "customer-001",
 		ShippedAt:  time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC),
 		Lines: []ReturnableOrderLine{
-			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
+			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, ShippedQuantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 		},
-	}, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC), "customer-001")
+	}, nil, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC), "customer-001")
 	request.ReviewedBy = "agent-001"
 	request.ProcessedBy = "agent-001"
 	_ = repository.Save(request)
@@ -81,17 +81,17 @@ func TestListReturnRequestsFiltersByStatus(t *testing.T) {
 		CustomerID: "customer-001",
 		ShippedAt:  time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC),
 		Lines: []ReturnableOrderLine{
-			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
+			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, ShippedQuantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 		},
-	}, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC), "customer-001")
+	}, nil, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC), "customer-001")
 	refunded, _ := NewRequestedReturnRequest(ReturnableOrder{
 		OrderID:    "order-002",
 		CustomerID: "customer-002",
 		ShippedAt:  time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC),
 		Lines: []ReturnableOrderLine{
-			{ProductSKU: "sku-002", ProductName: "Chair", ProductCategory: "Standard", Quantity: 1, UnitPrice: 5000, ReturnWindowDays: 30},
+			{ProductSKU: "sku-002", ProductName: "Chair", ProductCategory: "Standard", Quantity: 1, ShippedQuantity: 1, UnitPrice: 5000, ReturnWindowDays: 30},
 		},
-	}, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC), "customer-002")
+	}, nil, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC), "customer-002")
 	_ = refunded.Refund("agent-001", "agent-001", "accepted")
 	_ = repository.Save(requested)
 	_ = repository.Save(refunded)

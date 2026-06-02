@@ -115,7 +115,7 @@ func TestRequestReturnStoresRequestedReturn(t *testing.T) {
 			CustomerID: "customer-001",
 			ShippedAt:  time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC),
 			Lines: []orders.ReturnableOrderLine{
-				{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
+				{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, ShippedQuantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 			},
 		},
 	}, stubEligibility{allows: true}, restocker, idempotencyStore, refunder, clock)
@@ -181,7 +181,7 @@ func TestRequestReturnRejectsMissingActor(t *testing.T) {
 			CustomerID: "customer-001",
 			ShippedAt:  time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC),
 			Lines: []orders.ReturnableOrderLine{
-				{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
+				{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, ShippedQuantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 			},
 		},
 	}, stubEligibility{allows: true}, restocker, idempotencyStore, refunder, clock)
@@ -192,6 +192,40 @@ func TestRequestReturnRejectsMissingActor(t *testing.T) {
 	})
 	if err != ErrActorRequired {
 		t.Fatalf("expected %v, got %v", ErrActorRequired, err)
+	}
+}
+
+func TestRequestReturnSupportsPartialLineSelection(t *testing.T) {
+	repository := &stubRepository{}
+	refunder := &stubRefunder{}
+	restocker := &stubRestocker{}
+	clock := stubClock{now: time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC)}
+	idempotencyStore := &stubIdempotencyStore{results: map[string]idempotency.Result{}}
+	service := NewService(repository, stubOrderSource{
+		order: orders.ReturnableOrder{
+			OrderID:    "order-001",
+			CustomerID: "customer-001",
+			ShippedAt:  time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC),
+			Lines: []orders.ReturnableOrderLine{
+				{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, ShippedQuantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
+			},
+		},
+	}, stubEligibility{allows: true}, restocker, idempotencyStore, refunder, clock)
+
+	result, err := service.RequestReturn(RequestReturnCommand{
+		OrderID:     "order-001",
+		Reason:      "damaged item",
+		RequestedBy: "customer-001",
+		Lines: []RequestedReturnLine{
+			{ProductSKU: "sku-001", Quantity: 1},
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if result.LineCount != 1 || repository.saved.Lines[0].Quantity != 1 {
+		t.Fatalf("expected partial return line quantity 1, got %+v", repository.saved.Lines)
 	}
 }
 
@@ -206,9 +240,9 @@ func TestRequestReturnStopsWhenRestockFails(t *testing.T) {
 		CustomerID: "customer-001",
 		ShippedAt:  time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC),
 		Lines: []ReturnableOrderLine{
-			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
+			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, ShippedQuantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 		},
-	}, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC), "customer-001")
+	}, nil, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC), "customer-001")
 
 	_, err := service.AcceptReturn(ReviewReturnCommand{
 		ReturnRequestID: repository.saved.ID,
@@ -231,9 +265,9 @@ func TestAcceptReturnRefundsRestocksAndStoresUpdatedStatus(t *testing.T) {
 		CustomerID: "customer-001",
 		ShippedAt:  time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC),
 		Lines: []ReturnableOrderLine{
-			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
+			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, ShippedQuantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 		},
-	}, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC), "customer-001")
+	}, nil, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC), "customer-001")
 	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: true}, restocker, idempotencyStore, refunder, stubClock{})
 
 	result, err := service.AcceptReturn(ReviewReturnCommand{ReturnRequestID: repository.saved.ID, IdempotencyKey: "accept-1", ActorID: "agent-001", ReviewNote: "accepted after inspection"})
@@ -268,9 +302,9 @@ func TestRejectReturnStoresRejectedStatus(t *testing.T) {
 		CustomerID: "customer-001",
 		ShippedAt:  time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC),
 		Lines: []ReturnableOrderLine{
-			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
+			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, ShippedQuantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 		},
-	}, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC), "customer-001")
+	}, nil, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC), "customer-001")
 	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: true}, restocker, idempotencyStore, refunder, stubClock{})
 
 	result, err := service.RejectReturn(ReviewReturnCommand{ReturnRequestID: repository.saved.ID, IdempotencyKey: "reject-1", ActorID: "agent-002", ReviewNote: "rejected on inspection"})
@@ -301,9 +335,9 @@ func TestAcceptReturnRejectsWhenPolicyBlocksEligibility(t *testing.T) {
 		CustomerID: "customer-001",
 		ShippedAt:  time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC),
 		Lines: []ReturnableOrderLine{
-			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
+			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, ShippedQuantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 		},
-	}, "outside return window", time.Date(2026, 7, 12, 12, 0, 0, 0, time.UTC), "customer-001")
+	}, nil, "outside return window", time.Date(2026, 7, 12, 12, 0, 0, 0, time.UTC), "customer-001")
 	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: false}, restocker, idempotencyStore, refunder, stubClock{})
 
 	result, err := service.AcceptReturn(ReviewReturnCommand{ReturnRequestID: repository.saved.ID, IdempotencyKey: "accept-2", ActorID: "agent-003", ReviewNote: "window exceeded"})

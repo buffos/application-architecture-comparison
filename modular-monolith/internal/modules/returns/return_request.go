@@ -12,6 +12,7 @@ var ErrReturnRequestNotFound = errors.New("return request not found")
 var (
 	ErrReturnRequestNotReviewable = errors.New("return request is not reviewable")
 	ErrActorRequired              = errors.New("actor is required")
+	ErrReturnQuantityInvalid      = errors.New("return quantity is invalid")
 )
 
 const (
@@ -46,8 +47,13 @@ type ReturnRequestLine struct {
 	ReturnWindowDays int
 }
 
+type RequestedReturnLine struct {
+	ProductSKU string
+	Quantity   int
+}
+
 func NewRefundedReturnRequest(order ReturnableOrder, reason string, requestedAt time.Time, requestedBy string) (ReturnRequest, error) {
-	returnRequest, err := NewRequestedReturnRequest(order, reason, requestedAt, requestedBy)
+	returnRequest, err := NewRequestedReturnRequest(order, nil, reason, requestedAt, requestedBy)
 	if err != nil {
 		return ReturnRequest{}, err
 	}
@@ -55,23 +61,56 @@ func NewRefundedReturnRequest(order ReturnableOrder, reason string, requestedAt 
 	return returnRequest, nil
 }
 
-func NewRequestedReturnRequest(order ReturnableOrder, reason string, requestedAt time.Time, requestedBy string) (ReturnRequest, error) {
+func NewRequestedReturnRequest(order ReturnableOrder, requestedLines []RequestedReturnLine, reason string, requestedAt time.Time, requestedBy string) (ReturnRequest, error) {
 	if requestedBy == "" {
 		return ReturnRequest{}, ErrActorRequired
 	}
 
 	id := atomic.AddUint64(&returnRequestSequence, 1)
 
-	lines := make([]ReturnRequestLine, 0, len(order.Lines))
-	for _, line := range order.Lines {
-		lines = append(lines, ReturnRequestLine{
-			ProductSKU:       line.ProductSKU,
-			ProductName:      line.ProductName,
-			ProductCategory:  line.ProductCategory,
-			Quantity:         line.Quantity,
-			UnitPrice:        line.UnitPrice,
-			ReturnWindowDays: line.ReturnWindowDays,
-		})
+	if len(requestedLines) == 0 {
+		for _, line := range order.Lines {
+			remaining := line.ShippedQuantity
+			if remaining > 0 {
+				requestedLines = append(requestedLines, RequestedReturnLine{
+					ProductSKU: line.ProductSKU,
+					Quantity:   remaining,
+				})
+			}
+		}
+	}
+
+	lines := make([]ReturnRequestLine, 0, len(requestedLines))
+	for _, requestedLine := range requestedLines {
+		if requestedLine.Quantity <= 0 {
+			return ReturnRequest{}, ErrReturnQuantityInvalid
+		}
+
+		matched := false
+		for _, line := range order.Lines {
+			if line.ProductSKU != requestedLine.ProductSKU {
+				continue
+			}
+
+			if requestedLine.Quantity > line.ShippedQuantity {
+				return ReturnRequest{}, ErrReturnQuantityInvalid
+			}
+
+			lines = append(lines, ReturnRequestLine{
+				ProductSKU:       line.ProductSKU,
+				ProductName:      line.ProductName,
+				ProductCategory:  line.ProductCategory,
+				Quantity:         requestedLine.Quantity,
+				UnitPrice:        line.UnitPrice,
+				ReturnWindowDays: line.ReturnWindowDays,
+			})
+			matched = true
+			break
+		}
+
+		if !matched {
+			return ReturnRequest{}, ErrReturnQuantityInvalid
+		}
 	}
 
 	return ReturnRequest{

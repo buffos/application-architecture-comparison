@@ -80,6 +80,7 @@ type ReturnableOrderLine struct {
 	ProductName      string
 	ProductCategory  string
 	Quantity         int
+	ShippedQuantity  int
 	UnitPrice        int
 	ReturnWindowDays int
 }
@@ -324,6 +325,7 @@ func (s Service) GetReturnableOrder(orderID string) (ReturnableOrder, error) {
 			ProductName:      line.ProductName,
 			ProductCategory:  line.ProductCategory,
 			Quantity:         line.Quantity,
+			ShippedQuantity:  line.ShippedQuantity,
 			UnitPrice:        line.UnitPrice,
 			ReturnWindowDays: line.ReturnWindowDays,
 		})

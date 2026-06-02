@@ -257,6 +257,7 @@ Architectures currently implemented in this repository:
 - `028` Orders awaiting approval report: [028-orders-awaiting-approval-report.md](modular-monolith/lessons/028-orders-awaiting-approval-report.md)
 - `029` Payment review workflow: [029-payment-review-workflow.md](modular-monolith/lessons/029-payment-review-workflow.md)
 - `030` Partial shipment support: [030-partial-shipment-support.md](modular-monolith/lessons/030-partial-shipment-support.md)
+- `031` Partial returns by line: [031-partial-returns-by-line.md](modular-monolith/lessons/031-partial-returns-by-line.md)
 
 ## How To Maintain This File
 

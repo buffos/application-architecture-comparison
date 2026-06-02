@@ -14,6 +14,7 @@ type ReturnableOrderLine struct {
 	ProductName      string
 	ProductCategory  string
 	Quantity         int
+	ShippedQuantity  int
 	UnitPrice        int
 	ReturnWindowDays int
 }

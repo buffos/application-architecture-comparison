@@ -21,6 +21,7 @@ type RequestReturnCommand struct {
 	OrderID     string
 	Reason      string
 	RequestedBy string
+	Lines       []RequestedReturnLine
 }
 
 type RequestReturnResult struct {
@@ -74,24 +75,25 @@ func (s Service) RequestReturn(command RequestReturnCommand) (RequestReturnResul
 		return RequestReturnResult{}, err
 	}
 
-	lines := make([]ReturnableOrderLine, 0, len(order.Lines))
+	returnableOrder := ReturnableOrder{
+		OrderID:    order.OrderID,
+		CustomerID: order.CustomerID,
+		ShippedAt:  order.ShippedAt,
+		Lines:      make([]ReturnableOrderLine, 0, len(order.Lines)),
+	}
 	for _, line := range order.Lines {
-		lines = append(lines, ReturnableOrderLine{
+		returnableOrder.Lines = append(returnableOrder.Lines, ReturnableOrderLine{
 			ProductSKU:       line.ProductSKU,
 			ProductName:      line.ProductName,
 			ProductCategory:  line.ProductCategory,
 			Quantity:         line.Quantity,
+			ShippedQuantity:  line.ShippedQuantity,
 			UnitPrice:        line.UnitPrice,
 			ReturnWindowDays: line.ReturnWindowDays,
 		})
 	}
 
-	returnRequest, err := NewRequestedReturnRequest(ReturnableOrder{
-		OrderID:    order.OrderID,
-		CustomerID: order.CustomerID,
-		ShippedAt:  order.ShippedAt,
-		Lines:      lines,
-	}, command.Reason, s.clock.Now(), command.RequestedBy)
+	returnRequest, err := NewRequestedReturnRequest(returnableOrder, command.Lines, command.Reason, s.clock.Now(), command.RequestedBy)
 	if err != nil {
 		return RequestReturnResult{}, err
 	}
