@@ -244,6 +244,7 @@ Architectures currently implemented in this repository:
 - `015` Return eligibility policy: [015-return-eligibility-policy.md](modular-monolith/lessons/015-return-eligibility-policy.md)
 - `016` Real return window policy: [016-real-return-window-policy.md](modular-monolith/lessons/016-real-return-window-policy.md)
 - `017` Return actor metadata: [017-return-actor-metadata.md](modular-monolith/lessons/017-return-actor-metadata.md)
+- `018` Return command idempotency: [018-return-command-idempotency.md](modular-monolith/lessons/018-return-command-idempotency.md)
 
 ## How To Maintain This File
 

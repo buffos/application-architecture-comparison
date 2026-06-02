@@ -1,6 +1,7 @@
 package returns
 
 import (
+	"modular-monolith/internal/modules/idempotency"
 	"modular-monolith/internal/modules/inventory"
 	"modular-monolith/internal/modules/orders"
 	"modular-monolith/internal/modules/payments"
@@ -32,6 +33,7 @@ type RequestReturnResult struct {
 
 type ReviewReturnCommand struct {
 	ReturnRequestID string
+	IdempotencyKey  string
 	ActorID         string
 	ReviewNote      string
 }
@@ -49,16 +51,18 @@ type Service struct {
 	orders      ReturnableOrderSource
 	eligibility returneligibility.Evaluator
 	inventory   inventory.Restocker
+	idempotency idempotency.Store
 	payments    payments.Refunder
 	clock       Clock
 }
 
-func NewService(returns Repository, orders ReturnableOrderSource, eligibility returneligibility.Evaluator, inventory inventory.Restocker, payments payments.Refunder, clock Clock) Service {
+func NewService(returns Repository, orders ReturnableOrderSource, eligibility returneligibility.Evaluator, inventory inventory.Restocker, idempotency idempotency.Store, payments payments.Refunder, clock Clock) Service {
 	return Service{
 		returns:     returns,
 		orders:      orders,
 		eligibility: eligibility,
 		inventory:   inventory,
+		idempotency: idempotency,
 		payments:    payments,
 		clock:       clock,
 	}
@@ -106,6 +110,10 @@ func (s Service) RequestReturn(command RequestReturnCommand) (RequestReturnResul
 }
 
 func (s Service) AcceptReturn(command ReviewReturnCommand) (ReviewReturnResult, error) {
+	if result, ok, err := s.lookupIdempotentResult(command.IdempotencyKey); err != nil || ok {
+		return result, err
+	}
+
 	returnRequest, err := s.returns.FindByID(command.ReturnRequestID)
 	if err != nil {
 		return ReviewReturnResult{}, err
@@ -133,13 +141,17 @@ func (s Service) AcceptReturn(command ReviewReturnCommand) (ReviewReturnResult, 
 			return ReviewReturnResult{}, err
 		}
 
-		return ReviewReturnResult{
+		result := ReviewReturnResult{
 			ReturnRequestID: returnRequest.ID,
 			OrderID:         returnRequest.OrderID,
 			CustomerID:      returnRequest.CustomerID,
 			Status:          returnRequest.Status,
 			LineCount:       len(returnRequest.Lines),
-		}, nil
+		}
+		if err := s.saveIdempotentResult(command.IdempotencyKey, result); err != nil {
+			return ReviewReturnResult{}, err
+		}
+		return result, nil
 	}
 
 	totalAmount := 0
@@ -173,16 +185,24 @@ func (s Service) AcceptReturn(command ReviewReturnCommand) (ReviewReturnResult, 
 		return ReviewReturnResult{}, err
 	}
 
-	return ReviewReturnResult{
+	result := ReviewReturnResult{
 		ReturnRequestID: returnRequest.ID,
 		OrderID:         returnRequest.OrderID,
 		CustomerID:      returnRequest.CustomerID,
 		Status:          returnRequest.Status,
 		LineCount:       len(returnRequest.Lines),
-	}, nil
+	}
+	if err := s.saveIdempotentResult(command.IdempotencyKey, result); err != nil {
+		return ReviewReturnResult{}, err
+	}
+	return result, nil
 }
 
 func (s Service) RejectReturn(command ReviewReturnCommand) (ReviewReturnResult, error) {
+	if result, ok, err := s.lookupIdempotentResult(command.IdempotencyKey); err != nil || ok {
+		return result, err
+	}
+
 	returnRequest, err := s.returns.FindByID(command.ReturnRequestID)
 	if err != nil {
 		return ReviewReturnResult{}, err
@@ -196,11 +216,48 @@ func (s Service) RejectReturn(command ReviewReturnCommand) (ReviewReturnResult, 
 		return ReviewReturnResult{}, err
 	}
 
-	return ReviewReturnResult{
+	result := ReviewReturnResult{
 		ReturnRequestID: returnRequest.ID,
 		OrderID:         returnRequest.OrderID,
 		CustomerID:      returnRequest.CustomerID,
 		Status:          returnRequest.Status,
 		LineCount:       len(returnRequest.Lines),
-	}, nil
+	}
+	if err := s.saveIdempotentResult(command.IdempotencyKey, result); err != nil {
+		return ReviewReturnResult{}, err
+	}
+	return result, nil
+}
+
+func (s Service) lookupIdempotentResult(key string) (ReviewReturnResult, bool, error) {
+	if key == "" {
+		return ReviewReturnResult{}, false, nil
+	}
+
+	result, ok, err := s.idempotency.Find(key)
+	if err != nil || !ok {
+		return ReviewReturnResult{}, ok, err
+	}
+
+	return ReviewReturnResult{
+		ReturnRequestID: result.ReturnRequestID,
+		OrderID:         result.OrderID,
+		CustomerID:      result.CustomerID,
+		Status:          result.Status,
+		LineCount:       result.LineCount,
+	}, true, nil
+}
+
+func (s Service) saveIdempotentResult(key string, result ReviewReturnResult) error {
+	if key == "" {
+		return nil
+	}
+
+	return s.idempotency.Save(key, idempotency.Result{
+		ReturnRequestID: result.ReturnRequestID,
+		OrderID:         result.OrderID,
+		CustomerID:      result.CustomerID,
+		Status:          result.Status,
+		LineCount:       result.LineCount,
+	})
 }

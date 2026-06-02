@@ -6,6 +6,7 @@ import (
 
 	"modular-monolith/internal/modules/approvals"
 	"modular-monolith/internal/modules/customers"
+	"modular-monolith/internal/modules/idempotency"
 	"modular-monolith/internal/modules/inventory"
 	"modular-monolith/internal/modules/orders"
 	"modular-monolith/internal/modules/payments"
@@ -27,6 +28,7 @@ func main() {
 	quoteRepository := memory.NewQuoteRepository()
 	returnRequestRepository := memory.NewReturnRequestRepository()
 	shipmentRepository := memory.NewShipmentRepository()
+	idempotencyStore := memory.NewIdempotencyStore()
 
 	if err := customerRepository.Save(customers.Customer{
 		ID:     "customer-001",
@@ -77,11 +79,12 @@ func main() {
 	productModule := products.NewService(productRepository)
 	approvalModule := approvals.NewService()
 	clock := timeadapter.NewSystemClock()
+	idempotencyModule := idempotency.NewService(idempotencyStore)
 	quoteModule := quotes.NewService(quoteRepository, customerModule, productModule, approvalModule)
 	returnEligibilityModule := returneligibility.NewService()
 	shipmentModule := shipments.NewService(shipmentRepository)
 	orderModule := orders.NewService(orderRepository, quoteModule, inventoryModule, paymentModule, shipmentModule, clock)
-	returnModule := returns.NewService(returnRequestRepository, orderModule, returnEligibilityModule, inventoryModule, paymentModule, clock)
+	returnModule := returns.NewService(returnRequestRepository, orderModule, returnEligibilityModule, inventoryModule, idempotencyModule, paymentModule, clock)
 
 	result, err := quoteModule.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -195,6 +198,7 @@ func main() {
 
 	acceptedReturn, err := returnModule.AcceptReturn(returns.ReviewReturnCommand{
 		ReturnRequestID: returnResult.ReturnRequestID,
+		IdempotencyKey:  "accept-return-001",
 		ActorID:         "agent-001",
 		ReviewNote:      "accepted after inspection",
 	})

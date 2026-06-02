@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"modular-monolith/internal/modules/idempotency"
 	"modular-monolith/internal/modules/inventory"
 	"modular-monolith/internal/modules/orders"
 	"modular-monolith/internal/modules/payments"
@@ -54,6 +55,10 @@ type stubClock struct {
 	now time.Time
 }
 
+type stubIdempotencyStore struct {
+	results map[string]idempotency.Result
+}
+
 func (s *stubRefunder) Refund(request payments.RefundRequest) error {
 	if s.err != nil {
 		return s.err
@@ -80,11 +85,22 @@ func (c stubClock) Now() time.Time {
 	return c.now
 }
 
+func (s *stubIdempotencyStore) Find(key string) (idempotency.Result, bool, error) {
+	result, ok := s.results[key]
+	return result, ok, nil
+}
+
+func (s *stubIdempotencyStore) Save(key string, result idempotency.Result) error {
+	s.results[key] = result
+	return nil
+}
+
 func TestRequestReturnStoresRequestedReturn(t *testing.T) {
 	repository := &stubRepository{}
 	refunder := &stubRefunder{}
 	restocker := &stubRestocker{}
 	clock := stubClock{now: time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC)}
+	idempotencyStore := &stubIdempotencyStore{results: map[string]idempotency.Result{}}
 	service := NewService(repository, stubOrderSource{
 		order: orders.ReturnableOrder{
 			OrderID:    "order-001",
@@ -94,7 +110,7 @@ func TestRequestReturnStoresRequestedReturn(t *testing.T) {
 				{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 			},
 		},
-	}, stubEligibility{allows: true}, restocker, refunder, clock)
+	}, stubEligibility{allows: true}, restocker, idempotencyStore, refunder, clock)
 
 	result, err := service.RequestReturn(RequestReturnCommand{
 		OrderID:     "order-001",
@@ -130,9 +146,10 @@ func TestRequestReturnRejectsNonReturnableOrder(t *testing.T) {
 	repository := &stubRepository{}
 	refunder := &stubRefunder{}
 	restocker := &stubRestocker{}
+	idempotencyStore := &stubIdempotencyStore{results: map[string]idempotency.Result{}}
 	service := NewService(repository, stubOrderSource{
 		err: orders.ErrOrderNotReturnable,
-	}, stubEligibility{allows: true}, restocker, refunder, stubClock{})
+	}, stubEligibility{allows: true}, restocker, idempotencyStore, refunder, stubClock{})
 
 	_, err := service.RequestReturn(RequestReturnCommand{
 		OrderID:     "order-001",
@@ -149,6 +166,7 @@ func TestRequestReturnRejectsMissingActor(t *testing.T) {
 	refunder := &stubRefunder{}
 	restocker := &stubRestocker{}
 	clock := stubClock{now: time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC)}
+	idempotencyStore := &stubIdempotencyStore{results: map[string]idempotency.Result{}}
 	service := NewService(repository, stubOrderSource{
 		order: orders.ReturnableOrder{
 			OrderID:    "order-001",
@@ -158,7 +176,7 @@ func TestRequestReturnRejectsMissingActor(t *testing.T) {
 				{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 			},
 		},
-	}, stubEligibility{allows: true}, restocker, refunder, clock)
+	}, stubEligibility{allows: true}, restocker, idempotencyStore, refunder, clock)
 
 	_, err := service.RequestReturn(RequestReturnCommand{
 		OrderID: "order-001",
@@ -173,7 +191,8 @@ func TestRequestReturnStopsWhenRestockFails(t *testing.T) {
 	repository := &stubRepository{}
 	refunder := &stubRefunder{}
 	restocker := &stubRestocker{err: inventory.ErrStockNotFound}
-	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: true}, restocker, refunder, stubClock{})
+	idempotencyStore := &stubIdempotencyStore{results: map[string]idempotency.Result{}}
+	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: true}, restocker, idempotencyStore, refunder, stubClock{})
 	repository.saved, _ = NewRequestedReturnRequest(ReturnableOrder{
 		OrderID:    "order-001",
 		CustomerID: "customer-001",
@@ -185,6 +204,7 @@ func TestRequestReturnStopsWhenRestockFails(t *testing.T) {
 
 	_, err := service.AcceptReturn(ReviewReturnCommand{
 		ReturnRequestID: repository.saved.ID,
+		IdempotencyKey:  "accept-1",
 		ActorID:         "agent-001",
 		ReviewNote:      "warehouse restock failed",
 	})
@@ -197,6 +217,7 @@ func TestAcceptReturnRefundsRestocksAndStoresUpdatedStatus(t *testing.T) {
 	repository := &stubRepository{}
 	refunder := &stubRefunder{}
 	restocker := &stubRestocker{}
+	idempotencyStore := &stubIdempotencyStore{results: map[string]idempotency.Result{}}
 	repository.saved, _ = NewRequestedReturnRequest(ReturnableOrder{
 		OrderID:    "order-001",
 		CustomerID: "customer-001",
@@ -205,9 +226,9 @@ func TestAcceptReturnRefundsRestocksAndStoresUpdatedStatus(t *testing.T) {
 			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 		},
 	}, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC), "customer-001")
-	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: true}, restocker, refunder, stubClock{})
+	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: true}, restocker, idempotencyStore, refunder, stubClock{})
 
-	result, err := service.AcceptReturn(ReviewReturnCommand{ReturnRequestID: repository.saved.ID, ActorID: "agent-001", ReviewNote: "accepted after inspection"})
+	result, err := service.AcceptReturn(ReviewReturnCommand{ReturnRequestID: repository.saved.ID, IdempotencyKey: "accept-1", ActorID: "agent-001", ReviewNote: "accepted after inspection"})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -233,6 +254,7 @@ func TestRejectReturnStoresRejectedStatus(t *testing.T) {
 	repository := &stubRepository{}
 	refunder := &stubRefunder{}
 	restocker := &stubRestocker{}
+	idempotencyStore := &stubIdempotencyStore{results: map[string]idempotency.Result{}}
 	repository.saved, _ = NewRequestedReturnRequest(ReturnableOrder{
 		OrderID:    "order-001",
 		CustomerID: "customer-001",
@@ -241,9 +263,9 @@ func TestRejectReturnStoresRejectedStatus(t *testing.T) {
 			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 		},
 	}, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC), "customer-001")
-	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: true}, restocker, refunder, stubClock{})
+	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: true}, restocker, idempotencyStore, refunder, stubClock{})
 
-	result, err := service.RejectReturn(ReviewReturnCommand{ReturnRequestID: repository.saved.ID, ActorID: "agent-002", ReviewNote: "rejected on inspection"})
+	result, err := service.RejectReturn(ReviewReturnCommand{ReturnRequestID: repository.saved.ID, IdempotencyKey: "reject-1", ActorID: "agent-002", ReviewNote: "rejected on inspection"})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -265,6 +287,7 @@ func TestAcceptReturnRejectsWhenPolicyBlocksEligibility(t *testing.T) {
 	repository := &stubRepository{}
 	refunder := &stubRefunder{}
 	restocker := &stubRestocker{}
+	idempotencyStore := &stubIdempotencyStore{results: map[string]idempotency.Result{}}
 	repository.saved, _ = NewRequestedReturnRequest(ReturnableOrder{
 		OrderID:    "order-001",
 		CustomerID: "customer-001",
@@ -273,9 +296,9 @@ func TestAcceptReturnRejectsWhenPolicyBlocksEligibility(t *testing.T) {
 			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 		},
 	}, "outside return window", time.Date(2026, 7, 12, 12, 0, 0, 0, time.UTC), "customer-001")
-	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: false}, restocker, refunder, stubClock{})
+	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: false}, restocker, idempotencyStore, refunder, stubClock{})
 
-	result, err := service.AcceptReturn(ReviewReturnCommand{ReturnRequestID: repository.saved.ID, ActorID: "agent-003", ReviewNote: "window exceeded"})
+	result, err := service.AcceptReturn(ReviewReturnCommand{ReturnRequestID: repository.saved.ID, IdempotencyKey: "accept-2", ActorID: "agent-003", ReviewNote: "window exceeded"})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -294,5 +317,67 @@ func TestAcceptReturnRejectsWhenPolicyBlocksEligibility(t *testing.T) {
 
 	if repository.saved.ReviewedBy != "agent-003" {
 		t.Fatalf("expected policy reviewer to be recorded")
+	}
+}
+
+func TestAcceptReturnReusesStoredIdempotentResult(t *testing.T) {
+	repository := &stubRepository{}
+	refunder := &stubRefunder{}
+	restocker := &stubRestocker{}
+	idempotencyStore := &stubIdempotencyStore{
+		results: map[string]idempotency.Result{
+			"accept-1": {
+				ReturnRequestID: "return-001",
+				OrderID:         "order-001",
+				CustomerID:      "customer-001",
+				Status:          ReturnRequestStatusRefunded,
+				LineCount:       1,
+			},
+		},
+	}
+	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: true}, restocker, idempotencyStore, refunder, stubClock{})
+
+	result, err := service.AcceptReturn(ReviewReturnCommand{ReturnRequestID: "return-001", IdempotencyKey: "accept-1", ActorID: "agent-001"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if result.Status != ReturnRequestStatusRefunded {
+		t.Fatalf("expected refunded result, got %s", result.Status)
+	}
+
+	if refunder.request.Amount != 0 || len(restocker.items) != 0 {
+		t.Fatalf("expected no side effects on idempotent replay")
+	}
+}
+
+func TestRejectReturnReusesStoredIdempotentResult(t *testing.T) {
+	repository := &stubRepository{}
+	refunder := &stubRefunder{}
+	restocker := &stubRestocker{}
+	idempotencyStore := &stubIdempotencyStore{
+		results: map[string]idempotency.Result{
+			"reject-1": {
+				ReturnRequestID: "return-001",
+				OrderID:         "order-001",
+				CustomerID:      "customer-001",
+				Status:          ReturnRequestStatusRejected,
+				LineCount:       1,
+			},
+		},
+	}
+	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: true}, restocker, idempotencyStore, refunder, stubClock{})
+
+	result, err := service.RejectReturn(ReviewReturnCommand{ReturnRequestID: "return-001", IdempotencyKey: "reject-1", ActorID: "agent-001"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if result.Status != ReturnRequestStatusRejected {
+		t.Fatalf("expected rejected result, got %s", result.Status)
+	}
+
+	if refunder.request.Amount != 0 || len(restocker.items) != 0 {
+		t.Fatalf("expected no side effects on idempotent replay")
 	}
 }
