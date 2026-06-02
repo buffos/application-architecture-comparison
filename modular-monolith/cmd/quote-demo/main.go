@@ -185,4 +185,13 @@ func main() {
 	}
 
 	fmt.Printf("requested return: return=%s order=%s customer=%s status=%s lines=%d\n", returnResult.ReturnRequestID, returnResult.OrderID, returnResult.CustomerID, returnResult.Status, returnResult.LineCount)
+
+	acceptedReturn, err := returnModule.AcceptReturn(returns.ReviewReturnCommand{
+		ReturnRequestID: returnResult.ReturnRequestID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("accepted return: return=%s order=%s customer=%s status=%s lines=%d\n", acceptedReturn.ReturnRequestID, acceptedReturn.OrderID, acceptedReturn.CustomerID, acceptedReturn.Status, acceptedReturn.LineCount)
 }

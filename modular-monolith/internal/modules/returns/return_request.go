@@ -8,7 +8,15 @@ import (
 
 var ErrReturnRequestNotFound = errors.New("return request not found")
 
-const ReturnRequestStatusRefunded = "Refunded"
+var (
+	ErrReturnRequestNotReviewable = errors.New("return request is not reviewable")
+)
+
+const (
+	ReturnRequestStatusRequested = "Requested"
+	ReturnRequestStatusRejected  = "Rejected"
+	ReturnRequestStatusRefunded  = "Refunded"
+)
 
 var returnRequestSequence uint64
 
@@ -30,6 +38,12 @@ type ReturnRequestLine struct {
 }
 
 func NewRefundedReturnRequest(order ReturnableOrder, reason string) ReturnRequest {
+	returnRequest := NewRequestedReturnRequest(order, reason)
+	returnRequest.Status = ReturnRequestStatusRefunded
+	return returnRequest
+}
+
+func NewRequestedReturnRequest(order ReturnableOrder, reason string) ReturnRequest {
 	id := atomic.AddUint64(&returnRequestSequence, 1)
 
 	lines := make([]ReturnRequestLine, 0, len(order.Lines))
@@ -48,7 +62,25 @@ func NewRefundedReturnRequest(order ReturnableOrder, reason string) ReturnReques
 		OrderID:    order.OrderID,
 		CustomerID: order.CustomerID,
 		Reason:     reason,
-		Status:     ReturnRequestStatusRefunded,
+		Status:     ReturnRequestStatusRequested,
 		Lines:      lines,
 	}
+}
+
+func (r *ReturnRequest) Reject() error {
+	if r.Status != ReturnRequestStatusRequested {
+		return ErrReturnRequestNotReviewable
+	}
+
+	r.Status = ReturnRequestStatusRejected
+	return nil
+}
+
+func (r *ReturnRequest) Refund() error {
+	if r.Status != ReturnRequestStatusRequested {
+		return ErrReturnRequestNotReviewable
+	}
+
+	r.Status = ReturnRequestStatusRefunded
+	return nil
 }
