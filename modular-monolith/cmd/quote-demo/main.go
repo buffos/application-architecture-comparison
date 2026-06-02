@@ -203,6 +203,24 @@ func main() {
 
 	fmt.Printf("listed shipped orders: count=%d\n", len(orderList))
 
+	shipmentDetails, err := shipmentModule.GetShipment(shipments.GetShipmentQuery{
+		ShipmentID: shipmentResult.ShipmentID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("loaded shipment: shipment=%s order=%s customer=%s lines=%d\n", shipmentDetails.ShipmentID, shipmentDetails.OrderID, shipmentDetails.CustomerID, shipmentDetails.LineCount)
+
+	shipmentList, err := shipmentModule.ListShipments(shipments.ListShipmentsQuery{
+		OrderID: orderResult.OrderID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("listed order shipments: count=%d\n", len(shipmentList))
+
 	returnResult, err := returnModule.RequestReturn(returns.RequestReturnCommand{
 		OrderID:     orderResult.OrderID,
 		Reason:      "damaged item",

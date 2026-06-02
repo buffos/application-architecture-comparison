@@ -15,6 +15,16 @@ func (r *stubRepository) FindByID(id string) (Shipment, error) {
 	return r.saved, nil
 }
 
+func (r *stubRepository) ListByOrderID(orderID string) ([]Shipment, error) {
+	if r.saved.ID == "" {
+		return nil, nil
+	}
+	if orderID == "" || r.saved.OrderID == orderID {
+		return []Shipment{r.saved}, nil
+	}
+	return nil, nil
+}
+
 func TestCreateSavesShipment(t *testing.T) {
 	repository := &stubRepository{}
 	service := NewService(repository)

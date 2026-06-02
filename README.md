@@ -247,6 +247,7 @@ Architectures currently implemented in this repository:
 - `018` Return command idempotency: [018-return-command-idempotency.md](modular-monolith/lessons/018-return-command-idempotency.md)
 - `019` Return query surface: [019-return-query-surface.md](modular-monolith/lessons/019-return-query-surface.md)
 - `020` Order query surface: [020-order-query-surface.md](modular-monolith/lessons/020-order-query-surface.md)
+- `021` Shipment query surface: [021-shipment-query-surface.md](modular-monolith/lessons/021-shipment-query-surface.md)
 
 ## How To Maintain This File
 
