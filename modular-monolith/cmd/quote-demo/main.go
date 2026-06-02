@@ -75,7 +75,7 @@ func main() {
 	quoteModule := quotes.NewService(quoteRepository, customerModule, productModule, approvalModule)
 	shipmentModule := shipments.NewService(shipmentRepository)
 	orderModule := orders.NewService(orderRepository, quoteModule, inventoryModule, paymentModule, shipmentModule)
-	returnModule := returns.NewService(returnRequestRepository, orderModule, paymentModule)
+	returnModule := returns.NewService(returnRequestRepository, orderModule, inventoryModule, paymentModule)
 
 	result, err := quoteModule.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",

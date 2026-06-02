@@ -65,3 +65,20 @@ func (r *InventoryRepository) Release(items []inventory.ReleaseItem) error {
 
 	return nil
 }
+
+func (r *InventoryRepository) Restock(items []inventory.RestockItem) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, item := range items {
+		record, ok := r.records[item.ProductSKU]
+		if !ok {
+			return inventory.ErrStockNotFound
+		}
+
+		record.Available += item.Quantity
+		r.records[item.ProductSKU] = record
+	}
+
+	return nil
+}

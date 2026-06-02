@@ -3,6 +3,7 @@ package returns
 import (
 	"testing"
 
+	"modular-monolith/internal/modules/inventory"
 	"modular-monolith/internal/modules/orders"
 	"modular-monolith/internal/modules/payments"
 )
@@ -38,6 +39,11 @@ type stubRefunder struct {
 	err     error
 }
 
+type stubRestocker struct {
+	items []inventory.RestockItem
+	err   error
+}
+
 func (s *stubRefunder) Refund(request payments.RefundRequest) error {
 	if s.err != nil {
 		return s.err
@@ -47,9 +53,19 @@ func (s *stubRefunder) Refund(request payments.RefundRequest) error {
 	return nil
 }
 
+func (s *stubRestocker) Restock(items []inventory.RestockItem) error {
+	if s.err != nil {
+		return s.err
+	}
+
+	s.items = append([]inventory.RestockItem(nil), items...)
+	return nil
+}
+
 func TestRequestReturnRefundsAndStoresReturnRequest(t *testing.T) {
 	repository := &stubRepository{}
 	refunder := &stubRefunder{}
+	restocker := &stubRestocker{}
 	service := NewService(repository, stubOrderSource{
 		order: orders.ReturnableOrder{
 			OrderID:    "order-001",
@@ -58,7 +74,7 @@ func TestRequestReturnRefundsAndStoresReturnRequest(t *testing.T) {
 				{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000},
 			},
 		},
-	}, refunder)
+	}, restocker, refunder)
 
 	result, err := service.RequestReturn(RequestReturnCommand{
 		OrderID: "order-001",
@@ -75,14 +91,19 @@ func TestRequestReturnRefundsAndStoresReturnRequest(t *testing.T) {
 	if refunder.request.Amount != 30000 {
 		t.Fatalf("expected refund amount 30000, got %d", refunder.request.Amount)
 	}
+
+	if len(restocker.items) != 1 || restocker.items[0].Quantity != 2 {
+		t.Fatalf("expected restock quantity 2, got %+v", restocker.items)
+	}
 }
 
 func TestRequestReturnRejectsNonReturnableOrder(t *testing.T) {
 	repository := &stubRepository{}
 	refunder := &stubRefunder{}
+	restocker := &stubRestocker{}
 	service := NewService(repository, stubOrderSource{
 		err: orders.ErrOrderNotReturnable,
-	}, refunder)
+	}, restocker, refunder)
 
 	_, err := service.RequestReturn(RequestReturnCommand{
 		OrderID: "order-001",
@@ -90,5 +111,28 @@ func TestRequestReturnRejectsNonReturnableOrder(t *testing.T) {
 	})
 	if err != orders.ErrOrderNotReturnable {
 		t.Fatalf("expected %v, got %v", orders.ErrOrderNotReturnable, err)
+	}
+}
+
+func TestRequestReturnStopsWhenRestockFails(t *testing.T) {
+	repository := &stubRepository{}
+	refunder := &stubRefunder{}
+	restocker := &stubRestocker{err: inventory.ErrStockNotFound}
+	service := NewService(repository, stubOrderSource{
+		order: orders.ReturnableOrder{
+			OrderID:    "order-001",
+			CustomerID: "customer-001",
+			Lines: []orders.ReturnableOrderLine{
+				{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000},
+			},
+		},
+	}, restocker, refunder)
+
+	_, err := service.RequestReturn(RequestReturnCommand{
+		OrderID: "order-001",
+		Reason:  "damaged item",
+	})
+	if err != inventory.ErrStockNotFound {
+		t.Fatalf("expected %v, got %v", inventory.ErrStockNotFound, err)
 	}
 }

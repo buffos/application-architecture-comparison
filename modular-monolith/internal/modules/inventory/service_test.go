@@ -3,9 +3,10 @@ package inventory
 import "testing"
 
 type stubRepository struct {
-	reserved []ReservationItem
-	released []ReleaseItem
-	err      error
+	reserved  []ReservationItem
+	released  []ReleaseItem
+	restocked []RestockItem
+	err       error
 }
 
 func (r *stubRepository) Save(record StockRecord) error {
@@ -27,6 +28,15 @@ func (r *stubRepository) Release(items []ReleaseItem) error {
 	}
 
 	r.released = append([]ReleaseItem(nil), items...)
+	return nil
+}
+
+func (r *stubRepository) Restock(items []RestockItem) error {
+	if r.err != nil {
+		return r.err
+	}
+
+	r.restocked = append([]RestockItem(nil), items...)
 	return nil
 }
 
@@ -70,5 +80,21 @@ func TestReleasePassesReleaseItemsToRepository(t *testing.T) {
 
 	if len(repository.released) != 1 {
 		t.Fatalf("expected 1 released item, got %d", len(repository.released))
+	}
+}
+
+func TestRestockPassesRestockItemsToRepository(t *testing.T) {
+	repository := &stubRepository{}
+	service := NewService(repository)
+
+	err := service.Restock([]RestockItem{
+		{ProductSKU: "sku-001", Quantity: 2},
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(repository.restocked) != 1 {
+		t.Fatalf("expected 1 restocked item, got %d", len(repository.restocked))
 	}
 }

@@ -8,6 +8,10 @@ type Releaser interface {
 	Release(items []ReleaseItem) error
 }
 
+type Restocker interface {
+	Restock(items []RestockItem) error
+}
+
 type StockKeeper interface {
 	Reserver
 	Releaser
@@ -41,4 +45,14 @@ func (s Service) Release(items []ReleaseItem) error {
 	}
 
 	return s.stock.Release(items)
+}
+
+func (s Service) Restock(items []RestockItem) error {
+	for _, item := range items {
+		if item.Quantity <= 0 {
+			return ErrReservationQuantityMustBePositive
+		}
+	}
+
+	return s.stock.Restock(items)
 }

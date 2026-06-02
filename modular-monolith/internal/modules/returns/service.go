@@ -1,6 +1,7 @@
 package returns
 
 import (
+	"modular-monolith/internal/modules/inventory"
 	"modular-monolith/internal/modules/orders"
 	"modular-monolith/internal/modules/payments"
 )
@@ -23,16 +24,18 @@ type RequestReturnResult struct {
 }
 
 type Service struct {
-	returns  Repository
-	orders   ReturnableOrderSource
-	payments payments.Refunder
+	returns   Repository
+	orders    ReturnableOrderSource
+	inventory inventory.Restocker
+	payments  payments.Refunder
 }
 
-func NewService(returns Repository, orders ReturnableOrderSource, payments payments.Refunder) Service {
+func NewService(returns Repository, orders ReturnableOrderSource, inventory inventory.Restocker, payments payments.Refunder) Service {
 	return Service{
-		returns:  returns,
-		orders:   orders,
-		payments: payments,
+		returns:   returns,
+		orders:    orders,
+		inventory: inventory,
+		payments:  payments,
 	}
 }
 
@@ -53,6 +56,18 @@ func (s Service) RequestReturn(command RequestReturnCommand) (RequestReturnResul
 		Amount:     totalAmount,
 		Reason:     command.Reason,
 	}); err != nil {
+		return RequestReturnResult{}, err
+	}
+
+	restockItems := make([]inventory.RestockItem, 0, len(order.Lines))
+	for _, line := range order.Lines {
+		restockItems = append(restockItems, inventory.RestockItem{
+			ProductSKU: line.ProductSKU,
+			Quantity:   line.Quantity,
+		})
+	}
+
+	if err := s.inventory.Restock(restockItems); err != nil {
 		return RequestReturnResult{}, err
 	}
 
