@@ -10,10 +10,17 @@ type OrderDetails struct {
 	CustomerID string
 	Status     string
 	LineCount  int
+	Lines      []OrderLineDetails
 }
 
 type ListOrdersQuery struct {
 	Status string
+}
+
+type OrderLineDetails struct {
+	ProductSKU      string
+	ProductCategory string
+	Quantity        int
 }
 
 func (s Service) GetOrder(query GetOrderQuery) (OrderDetails, error) {
@@ -28,6 +35,7 @@ func (s Service) GetOrder(query GetOrderQuery) (OrderDetails, error) {
 		CustomerID: order.CustomerID,
 		Status:     order.Status,
 		LineCount:  len(order.Lines),
+		Lines:      toOrderLineDetails(order.Lines),
 	}, nil
 }
 
@@ -45,8 +53,22 @@ func (s Service) ListOrders(query ListOrdersQuery) ([]OrderDetails, error) {
 			CustomerID: order.CustomerID,
 			Status:     order.Status,
 			LineCount:  len(order.Lines),
+			Lines:      toOrderLineDetails(order.Lines),
 		})
 	}
 
 	return list, nil
+}
+
+func toOrderLineDetails(lines []OrderLine) []OrderLineDetails {
+	details := make([]OrderLineDetails, 0, len(lines))
+	for _, line := range lines {
+		details = append(details, OrderLineDetails{
+			ProductSKU:      line.ProductSKU,
+			ProductCategory: line.ProductCategory,
+			Quantity:        line.Quantity,
+		})
+	}
+
+	return details
 }

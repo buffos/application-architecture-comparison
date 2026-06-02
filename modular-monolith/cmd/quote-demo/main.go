@@ -86,7 +86,7 @@ func main() {
 	shipmentModule := shipments.NewService(shipmentRepository)
 	orderModule := orders.NewService(orderRepository, quoteModule, inventoryModule, paymentModule, shipmentModule, clock)
 	returnModule := returns.NewService(returnRequestRepository, orderModule, returnEligibilityModule, inventoryModule, idempotencyModule, paymentModule, clock)
-	reportingModule := reporting.NewService(quoteModule, orderModule)
+	reportingModule := reporting.NewService(quoteModule, orderModule, returnModule)
 
 	result, err := quoteModule.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -298,6 +298,15 @@ func main() {
 	}
 
 	fmt.Printf("accepted return: return=%s order=%s customer=%s status=%s lines=%d\n", acceptedReturn.ReturnRequestID, acceptedReturn.OrderID, acceptedReturn.CustomerID, acceptedReturn.Status, acceptedReturn.LineCount)
+
+	returnRateReport, err := reportingModule.ReturnRateByCategoryReport()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, row := range returnRateReport.Rows {
+		fmt.Printf("return rate by category: category=%s shipped=%d returned=%d rate=%.2f\n", row.Category, row.ShippedQuantity, row.ReturnedQuantity, row.ReturnRate)
+	}
 
 	returnDetails, err := returnModule.GetReturnRequest(returns.GetReturnRequestQuery{
 		ReturnRequestID: returnResult.ReturnRequestID,

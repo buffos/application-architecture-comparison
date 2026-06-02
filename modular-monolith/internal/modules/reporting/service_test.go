@@ -5,6 +5,7 @@ import (
 
 	"modular-monolith/internal/modules/orders"
 	"modular-monolith/internal/modules/quotes"
+	"modular-monolith/internal/modules/returns"
 )
 
 type stubQuoteReader struct {
@@ -20,6 +21,14 @@ type stubOrderReader struct {
 }
 
 func (r stubOrderReader) ListOrders(query orders.ListOrdersQuery) ([]orders.OrderDetails, error) {
+	return r.list(query)
+}
+
+type stubReturnReader struct {
+	list func(query returns.ListReturnRequestsQuery) ([]returns.ReturnRequestDetails, error)
+}
+
+func (r stubReturnReader) ListReturnRequests(query returns.ListReturnRequestsQuery) ([]returns.ReturnRequestDetails, error) {
 	return r.list(query)
 }
 
@@ -48,6 +57,11 @@ func TestQuoteConversionReportCombinesQuoteAndOrderCounts(t *testing.T) {
 				}, nil
 			},
 		},
+		stubReturnReader{
+			list: func(query returns.ListReturnRequestsQuery) ([]returns.ReturnRequestDetails, error) {
+				return nil, nil
+			},
+		},
 	)
 
 	report, err := service.QuoteConversionReport()
@@ -69,5 +83,66 @@ func TestQuoteConversionReportCombinesQuoteAndOrderCounts(t *testing.T) {
 
 	if report.ConversionRate != 1.0/3.0 {
 		t.Fatalf("expected conversion rate 1/3, got %f", report.ConversionRate)
+	}
+}
+
+func TestReturnRateByCategoryReportGroupsShippedAndReturnedQuantities(t *testing.T) {
+	service := NewService(
+		stubQuoteReader{list: func(query quotes.ListQuotesQuery) ([]quotes.QuoteDetails, error) { return nil, nil }},
+		stubOrderReader{
+			list: func(query orders.ListOrdersQuery) ([]orders.OrderDetails, error) {
+				return []orders.OrderDetails{
+					{
+						OrderID: "order-001",
+						Status:  orders.OrderStatusShipped,
+						Lines: []orders.OrderLineDetails{
+							{ProductSKU: "sku-001", ProductCategory: "Standard", Quantity: 4},
+							{ProductSKU: "sku-002", ProductCategory: "CustomBuild", Quantity: 2},
+						},
+					},
+				}, nil
+			},
+		},
+		stubReturnReader{
+			list: func(query returns.ListReturnRequestsQuery) ([]returns.ReturnRequestDetails, error) {
+				return []returns.ReturnRequestDetails{
+					{
+						ReturnRequestID: "return-001",
+						Status:          returns.ReturnRequestStatusRefunded,
+						Lines: []returns.ReturnLineDetails{
+							{ProductSKU: "sku-001", ProductCategory: "Standard", Quantity: 1},
+						},
+					},
+				}, nil
+			},
+		},
+	)
+
+	report, err := service.ReturnRateByCategoryReport()
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(report.Rows) != 2 {
+		t.Fatalf("expected two category rows, got %+v", report.Rows)
+	}
+
+	var standard *ReturnRateByCategoryRow
+	for i := range report.Rows {
+		if report.Rows[i].Category == "Standard" {
+			standard = &report.Rows[i]
+		}
+	}
+
+	if standard == nil {
+		t.Fatalf("expected Standard category row, got %+v", report.Rows)
+	}
+
+	if standard.ShippedQuantity != 4 || standard.ReturnedQuantity != 1 {
+		t.Fatalf("expected Standard row 4 shipped / 1 returned, got %+v", *standard)
+	}
+
+	if standard.ReturnRate != 0.25 {
+		t.Fatalf("expected Standard return rate 0.25, got %f", standard.ReturnRate)
 	}
 }

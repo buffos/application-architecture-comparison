@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(modular-monolith): complete lesson 025 quote conversion report
+feat(modular-monolith): complete lesson 026 return rate by category report
 
 # Add tag
 
-git tag -a modular-monolith-025 -m "Modular Monolith Lesson 025" && git push origin --tags
-git push origin modular-monolith-025
+git tag -a modular-monolith-026 -m "Modular Monolith Lesson 026" && git push origin --tags
+git push origin modular-monolith-026
 
 or
 

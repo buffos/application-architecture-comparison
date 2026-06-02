@@ -14,10 +14,17 @@ type ReturnRequestDetails struct {
 	RequestedBy     string
 	ReviewedBy      string
 	ProcessedBy     string
+	Lines           []ReturnLineDetails
 }
 
 type ListReturnRequestsQuery struct {
 	Status string
+}
+
+type ReturnLineDetails struct {
+	ProductSKU      string
+	ProductCategory string
+	Quantity        int
 }
 
 func (s Service) GetReturnRequest(query GetReturnRequestQuery) (ReturnRequestDetails, error) {
@@ -36,6 +43,7 @@ func (s Service) GetReturnRequest(query GetReturnRequestQuery) (ReturnRequestDet
 		RequestedBy:     request.RequestedBy,
 		ReviewedBy:      request.ReviewedBy,
 		ProcessedBy:     request.ProcessedBy,
+		Lines:           toReturnLineDetails(request.Lines),
 	}, nil
 }
 
@@ -57,8 +65,22 @@ func (s Service) ListReturnRequests(query ListReturnRequestsQuery) ([]ReturnRequ
 			RequestedBy:     request.RequestedBy,
 			ReviewedBy:      request.ReviewedBy,
 			ProcessedBy:     request.ProcessedBy,
+			Lines:           toReturnLineDetails(request.Lines),
 		})
 	}
 
 	return list, nil
+}
+
+func toReturnLineDetails(lines []ReturnRequestLine) []ReturnLineDetails {
+	details := make([]ReturnLineDetails, 0, len(lines))
+	for _, line := range lines {
+		details = append(details, ReturnLineDetails{
+			ProductSKU:      line.ProductSKU,
+			ProductCategory: line.ProductCategory,
+			Quantity:        line.Quantity,
+		})
+	}
+
+	return details
 }
