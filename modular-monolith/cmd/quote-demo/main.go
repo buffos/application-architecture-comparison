@@ -11,6 +11,7 @@ import (
 	"modular-monolith/internal/modules/payments"
 	"modular-monolith/internal/modules/products"
 	"modular-monolith/internal/modules/quotes"
+	"modular-monolith/internal/modules/returneligibility"
 	"modular-monolith/internal/modules/returns"
 	"modular-monolith/internal/modules/shipments"
 	"modular-monolith/internal/platform/memory"
@@ -73,9 +74,10 @@ func main() {
 	productModule := products.NewService(productRepository)
 	approvalModule := approvals.NewService()
 	quoteModule := quotes.NewService(quoteRepository, customerModule, productModule, approvalModule)
+	returnEligibilityModule := returneligibility.NewService()
 	shipmentModule := shipments.NewService(shipmentRepository)
 	orderModule := orders.NewService(orderRepository, quoteModule, inventoryModule, paymentModule, shipmentModule)
-	returnModule := returns.NewService(returnRequestRepository, orderModule, inventoryModule, paymentModule)
+	returnModule := returns.NewService(returnRequestRepository, orderModule, returnEligibilityModule, inventoryModule, paymentModule)
 
 	result, err := quoteModule.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",

@@ -4,6 +4,7 @@ import (
 	"modular-monolith/internal/modules/inventory"
 	"modular-monolith/internal/modules/orders"
 	"modular-monolith/internal/modules/payments"
+	"modular-monolith/internal/modules/returneligibility"
 )
 
 type ReturnableOrderSource interface {
@@ -36,18 +37,20 @@ type ReviewReturnResult struct {
 }
 
 type Service struct {
-	returns   Repository
-	orders    ReturnableOrderSource
-	inventory inventory.Restocker
-	payments  payments.Refunder
+	returns     Repository
+	orders      ReturnableOrderSource
+	eligibility returneligibility.Evaluator
+	inventory   inventory.Restocker
+	payments    payments.Refunder
 }
 
-func NewService(returns Repository, orders ReturnableOrderSource, inventory inventory.Restocker, payments payments.Refunder) Service {
+func NewService(returns Repository, orders ReturnableOrderSource, eligibility returneligibility.Evaluator, inventory inventory.Restocker, payments payments.Refunder) Service {
 	return Service{
-		returns:   returns,
-		orders:    orders,
-		inventory: inventory,
-		payments:  payments,
+		returns:     returns,
+		orders:      orders,
+		eligibility: eligibility,
+		inventory:   inventory,
+		payments:    payments,
 	}
 }
 
@@ -91,6 +94,26 @@ func (s Service) AcceptReturn(command ReviewReturnCommand) (ReviewReturnResult, 
 	returnRequest, err := s.returns.FindByID(command.ReturnRequestID)
 	if err != nil {
 		return ReviewReturnResult{}, err
+	}
+
+	if !s.eligibility.Allows(returneligibility.ReviewRequest{
+		Reason: returnRequest.Reason,
+	}) {
+		if err := returnRequest.Reject(); err != nil {
+			return ReviewReturnResult{}, err
+		}
+
+		if err := s.returns.Save(returnRequest); err != nil {
+			return ReviewReturnResult{}, err
+		}
+
+		return ReviewReturnResult{
+			ReturnRequestID: returnRequest.ID,
+			OrderID:         returnRequest.OrderID,
+			CustomerID:      returnRequest.CustomerID,
+			Status:          returnRequest.Status,
+			LineCount:       len(returnRequest.Lines),
+		}, nil
 	}
 
 	totalAmount := 0
