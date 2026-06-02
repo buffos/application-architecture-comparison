@@ -6,6 +6,7 @@ import (
 
 	"modular-monolith/internal/modules/approvals"
 	"modular-monolith/internal/modules/customers"
+	"modular-monolith/internal/modules/inventory"
 	"modular-monolith/internal/modules/orders"
 	"modular-monolith/internal/modules/products"
 	"modular-monolith/internal/modules/quotes"
@@ -14,6 +15,7 @@ import (
 
 func main() {
 	customerRepository := memory.NewCustomerRepository()
+	inventoryRepository := memory.NewInventoryRepository()
 	orderRepository := memory.NewOrderRepository()
 	productRepository := memory.NewProductRepository()
 	quoteRepository := memory.NewQuoteRepository()
@@ -45,11 +47,26 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if err := inventoryRepository.Save(inventory.StockRecord{
+		ProductSKU: "sku-001",
+		Available:  10,
+	}); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := inventoryRepository.Save(inventory.StockRecord{
+		ProductSKU: "sku-002",
+		Available:  3,
+	}); err != nil {
+		log.Fatal(err)
+	}
+
 	customerModule := customers.NewService(customerRepository)
+	inventoryModule := inventory.NewService(inventoryRepository)
 	productModule := products.NewService(productRepository)
 	approvalModule := approvals.NewService()
 	quoteModule := quotes.NewService(quoteRepository, customerModule, productModule, approvalModule)
-	orderModule := orders.NewService(orderRepository, quoteModule)
+	orderModule := orders.NewService(orderRepository, quoteModule, inventoryModule)
 
 	result, err := quoteModule.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",

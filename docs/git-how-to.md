@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(modular-monolith): complete lesson 007 convert quote to order
+feat(modular-monolith): complete lesson 008 order conversion with reservation
 
 # Add tag
 
-git tag -a modular-monolith-007 -m "Modular Monolith Lesson 007"
-git push origin modular-monolith-007
+git tag -a modular-monolith-008 -m "Modular Monolith Lesson 008" && git push origin --tags
+git push origin modular-monolith-008
 
 or
 
