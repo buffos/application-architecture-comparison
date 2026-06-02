@@ -11,7 +11,7 @@ func TestGetQuoteReturnsQuoteDetails(t *testing.T) {
 		},
 	}
 
-	service := NewService(quotes, stubCustomerDirectory{})
+	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{})
 
 	result, err := service.GetQuote(GetQuoteQuery{QuoteID: "quote-001"})
 	if err != nil {
@@ -24,5 +24,9 @@ func TestGetQuoteReturnsQuoteDetails(t *testing.T) {
 
 	if result.Status != QuoteStatusDraft {
 		t.Fatalf("expected status %s, got %s", QuoteStatusDraft, result.Status)
+	}
+
+	if result.LineCount != 0 {
+		t.Fatalf("expected line count 0, got %d", result.LineCount)
 	}
 }

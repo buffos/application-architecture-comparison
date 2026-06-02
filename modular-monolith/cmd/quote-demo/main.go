@@ -5,12 +5,14 @@ import (
 	"log"
 
 	"modular-monolith/internal/modules/customers"
+	"modular-monolith/internal/modules/products"
 	"modular-monolith/internal/modules/quotes"
 	"modular-monolith/internal/platform/memory"
 )
 
 func main() {
 	customerRepository := memory.NewCustomerRepository()
+	productRepository := memory.NewProductRepository()
 	quoteRepository := memory.NewQuoteRepository()
 
 	if err := customerRepository.Save(customers.Customer{
@@ -20,8 +22,19 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if err := productRepository.Save(products.Product{
+		SKU:       "sku-001",
+		Name:      "Desk",
+		Category:  "Standard",
+		Active:    true,
+		UnitPrice: 15000,
+	}); err != nil {
+		log.Fatal(err)
+	}
+
 	customerModule := customers.NewService(customerRepository)
-	quoteModule := quotes.NewService(quoteRepository, customerModule)
+	productModule := products.NewService(productRepository)
+	quoteModule := quotes.NewService(quoteRepository, customerModule, productModule)
 
 	result, err := quoteModule.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -32,6 +45,17 @@ func main() {
 
 	fmt.Printf("created draft quote: id=%s customer=%s status=%s\n", result.QuoteID, result.CustomerID, result.Status)
 
+	lineResult, err := quoteModule.AddQuoteLine(quotes.AddQuoteLineCommand{
+		QuoteID:    result.QuoteID,
+		ProductSKU: "sku-001",
+		Quantity:   2,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("added quote line: id=%s lines=%d items=%d status=%s\n", lineResult.QuoteID, lineResult.LineCount, lineResult.TotalItems, lineResult.Status)
+
 	details, err := quoteModule.GetQuote(quotes.GetQuoteQuery{
 		QuoteID: result.QuoteID,
 	})
@@ -39,5 +63,5 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("loaded quote: id=%s customer=%s status=%s\n", details.QuoteID, details.CustomerID, details.Status)
+	fmt.Printf("loaded quote: id=%s customer=%s status=%s lines=%d\n", details.QuoteID, details.CustomerID, details.Status, details.LineCount)
 }

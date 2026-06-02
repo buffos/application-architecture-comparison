@@ -8,6 +8,7 @@ import (
 
 var ErrCustomerIDRequired = errors.New("customer id is required")
 var ErrQuoteNotFound = errors.New("quote not found")
+var ErrQuantityMustBePositive = errors.New("quantity must be positive")
 
 const QuoteStatusDraft = "Draft"
 
@@ -17,6 +18,22 @@ type Quote struct {
 	ID         string
 	CustomerID string
 	Status     string
+	Lines      []QuoteLine
+}
+
+type QuoteLine struct {
+	ProductSKU      string
+	ProductName     string
+	ProductCategory string
+	Quantity        int
+	UnitPrice       int
+}
+
+type ProductInput struct {
+	SKU       string
+	Name      string
+	Category  string
+	UnitPrice int
 }
 
 func NewDraftQuote(customerID string) (Quote, error) {
@@ -31,4 +48,29 @@ func NewDraftQuote(customerID string) (Quote, error) {
 		CustomerID: customerID,
 		Status:     QuoteStatusDraft,
 	}, nil
+}
+
+func (q *Quote) AddLine(product ProductInput, quantity int) error {
+	if quantity <= 0 {
+		return ErrQuantityMustBePositive
+	}
+
+	q.Lines = append(q.Lines, QuoteLine{
+		ProductSKU:      product.SKU,
+		ProductName:     product.Name,
+		ProductCategory: product.Category,
+		Quantity:        quantity,
+		UnitPrice:       product.UnitPrice,
+	})
+
+	return nil
+}
+
+func (q Quote) TotalQuantity() int {
+	total := 0
+	for _, line := range q.Lines {
+		total += line.Quantity
+	}
+
+	return total
 }

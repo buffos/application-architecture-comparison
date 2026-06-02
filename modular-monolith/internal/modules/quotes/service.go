@@ -1,5 +1,7 @@
 package quotes
 
+import "modular-monolith/internal/modules/products"
+
 type CustomerDirectory interface {
 	RequireActiveCustomer(id string) error
 }
@@ -14,15 +16,30 @@ type CreateDraftQuoteResult struct {
 	Status     string
 }
 
+type AddQuoteLineCommand struct {
+	QuoteID    string
+	ProductSKU string
+	Quantity   int
+}
+
+type AddQuoteLineResult struct {
+	QuoteID    string
+	LineCount  int
+	TotalItems int
+	Status     string
+}
+
 type Service struct {
 	quotes    Repository
 	customers CustomerDirectory
+	products  products.Catalog
 }
 
-func NewService(quotes Repository, customers CustomerDirectory) Service {
+func NewService(quotes Repository, customers CustomerDirectory, products products.Catalog) Service {
 	return Service{
 		quotes:    quotes,
 		customers: customers,
+		products:  products,
 	}
 }
 
@@ -43,6 +60,38 @@ func (s Service) CreateDraftQuote(command CreateDraftQuoteCommand) (CreateDraftQ
 	return CreateDraftQuoteResult{
 		QuoteID:    quote.ID,
 		CustomerID: quote.CustomerID,
+		Status:     quote.Status,
+	}, nil
+}
+
+func (s Service) AddQuoteLine(command AddQuoteLineCommand) (AddQuoteLineResult, error) {
+	quote, err := s.quotes.FindByID(command.QuoteID)
+	if err != nil {
+		return AddQuoteLineResult{}, err
+	}
+
+	product, err := s.products.GetProductForQuote(command.ProductSKU)
+	if err != nil {
+		return AddQuoteLineResult{}, err
+	}
+
+	if err := quote.AddLine(ProductInput{
+		SKU:       product.SKU,
+		Name:      product.Name,
+		Category:  product.Category,
+		UnitPrice: product.UnitPrice,
+	}, command.Quantity); err != nil {
+		return AddQuoteLineResult{}, err
+	}
+
+	if err := s.quotes.Save(quote); err != nil {
+		return AddQuoteLineResult{}, err
+	}
+
+	return AddQuoteLineResult{
+		QuoteID:    quote.ID,
+		LineCount:  len(quote.Lines),
+		TotalItems: quote.TotalQuantity(),
 		Status:     quote.Status,
 	}, nil
 }
