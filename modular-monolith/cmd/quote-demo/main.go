@@ -207,4 +207,22 @@ func main() {
 	}
 
 	fmt.Printf("accepted return: return=%s order=%s customer=%s status=%s lines=%d\n", acceptedReturn.ReturnRequestID, acceptedReturn.OrderID, acceptedReturn.CustomerID, acceptedReturn.Status, acceptedReturn.LineCount)
+
+	returnDetails, err := returnModule.GetReturnRequest(returns.GetReturnRequestQuery{
+		ReturnRequestID: returnResult.ReturnRequestID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("loaded return: return=%s order=%s status=%s requestedBy=%s reviewedBy=%s\n", returnDetails.ReturnRequestID, returnDetails.OrderID, returnDetails.Status, returnDetails.RequestedBy, returnDetails.ReviewedBy)
+
+	returnList, err := returnModule.ListReturnRequests(returns.ListReturnRequestsQuery{
+		Status: returns.ReturnRequestStatusRefunded,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("listed refunded returns: count=%d\n", len(returnList))
 }

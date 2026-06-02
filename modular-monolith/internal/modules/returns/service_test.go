@@ -24,6 +24,14 @@ func (r *stubRepository) FindByID(id string) (ReturnRequest, error) {
 	return r.saved, nil
 }
 
+func (r *stubRepository) ListByStatus(status string) ([]ReturnRequest, error) {
+	if status == "" || r.saved.Status == status {
+		return []ReturnRequest{r.saved}, nil
+	}
+
+	return []ReturnRequest{}, nil
+}
+
 type stubOrderSource struct {
 	order orders.ReturnableOrder
 	err   error

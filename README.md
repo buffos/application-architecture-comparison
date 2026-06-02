@@ -245,6 +245,7 @@ Architectures currently implemented in this repository:
 - `016` Real return window policy: [016-real-return-window-policy.md](modular-monolith/lessons/016-real-return-window-policy.md)
 - `017` Return actor metadata: [017-return-actor-metadata.md](modular-monolith/lessons/017-return-actor-metadata.md)
 - `018` Return command idempotency: [018-return-command-idempotency.md](modular-monolith/lessons/018-return-command-idempotency.md)
+- `019` Return query surface: [019-return-query-surface.md](modular-monolith/lessons/019-return-query-surface.md)
 
 ## How To Maintain This File
 

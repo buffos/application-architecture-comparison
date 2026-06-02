@@ -36,3 +36,17 @@ func (r *ReturnRequestRepository) FindByID(id string) (returns.ReturnRequest, er
 
 	return request, nil
 }
+
+func (r *ReturnRequestRepository) ListByStatus(status string) ([]returns.ReturnRequest, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	list := make([]returns.ReturnRequest, 0, len(r.requests))
+	for _, request := range r.requests {
+		if status == "" || request.Status == status {
+			list = append(list, request)
+		}
+	}
+
+	return list, nil
+}
