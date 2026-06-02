@@ -4,6 +4,7 @@ import (
 	"modular-monolith/internal/modules/inventory"
 	"modular-monolith/internal/modules/payments"
 	"modular-monolith/internal/modules/quotes"
+	"modular-monolith/internal/modules/shipments"
 )
 
 type ApprovedQuoteSource interface {
@@ -33,19 +34,33 @@ type CapturePaymentResult struct {
 	LineCount  int
 }
 
+type CreateShipmentCommand struct {
+	OrderID string
+}
+
+type CreateShipmentResult struct {
+	ShipmentID string
+	OrderID    string
+	CustomerID string
+	Status     string
+	LineCount  int
+}
+
 type Service struct {
 	orders    Repository
 	quotes    ApprovedQuoteSource
 	inventory inventory.Reserver
 	payments  payments.Processor
+	shipments shipments.Creator
 }
 
-func NewService(orders Repository, quotes ApprovedQuoteSource, inventory inventory.Reserver, payments payments.Processor) Service {
+func NewService(orders Repository, quotes ApprovedQuoteSource, inventory inventory.Reserver, payments payments.Processor, shipments shipments.Creator) Service {
 	return Service{
 		orders:    orders,
 		quotes:    quotes,
 		inventory: inventory,
 		payments:  payments,
+		shipments: shipments,
 	}
 }
 
@@ -110,6 +125,47 @@ func (s Service) CapturePayment(command CapturePaymentCommand) (CapturePaymentRe
 	}
 
 	return CapturePaymentResult{
+		OrderID:    order.ID,
+		CustomerID: order.CustomerID,
+		Status:     order.Status,
+		LineCount:  len(order.Lines),
+	}, nil
+}
+
+func (s Service) CreateShipment(command CreateShipmentCommand) (CreateShipmentResult, error) {
+	order, err := s.orders.FindByID(command.OrderID)
+	if err != nil {
+		return CreateShipmentResult{}, err
+	}
+
+	shipmentLines := make([]shipments.ShipmentLine, 0, len(order.Lines))
+	for _, line := range order.Lines {
+		shipmentLines = append(shipmentLines, shipments.ShipmentLine{
+			ProductSKU:  line.ProductSKU,
+			ProductName: line.ProductName,
+			Quantity:    line.Quantity,
+		})
+	}
+
+	shipment, err := s.shipments.Create(shipments.ShipmentRequest{
+		OrderID:    order.ID,
+		CustomerID: order.CustomerID,
+		Lines:      shipmentLines,
+	})
+	if err != nil {
+		return CreateShipmentResult{}, err
+	}
+
+	if err := order.MarkShipped(); err != nil {
+		return CreateShipmentResult{}, err
+	}
+
+	if err := s.orders.Save(order); err != nil {
+		return CreateShipmentResult{}, err
+	}
+
+	return CreateShipmentResult{
+		ShipmentID: shipment.ID,
 		OrderID:    order.ID,
 		CustomerID: order.CustomerID,
 		Status:     order.Status,

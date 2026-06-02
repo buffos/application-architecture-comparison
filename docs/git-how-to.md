@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(modular-monolith): complete lesson 009 payment gateway and order capture
+feat(modular-monolith): complete lesson 010 shipment creation after payment
 
 # Add tag
 
-git tag -a modular-monolith-009 -m "Modular Monolith Lesson 009" && git push origin --tags
-git push origin modular-monolith-009
+git tag -a modular-monolith-010 -m "Modular Monolith Lesson 010" && git push origin --tags
+git push origin modular-monolith-010
 
 or
 
