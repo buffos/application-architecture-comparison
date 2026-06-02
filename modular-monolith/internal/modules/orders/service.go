@@ -46,15 +46,26 @@ type CreateShipmentResult struct {
 	LineCount  int
 }
 
+type CancelOrderCommand struct {
+	OrderID string
+}
+
+type CancelOrderResult struct {
+	OrderID    string
+	CustomerID string
+	Status     string
+	LineCount  int
+}
+
 type Service struct {
 	orders    Repository
 	quotes    ApprovedQuoteSource
-	inventory inventory.Reserver
+	inventory inventory.StockKeeper
 	payments  payments.Processor
 	shipments shipments.Creator
 }
 
-func NewService(orders Repository, quotes ApprovedQuoteSource, inventory inventory.Reserver, payments payments.Processor, shipments shipments.Creator) Service {
+func NewService(orders Repository, quotes ApprovedQuoteSource, inventory inventory.StockKeeper, payments payments.Processor, shipments shipments.Creator) Service {
 	return Service{
 		orders:    orders,
 		quotes:    quotes,
@@ -166,6 +177,40 @@ func (s Service) CreateShipment(command CreateShipmentCommand) (CreateShipmentRe
 
 	return CreateShipmentResult{
 		ShipmentID: shipment.ID,
+		OrderID:    order.ID,
+		CustomerID: order.CustomerID,
+		Status:     order.Status,
+		LineCount:  len(order.Lines),
+	}, nil
+}
+
+func (s Service) CancelOrder(command CancelOrderCommand) (CancelOrderResult, error) {
+	order, err := s.orders.FindByID(command.OrderID)
+	if err != nil {
+		return CancelOrderResult{}, err
+	}
+
+	if err := order.Cancel(); err != nil {
+		return CancelOrderResult{}, err
+	}
+
+	releases := make([]inventory.ReleaseItem, 0, len(order.Lines))
+	for _, line := range order.Lines {
+		releases = append(releases, inventory.ReleaseItem{
+			ProductSKU: line.ProductSKU,
+			Quantity:   line.Quantity,
+		})
+	}
+
+	if err := s.inventory.Release(releases); err != nil {
+		return CancelOrderResult{}, err
+	}
+
+	if err := s.orders.Save(order); err != nil {
+		return CancelOrderResult{}, err
+	}
+
+	return CancelOrderResult{
 		OrderID:    order.ID,
 		CustomerID: order.CustomerID,
 		Status:     order.Status,

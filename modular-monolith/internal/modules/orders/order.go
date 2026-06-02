@@ -11,11 +11,13 @@ import (
 var ErrOrderNotFound = errors.New("order not found")
 var ErrOrderNotPayable = errors.New("order is not payable")
 var ErrOrderNotShippable = errors.New("order is not shippable")
+var ErrOrderNotCancellable = errors.New("order is not cancellable")
 
 const (
 	OrderStatusPendingPayment = "PendingPayment"
 	OrderStatusPaid           = "Paid"
 	OrderStatusShipped        = "Shipped"
+	OrderStatusCancelled      = "Cancelled"
 )
 
 var orderSequence uint64
@@ -51,6 +53,15 @@ func (o *Order) MarkShipped() error {
 	}
 
 	o.Status = OrderStatusShipped
+	return nil
+}
+
+func (o *Order) Cancel() error {
+	if o.Status == OrderStatusShipped || o.Status == OrderStatusCancelled {
+		return ErrOrderNotCancellable
+	}
+
+	o.Status = OrderStatusCancelled
 	return nil
 }
 

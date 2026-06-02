@@ -17,3 +17,8 @@ type ReservationItem struct {
 	ProductSKU string
 	Quantity   int
 }
+
+type ReleaseItem struct {
+	ProductSKU string
+	Quantity   int
+}

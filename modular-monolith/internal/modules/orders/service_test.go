@@ -29,6 +29,7 @@ type stubApprovedQuoteSource struct {
 
 type stubInventoryReserver struct {
 	reserved []inventory.ReservationItem
+	released []inventory.ReleaseItem
 	err      error
 }
 
@@ -49,6 +50,15 @@ func (s *stubInventoryReserver) Reserve(items []inventory.ReservationItem) error
 	}
 
 	s.reserved = append([]inventory.ReservationItem(nil), items...)
+	return nil
+}
+
+func (s *stubInventoryReserver) Release(items []inventory.ReleaseItem) error {
+	if s.err != nil {
+		return s.err
+	}
+
+	s.released = append([]inventory.ReleaseItem(nil), items...)
 	return nil
 }
 
@@ -243,5 +253,48 @@ func TestCreateShipmentRejectsOrderThatIsNotPaid(t *testing.T) {
 	_, err := service.CreateShipment(CreateShipmentCommand{OrderID: "order-001"})
 	if err != ErrOrderNotShippable {
 		t.Fatalf("expected %v, got %v", ErrOrderNotShippable, err)
+	}
+}
+
+func TestCancelOrderReleasesInventoryAndMarksOrderCancelled(t *testing.T) {
+	orders := &stubOrderRepository{
+		saved: Order{
+			ID:         "order-001",
+			CustomerID: "customer-001",
+			Status:     OrderStatusPendingPayment,
+			Lines: []OrderLine{
+				{ProductSKU: "sku-001", Quantity: 2},
+			},
+		},
+	}
+	inventoryModule := &stubInventoryReserver{}
+	service := NewService(orders, stubApprovedQuoteSource{}, inventoryModule, &stubPaymentProcessor{}, &stubShipmentCreator{})
+
+	result, err := service.CancelOrder(CancelOrderCommand{OrderID: "order-001"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if result.Status != OrderStatusCancelled {
+		t.Fatalf("expected %s, got %s", OrderStatusCancelled, result.Status)
+	}
+
+	if len(inventoryModule.released) != 1 || inventoryModule.released[0].Quantity != 2 {
+		t.Fatalf("expected release of quantity 2, got %+v", inventoryModule.released)
+	}
+}
+
+func TestCancelOrderRejectsShippedOrder(t *testing.T) {
+	orders := &stubOrderRepository{
+		saved: Order{
+			ID:     "order-001",
+			Status: OrderStatusShipped,
+		},
+	}
+	service := NewService(orders, stubApprovedQuoteSource{}, &stubInventoryReserver{}, &stubPaymentProcessor{}, &stubShipmentCreator{})
+
+	_, err := service.CancelOrder(CancelOrderCommand{OrderID: "order-001"})
+	if err != ErrOrderNotCancellable {
+		t.Fatalf("expected %v, got %v", ErrOrderNotCancellable, err)
 	}
 }
