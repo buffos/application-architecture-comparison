@@ -17,6 +17,11 @@ type StockKeeper interface {
 	Releaser
 }
 
+type StockSnapshot struct {
+	ProductSKU string
+	Available  int
+}
+
 type Service struct {
 	stock Repository
 }
@@ -55,4 +60,21 @@ func (s Service) Restock(items []RestockItem) error {
 	}
 
 	return s.stock.Restock(items)
+}
+
+func (s Service) ListStock() ([]StockSnapshot, error) {
+	records, err := s.stock.List()
+	if err != nil {
+		return nil, err
+	}
+
+	list := make([]StockSnapshot, 0, len(records))
+	for _, record := range records {
+		list = append(list, StockSnapshot{
+			ProductSKU: record.ProductSKU,
+			Available:  record.Available,
+		})
+	}
+
+	return list, nil
 }

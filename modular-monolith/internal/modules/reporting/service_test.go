@@ -3,6 +3,7 @@ package reporting
 import (
 	"testing"
 
+	"modular-monolith/internal/modules/inventory"
 	"modular-monolith/internal/modules/orders"
 	"modular-monolith/internal/modules/quotes"
 	"modular-monolith/internal/modules/returns"
@@ -32,6 +33,14 @@ func (r stubReturnReader) ListReturnRequests(query returns.ListReturnRequestsQue
 	return r.list(query)
 }
 
+type stubInventoryReader struct {
+	list func() ([]inventory.StockSnapshot, error)
+}
+
+func (r stubInventoryReader) ListStock() ([]inventory.StockSnapshot, error) {
+	return r.list()
+}
+
 func TestQuoteConversionReportCombinesQuoteAndOrderCounts(t *testing.T) {
 	service := NewService(
 		stubQuoteReader{
@@ -59,6 +68,11 @@ func TestQuoteConversionReportCombinesQuoteAndOrderCounts(t *testing.T) {
 		},
 		stubReturnReader{
 			list: func(query returns.ListReturnRequestsQuery) ([]returns.ReturnRequestDetails, error) {
+				return nil, nil
+			},
+		},
+		stubInventoryReader{
+			list: func() ([]inventory.StockSnapshot, error) {
 				return nil, nil
 			},
 		},
@@ -116,6 +130,11 @@ func TestReturnRateByCategoryReportGroupsShippedAndReturnedQuantities(t *testing
 				}, nil
 			},
 		},
+		stubInventoryReader{
+			list: func() ([]inventory.StockSnapshot, error) {
+				return nil, nil
+			},
+		},
 	)
 
 	report, err := service.ReturnRateByCategoryReport()
@@ -144,5 +163,31 @@ func TestReturnRateByCategoryReportGroupsShippedAndReturnedQuantities(t *testing
 
 	if standard.ReturnRate != 0.25 {
 		t.Fatalf("expected Standard return rate 0.25, got %f", standard.ReturnRate)
+	}
+}
+
+func TestLowStockItemsReportFiltersByThreshold(t *testing.T) {
+	service := NewService(
+		stubQuoteReader{list: func(query quotes.ListQuotesQuery) ([]quotes.QuoteDetails, error) { return nil, nil }},
+		stubOrderReader{list: func(query orders.ListOrdersQuery) ([]orders.OrderDetails, error) { return nil, nil }},
+		stubReturnReader{list: func(query returns.ListReturnRequestsQuery) ([]returns.ReturnRequestDetails, error) { return nil, nil }},
+		stubInventoryReader{
+			list: func() ([]inventory.StockSnapshot, error) {
+				return []inventory.StockSnapshot{
+					{ProductSKU: "sku-001", Available: 2},
+					{ProductSKU: "sku-002", Available: 7},
+					{ProductSKU: "sku-003", Available: 5},
+				}, nil
+			},
+		},
+	)
+
+	report, err := service.LowStockItemsReport(5)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(report.Rows) != 2 {
+		t.Fatalf("expected two low stock rows, got %+v", report.Rows)
 	}
 }

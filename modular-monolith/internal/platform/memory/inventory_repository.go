@@ -25,6 +25,18 @@ func (r *InventoryRepository) Save(record inventory.StockRecord) error {
 	return nil
 }
 
+func (r *InventoryRepository) List() ([]inventory.StockRecord, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	list := make([]inventory.StockRecord, 0, len(r.records))
+	for _, record := range r.records {
+		list = append(list, record)
+	}
+
+	return list, nil
+}
+
 func (r *InventoryRepository) Reserve(items []inventory.ReservationItem) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

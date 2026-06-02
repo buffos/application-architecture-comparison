@@ -1,6 +1,7 @@
 package reporting
 
 import (
+	"modular-monolith/internal/modules/inventory"
 	"modular-monolith/internal/modules/orders"
 	"modular-monolith/internal/modules/quotes"
 	"modular-monolith/internal/modules/returns"
@@ -18,17 +19,23 @@ type ReturnReader interface {
 	ListReturnRequests(query returns.ListReturnRequestsQuery) ([]returns.ReturnRequestDetails, error)
 }
 
-type Service struct {
-	quotes  QuoteReader
-	orders  OrderReader
-	returns ReturnReader
+type InventoryReader interface {
+	ListStock() ([]inventory.StockSnapshot, error)
 }
 
-func NewService(quotes QuoteReader, orders OrderReader, returns ReturnReader) Service {
+type Service struct {
+	quotes    QuoteReader
+	orders    OrderReader
+	returns   ReturnReader
+	inventory InventoryReader
+}
+
+func NewService(quotes QuoteReader, orders OrderReader, returns ReturnReader, inventory InventoryReader) Service {
 	return Service{
-		quotes:  quotes,
-		orders:  orders,
-		returns: returns,
+		quotes:    quotes,
+		orders:    orders,
+		returns:   returns,
+		inventory: inventory,
 	}
 }
 
@@ -48,6 +55,15 @@ type ReturnRateByCategoryRow struct {
 
 type ReturnRateByCategoryReport struct {
 	Rows []ReturnRateByCategoryRow
+}
+
+type LowStockItemsReportRow struct {
+	ProductSKU string
+	Available  int
+}
+
+type LowStockItemsReport struct {
+	Rows []LowStockItemsReportRow
 }
 
 func (s Service) QuoteConversionReport() (QuoteConversionReport, error) {
@@ -122,6 +138,27 @@ func (s Service) ReturnRateByCategoryReport() (ReturnRateByCategoryReport, error
 			row.ReturnRate = float64(row.ReturnedQuantity) / float64(row.ShippedQuantity)
 		}
 		report.Rows = append(report.Rows, *row)
+	}
+
+	return report, nil
+}
+
+func (s Service) LowStockItemsReport(threshold int) (LowStockItemsReport, error) {
+	stock, err := s.inventory.ListStock()
+	if err != nil {
+		return LowStockItemsReport{}, err
+	}
+
+	report := LowStockItemsReport{
+		Rows: make([]LowStockItemsReportRow, 0),
+	}
+	for _, item := range stock {
+		if item.Available <= threshold {
+			report.Rows = append(report.Rows, LowStockItemsReportRow{
+				ProductSKU: item.ProductSKU,
+				Available:  item.Available,
+			})
+		}
 	}
 
 	return report, nil

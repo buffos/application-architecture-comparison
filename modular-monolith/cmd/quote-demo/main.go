@@ -86,7 +86,7 @@ func main() {
 	shipmentModule := shipments.NewService(shipmentRepository)
 	orderModule := orders.NewService(orderRepository, quoteModule, inventoryModule, paymentModule, shipmentModule, clock)
 	returnModule := returns.NewService(returnRequestRepository, orderModule, returnEligibilityModule, inventoryModule, idempotencyModule, paymentModule, clock)
-	reportingModule := reporting.NewService(quoteModule, orderModule, returnModule)
+	reportingModule := reporting.NewService(quoteModule, orderModule, returnModule, inventoryModule)
 
 	result, err := quoteModule.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -306,6 +306,15 @@ func main() {
 
 	for _, row := range returnRateReport.Rows {
 		fmt.Printf("return rate by category: category=%s shipped=%d returned=%d rate=%.2f\n", row.Category, row.ShippedQuantity, row.ReturnedQuantity, row.ReturnRate)
+	}
+
+	lowStockReport, err := reportingModule.LowStockItemsReport(5)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, row := range lowStockReport.Rows {
+		fmt.Printf("low stock item: sku=%s available=%d\n", row.ProductSKU, row.Available)
 	}
 
 	returnDetails, err := returnModule.GetReturnRequest(returns.GetReturnRequestQuery{

@@ -3,6 +3,7 @@ package inventory
 import "testing"
 
 type stubRepository struct {
+	records   []StockRecord
 	reserved  []ReservationItem
 	released  []ReleaseItem
 	restocked []RestockItem
@@ -11,6 +12,14 @@ type stubRepository struct {
 
 func (r *stubRepository) Save(record StockRecord) error {
 	return nil
+}
+
+func (r *stubRepository) List() ([]StockRecord, error) {
+	if r.err != nil {
+		return nil, r.err
+	}
+
+	return append([]StockRecord(nil), r.records...), nil
 }
 
 func (r *stubRepository) Reserve(items []ReservationItem) error {
@@ -96,5 +105,24 @@ func TestRestockPassesRestockItemsToRepository(t *testing.T) {
 
 	if len(repository.restocked) != 1 {
 		t.Fatalf("expected 1 restocked item, got %d", len(repository.restocked))
+	}
+}
+
+func TestListStockReturnsSnapshots(t *testing.T) {
+	repository := &stubRepository{
+		records: []StockRecord{
+			{ProductSKU: "sku-001", Available: 3},
+			{ProductSKU: "sku-002", Available: 9},
+		},
+	}
+	service := NewService(repository)
+
+	stock, err := service.ListStock()
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(stock) != 2 || stock[0].ProductSKU != "sku-001" {
+		t.Fatalf("expected stock snapshots, got %+v", stock)
 	}
 }
