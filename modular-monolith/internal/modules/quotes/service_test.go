@@ -21,6 +21,16 @@ func (r *stubQuoteRepository) FindByID(id string) (Quote, error) {
 	return r.saved, nil
 }
 
+func (r *stubQuoteRepository) ListByStatus(status string) ([]Quote, error) {
+	if r.saved.ID == "" {
+		return nil, nil
+	}
+	if status == "" || r.saved.Status == status {
+		return []Quote{r.saved}, nil
+	}
+	return nil, nil
+}
+
 type stubCustomerDirectory struct {
 	err error
 }

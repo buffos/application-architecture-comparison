@@ -124,6 +124,15 @@ func main() {
 
 	fmt.Printf("loaded quote: id=%s customer=%s status=%s lines=%d\n", details.QuoteID, details.CustomerID, details.Status, details.LineCount)
 
+	quoteList, err := quoteModule.ListQuotes(quotes.ListQuotesQuery{
+		Status: quotes.QuoteStatusApproved,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("listed approved quotes: count=%d\n", len(quoteList))
+
 	pendingResult, err := quoteModule.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
 	})
