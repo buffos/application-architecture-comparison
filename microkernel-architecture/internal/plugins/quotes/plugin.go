@@ -22,7 +22,12 @@ func (p Plugin) Register(host *kernel.Host) error {
 		return err
 	}
 
-	service := NewService(p.quotes, customers)
+	products, err := host.ProductCatalog()
+	if err != nil {
+		return err
+	}
+
+	service := NewService(p.quotes, customers, products)
 	host.ExposeQuoteService(service)
 	host.ExposeQuoteReader(service)
 	return nil

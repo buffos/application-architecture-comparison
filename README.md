@@ -269,6 +269,7 @@ Architectures currently implemented in this repository:
 - `000` From modular monolith to microkernel: [000-from-modular-monolith-to-microkernel.md](microkernel-architecture/lessons/000-from-modular-monolith-to-microkernel.md)
 - `001` Microkernel skeleton: [001-microkernel-skeleton.md](microkernel-architecture/lessons/001-microkernel-skeleton.md)
 - `002` Quote query through kernel capability: [002-quote-query-through-kernel-capability.md](microkernel-architecture/lessons/002-quote-query-through-kernel-capability.md)
+- `003` Add quote line with product plugin: [003-add-quote-line-with-product-plugin.md](microkernel-architecture/lessons/003-add-quote-line-with-product-plugin.md)
 
 ## How To Maintain This File
 

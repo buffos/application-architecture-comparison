@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(microkernel): complete lesson 002 quote query through kernel capability
+feat(microkernel): complete lesson 003 add quote line with product plugin
 
 # Add tag
 
-git tag -a microkernel-002 -m "Microkernel Lesson 002" && git push origin --tags
-git push origin microkernel-002
+git tag -a microkernel-003 -m "Microkernel Lesson 003" && git push origin --tags
+git push origin microkernel-003
 
 or
 

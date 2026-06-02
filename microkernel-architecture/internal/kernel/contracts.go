@@ -4,6 +4,7 @@ import "errors"
 
 var ErrPluginAlreadyRegistered = errors.New("plugin already registered")
 var ErrCustomerDirectoryNotRegistered = errors.New("customer directory capability not registered")
+var ErrProductCatalogNotRegistered = errors.New("product catalog capability not registered")
 var ErrQuoteServiceNotRegistered = errors.New("quote service capability not registered")
 var ErrQuoteReaderNotRegistered = errors.New("quote reader capability not registered")
 
@@ -16,6 +17,16 @@ type CustomerDirectory interface {
 	RequireActiveCustomer(id string) error
 }
 
+type Product struct {
+	SKU       string
+	Name      string
+	UnitPrice int
+}
+
+type ProductCatalog interface {
+	GetProductForQuote(sku string) (Product, error)
+}
+
 type CreateDraftQuoteCommand struct {
 	CustomerID string
 }
@@ -26,8 +37,22 @@ type CreateDraftQuoteResult struct {
 	Status     string
 }
 
+type AddQuoteLineCommand struct {
+	QuoteID    string
+	ProductSKU string
+	Quantity   int
+}
+
+type AddQuoteLineResult struct {
+	QuoteID    string
+	LineCount  int
+	TotalItems int
+	Status     string
+}
+
 type QuoteService interface {
 	CreateDraftQuote(command CreateDraftQuoteCommand) (CreateDraftQuoteResult, error)
+	AddQuoteLine(command AddQuoteLineCommand) (AddQuoteLineResult, error)
 }
 
 type GetQuoteQuery struct {
@@ -38,6 +63,8 @@ type QuoteDetails struct {
 	QuoteID    string
 	CustomerID string
 	Status     string
+	LineCount  int
+	TotalItems int
 }
 
 type QuoteReader interface {
