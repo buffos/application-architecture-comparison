@@ -3,6 +3,7 @@ package quotes
 import (
 	"testing"
 
+	"modular-monolith/internal/modules/approvals"
 	"modular-monolith/internal/modules/customers"
 	"modular-monolith/internal/modules/products"
 )
@@ -41,9 +42,17 @@ func (c stubProductCatalog) GetProductForQuote(sku string) (products.ProductForQ
 	return c.product, nil
 }
 
+type stubApprovalEvaluator struct {
+	requiresApproval bool
+}
+
+func (e stubApprovalEvaluator) RequiresApproval(submission approvals.QuoteSubmission) bool {
+	return e.requiresApproval
+}
+
 func TestCreateDraftQuoteCreatesDraftForActiveCustomer(t *testing.T) {
 	quotes := &stubQuoteRepository{}
-	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{})
+	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalEvaluator{})
 
 	result, err := service.CreateDraftQuote(CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -65,7 +74,7 @@ func TestCreateDraftQuoteRejectsInactiveCustomer(t *testing.T) {
 	quotes := &stubQuoteRepository{}
 	service := NewService(quotes, stubCustomerDirectory{
 		err: customers.ErrCustomerInactive,
-	}, stubProductCatalog{})
+	}, stubProductCatalog{}, stubApprovalEvaluator{})
 
 	_, err := service.CreateDraftQuote(CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -90,7 +99,7 @@ func TestAddQuoteLineAddsLineToExistingQuote(t *testing.T) {
 			Category:  "Standard",
 			UnitPrice: 15000,
 		},
-	})
+	}, stubApprovalEvaluator{})
 
 	result, err := service.AddQuoteLine(AddQuoteLineCommand{
 		QuoteID:    "quote-001",
@@ -121,15 +130,17 @@ func TestSubmitQuoteSubmitsQuoteWithLines(t *testing.T) {
 			},
 		},
 	}
-	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{})
+	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalEvaluator{
+		requiresApproval: false,
+	})
 
 	result, err := service.SubmitQuote(SubmitQuoteCommand{QuoteID: "quote-001"})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	if result.Status != QuoteStatusSubmitted {
-		t.Fatalf("expected status %s, got %s", QuoteStatusSubmitted, result.Status)
+	if result.Status != QuoteStatusApproved {
+		t.Fatalf("expected status %s, got %s", QuoteStatusApproved, result.Status)
 	}
 }
 
@@ -141,10 +152,35 @@ func TestSubmitQuoteRejectsEmptyQuote(t *testing.T) {
 			Status:     QuoteStatusDraft,
 		},
 	}
-	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{})
+	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalEvaluator{})
 
 	_, err := service.SubmitQuote(SubmitQuoteCommand{QuoteID: "quote-001"})
 	if err != ErrQuoteCannotBeSubmittedWithoutLines {
 		t.Fatalf("expected %v, got %v", ErrQuoteCannotBeSubmittedWithoutLines, err)
+	}
+}
+
+func TestSubmitQuoteMovesCustomQuoteToPendingApproval(t *testing.T) {
+	quotes := &stubQuoteRepository{
+		saved: Quote{
+			ID:         "quote-001",
+			CustomerID: "customer-001",
+			Status:     QuoteStatusDraft,
+			Lines: []QuoteLine{
+				{ProductSKU: "sku-002", ProductCategory: "CustomBuild", Quantity: 1, UnitPrice: 45000},
+			},
+		},
+	}
+	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalEvaluator{
+		requiresApproval: true,
+	})
+
+	result, err := service.SubmitQuote(SubmitQuoteCommand{QuoteID: "quote-001"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if result.Status != QuoteStatusPendingApproval {
+		t.Fatalf("expected status %s, got %s", QuoteStatusPendingApproval, result.Status)
 	}
 }

@@ -11,7 +11,7 @@ func TestGetQuoteReturnsQuoteDetails(t *testing.T) {
 		},
 	}
 
-	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{})
+	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalEvaluator{})
 
 	result, err := service.GetQuote(GetQuoteQuery{QuoteID: "quote-001"})
 	if err != nil {

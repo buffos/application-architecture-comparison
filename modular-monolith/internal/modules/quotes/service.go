@@ -1,6 +1,9 @@
 package quotes
 
-import "modular-monolith/internal/modules/products"
+import (
+	"modular-monolith/internal/modules/approvals"
+	"modular-monolith/internal/modules/products"
+)
 
 type CustomerDirectory interface {
 	RequireActiveCustomer(id string) error
@@ -44,13 +47,15 @@ type Service struct {
 	quotes    Repository
 	customers CustomerDirectory
 	products  products.Catalog
+	approvals approvals.Evaluator
 }
 
-func NewService(quotes Repository, customers CustomerDirectory, products products.Catalog) Service {
+func NewService(quotes Repository, customers CustomerDirectory, products products.Catalog, approvals approvals.Evaluator) Service {
 	return Service{
 		quotes:    quotes,
 		customers: customers,
 		products:  products,
+		approvals: approvals,
 	}
 }
 
@@ -113,7 +118,16 @@ func (s Service) SubmitQuote(command SubmitQuoteCommand) (SubmitQuoteResult, err
 		return SubmitQuoteResult{}, err
 	}
 
-	if err := quote.Submit(); err != nil {
+	submission := approvals.QuoteSubmission{
+		Lines: make([]approvals.QuoteSubmissionLine, 0, len(quote.Lines)),
+	}
+	for _, line := range quote.Lines {
+		submission.Lines = append(submission.Lines, approvals.QuoteSubmissionLine{
+			ProductCategory: line.ProductCategory,
+		})
+	}
+
+	if err := quote.Submit(s.approvals.RequiresApproval(submission)); err != nil {
 		return SubmitQuoteResult{}, err
 	}
 

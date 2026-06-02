@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"modular-monolith/internal/modules/approvals"
 	"modular-monolith/internal/modules/customers"
 	"modular-monolith/internal/modules/products"
 	"modular-monolith/internal/modules/quotes"
@@ -34,7 +35,8 @@ func main() {
 
 	customerModule := customers.NewService(customerRepository)
 	productModule := products.NewService(productRepository)
-	quoteModule := quotes.NewService(quoteRepository, customerModule, productModule)
+	approvalModule := approvals.NewService()
+	quoteModule := quotes.NewService(quoteRepository, customerModule, productModule, approvalModule)
 
 	result, err := quoteModule.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",

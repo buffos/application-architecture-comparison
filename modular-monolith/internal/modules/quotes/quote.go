@@ -14,7 +14,8 @@ var ErrQuoteCannotBeSubmittedWithoutLines = errors.New("quote cannot be submitte
 var ErrQuoteNotEditable = errors.New("quote is not editable")
 
 const QuoteStatusDraft = "Draft"
-const QuoteStatusSubmitted = "Submitted"
+const QuoteStatusPendingApproval = "PendingApproval"
+const QuoteStatusApproved = "Approved"
 
 var quoteSequence uint64
 
@@ -83,7 +84,7 @@ func (q Quote) TotalQuantity() int {
 	return total
 }
 
-func (q *Quote) Submit() error {
+func (q *Quote) Submit(requiresApproval bool) error {
 	if q.Status != QuoteStatusDraft {
 		return ErrQuoteNotSubmittable
 	}
@@ -92,6 +93,11 @@ func (q *Quote) Submit() error {
 		return ErrQuoteCannotBeSubmittedWithoutLines
 	}
 
-	q.Status = QuoteStatusSubmitted
+	if requiresApproval {
+		q.Status = QuoteStatusPendingApproval
+		return nil
+	}
+
+	q.Status = QuoteStatusApproved
 	return nil
 }
