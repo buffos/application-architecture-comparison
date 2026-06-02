@@ -24,5 +24,6 @@ type ProductForQuote struct {
 
 type Repository interface {
 	FindBySKU(sku string) (Product, error)
+	List(category string, activeOnly bool) ([]Product, error)
 	Save(product Product) error
 }

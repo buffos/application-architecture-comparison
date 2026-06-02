@@ -36,3 +36,21 @@ func (r *ProductRepository) FindBySKU(sku string) (products.Product, error) {
 
 	return product, nil
 }
+
+func (r *ProductRepository) List(category string, activeOnly bool) ([]products.Product, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	list := make([]products.Product, 0, len(r.products))
+	for _, product := range r.products {
+		if category != "" && product.Category != category {
+			continue
+		}
+		if activeOnly && !product.Active {
+			continue
+		}
+		list = append(list, product)
+	}
+
+	return list, nil
+}

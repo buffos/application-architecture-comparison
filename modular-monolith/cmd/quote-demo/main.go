@@ -133,6 +133,25 @@ func main() {
 
 	fmt.Printf("listed approved quotes: count=%d\n", len(quoteList))
 
+	productDetails, err := productModule.GetProduct(products.GetProductQuery{
+		SKU: "sku-001",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("loaded product: sku=%s category=%s active=%t price=%d\n", productDetails.SKU, productDetails.Category, productDetails.Active, productDetails.UnitPrice)
+
+	productList, err := productModule.ListProducts(products.ListProductsQuery{
+		Category:   "Standard",
+		ActiveOnly: true,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("listed active standard products: count=%d\n", len(productList))
+
 	pendingResult, err := quoteModule.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
 	})
