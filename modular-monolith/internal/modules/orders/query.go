@@ -21,6 +21,7 @@ type OrderLineDetails struct {
 	ProductSKU      string
 	ProductCategory string
 	Quantity        int
+	ShippedQuantity int
 }
 
 func (s Service) GetOrder(query GetOrderQuery) (OrderDetails, error) {
@@ -67,6 +68,7 @@ func toOrderLineDetails(lines []OrderLine) []OrderLineDetails {
 			ProductSKU:      line.ProductSKU,
 			ProductCategory: line.ProductCategory,
 			Quantity:        line.Quantity,
+			ShippedQuantity: line.ShippedQuantity,
 		})
 	}
 

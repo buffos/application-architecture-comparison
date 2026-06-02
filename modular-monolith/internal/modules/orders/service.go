@@ -52,6 +52,7 @@ type ApprovePaymentReviewResult struct {
 
 type CreateShipmentCommand struct {
 	OrderID string
+	Lines   []CreateShipmentLine
 }
 
 type CreateShipmentResult struct {
@@ -60,6 +61,11 @@ type CreateShipmentResult struct {
 	CustomerID string
 	Status     string
 	LineCount  int
+}
+
+type CreateShipmentLine struct {
+	ProductSKU string
+	Quantity   int
 }
 
 type ReturnableOrder struct {
@@ -213,13 +219,32 @@ func (s Service) CreateShipment(command CreateShipmentCommand) (CreateShipmentRe
 		return CreateShipmentResult{}, err
 	}
 
-	shipmentLines := make([]shipments.ShipmentLine, 0, len(order.Lines))
-	for _, line := range order.Lines {
-		shipmentLines = append(shipmentLines, shipments.ShipmentLine{
-			ProductSKU:  line.ProductSKU,
-			ProductName: line.ProductName,
-			Quantity:    line.Quantity,
-		})
+	selections := make([]ShipmentSelection, 0, len(command.Lines))
+	if len(command.Lines) == 0 {
+		selections = order.RemainingShipmentSelections()
+	} else {
+		for _, line := range command.Lines {
+			selections = append(selections, ShipmentSelection{
+				ProductSKU: line.ProductSKU,
+				Quantity:   line.Quantity,
+			})
+		}
+	}
+
+	shipmentLines := make([]shipments.ShipmentLine, 0, len(selections))
+	for _, selection := range selections {
+		for _, line := range order.Lines {
+			if line.ProductSKU != selection.ProductSKU {
+				continue
+			}
+
+			shipmentLines = append(shipmentLines, shipments.ShipmentLine{
+				ProductSKU:  line.ProductSKU,
+				ProductName: line.ProductName,
+				Quantity:    selection.Quantity,
+			})
+			break
+		}
 	}
 
 	shipment, err := s.shipments.Create(shipments.ShipmentRequest{
@@ -231,7 +256,7 @@ func (s Service) CreateShipment(command CreateShipmentCommand) (CreateShipmentRe
 		return CreateShipmentResult{}, err
 	}
 
-	if err := order.MarkShipped(s.clock.Now()); err != nil {
+	if err := order.ApplyShipment(selections, s.clock.Now()); err != nil {
 		return CreateShipmentResult{}, err
 	}
 

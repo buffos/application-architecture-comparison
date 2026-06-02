@@ -297,6 +297,80 @@ func TestCreateShipmentMarksOrderShipped(t *testing.T) {
 	}
 }
 
+func TestCreateShipmentSupportsPartialShipment(t *testing.T) {
+	orders := &stubOrderRepository{
+		saved: Order{
+			ID:         "order-001",
+			CustomerID: "customer-001",
+			Status:     OrderStatusPaid,
+			Lines: []OrderLine{
+				{ProductSKU: "sku-001", ProductName: "Desk", Quantity: 3},
+			},
+		},
+	}
+	shipmentCreator := &stubShipmentCreator{}
+	service := NewService(orders, stubApprovedQuoteSource{}, &stubInventoryReserver{}, &stubPaymentProcessor{}, shipmentCreator, stubClock{})
+
+	result, err := service.CreateShipment(CreateShipmentCommand{
+		OrderID: "order-001",
+		Lines: []CreateShipmentLine{
+			{ProductSKU: "sku-001", Quantity: 1},
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if result.Status != OrderStatusPartiallyShipped {
+		t.Fatalf("expected %s, got %s", OrderStatusPartiallyShipped, result.Status)
+	}
+
+	if len(shipmentCreator.request.Lines) != 1 || shipmentCreator.request.Lines[0].Quantity != 1 {
+		t.Fatalf("expected one shipped unit, got %+v", shipmentCreator.request.Lines)
+	}
+
+	if orders.saved.Lines[0].ShippedQuantity != 1 {
+		t.Fatalf("expected shipped quantity 1, got %d", orders.saved.Lines[0].ShippedQuantity)
+	}
+}
+
+func TestCreateShipmentCanShipRemainingQuantityLater(t *testing.T) {
+	orders := &stubOrderRepository{
+		saved: Order{
+			ID:         "order-001",
+			CustomerID: "customer-001",
+			Status:     OrderStatusPartiallyShipped,
+			Lines: []OrderLine{
+				{ProductSKU: "sku-001", ProductName: "Desk", Quantity: 3, ShippedQuantity: 1},
+			},
+		},
+	}
+	shipmentCreator := &stubShipmentCreator{}
+	clock := stubClock{now: time.Date(2026, 6, 2, 12, 0, 0, 0, time.UTC)}
+	service := NewService(orders, stubApprovedQuoteSource{}, &stubInventoryReserver{}, &stubPaymentProcessor{}, shipmentCreator, clock)
+
+	result, err := service.CreateShipment(CreateShipmentCommand{OrderID: "order-001"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if result.Status != OrderStatusShipped {
+		t.Fatalf("expected %s, got %s", OrderStatusShipped, result.Status)
+	}
+
+	if len(shipmentCreator.request.Lines) != 1 || shipmentCreator.request.Lines[0].Quantity != 2 {
+		t.Fatalf("expected remaining quantity 2, got %+v", shipmentCreator.request.Lines)
+	}
+
+	if orders.saved.Lines[0].ShippedQuantity != 3 {
+		t.Fatalf("expected shipped quantity 3, got %d", orders.saved.Lines[0].ShippedQuantity)
+	}
+
+	if !orders.saved.ShippedAt.Equal(clock.now) {
+		t.Fatalf("expected shipped time to be recorded on final shipment")
+	}
+}
+
 func TestCreateShipmentRejectsOrderThatIsNotPaid(t *testing.T) {
 	orders := &stubOrderRepository{
 		saved: Order{
@@ -383,6 +457,21 @@ func TestCancelOrderRejectsShippedOrder(t *testing.T) {
 		saved: Order{
 			ID:     "order-001",
 			Status: OrderStatusShipped,
+		},
+	}
+	service := NewService(orders, stubApprovedQuoteSource{}, &stubInventoryReserver{}, &stubPaymentProcessor{}, &stubShipmentCreator{}, stubClock{})
+
+	_, err := service.CancelOrder(CancelOrderCommand{OrderID: "order-001"})
+	if err != ErrOrderNotCancellable {
+		t.Fatalf("expected %v, got %v", ErrOrderNotCancellable, err)
+	}
+}
+
+func TestCancelOrderRejectsPartiallyShippedOrder(t *testing.T) {
+	orders := &stubOrderRepository{
+		saved: Order{
+			ID:     "order-001",
+			Status: OrderStatusPartiallyShipped,
 		},
 	}
 	service := NewService(orders, stubApprovedQuoteSource{}, &stubInventoryReserver{}, &stubPaymentProcessor{}, &stubShipmentCreator{}, stubClock{})

@@ -182,7 +182,7 @@ func main() {
 	_, err = quoteModule.AddQuoteLine(quotes.AddQuoteLineCommand{
 		QuoteID:    pendingResult.QuoteID,
 		ProductSKU: "sku-002",
-		Quantity:   1,
+		Quantity:   2,
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -251,12 +251,24 @@ func main() {
 
 	shipmentResult, err := orderModule.CreateShipment(orders.CreateShipmentCommand{
 		OrderID: orderResult.OrderID,
+		Lines: []orders.CreateShipmentLine{
+			{ProductSKU: "sku-002", Quantity: 1},
+		},
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	fmt.Printf("created shipment: shipment=%s order=%s customer=%s status=%s lines=%d\n", shipmentResult.ShipmentID, shipmentResult.OrderID, shipmentResult.CustomerID, shipmentResult.Status, shipmentResult.LineCount)
+
+	finalShipmentResult, err := orderModule.CreateShipment(orders.CreateShipmentCommand{
+		OrderID: orderResult.OrderID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("created final shipment: shipment=%s order=%s customer=%s status=%s lines=%d\n", finalShipmentResult.ShipmentID, finalShipmentResult.OrderID, finalShipmentResult.CustomerID, finalShipmentResult.Status, finalShipmentResult.LineCount)
 
 	orderDetails, err := orderModule.GetOrder(orders.GetOrderQuery{
 		OrderID: orderResult.OrderID,

@@ -13,15 +13,17 @@ var ErrOrderNotFound = errors.New("order not found")
 var ErrOrderNotPayable = errors.New("order is not payable")
 var ErrOrderNotInPaymentReview = errors.New("order is not in payment review")
 var ErrOrderNotShippable = errors.New("order is not shippable")
+var ErrShipmentQuantityInvalid = errors.New("shipment quantity is invalid")
 var ErrOrderNotCancellable = errors.New("order is not cancellable")
 var ErrOrderNotReturnable = errors.New("order is not returnable")
 
 const (
-	OrderStatusPendingPayment = "PendingPayment"
-	OrderStatusPaymentReview  = "PaymentReview"
-	OrderStatusPaid           = "Paid"
-	OrderStatusShipped        = "Shipped"
-	OrderStatusCancelled      = "Cancelled"
+	OrderStatusPendingPayment   = "PendingPayment"
+	OrderStatusPaymentReview    = "PaymentReview"
+	OrderStatusPaid             = "Paid"
+	OrderStatusPartiallyShipped = "PartiallyShipped"
+	OrderStatusShipped          = "Shipped"
+	OrderStatusCancelled        = "Cancelled"
 )
 
 var orderSequence uint64
@@ -40,8 +42,14 @@ type OrderLine struct {
 	ProductName      string
 	ProductCategory  string
 	Quantity         int
+	ShippedQuantity  int
 	UnitPrice        int
 	ReturnWindowDays int
+}
+
+type ShipmentSelection struct {
+	ProductSKU string
+	Quantity   int
 }
 
 func (o *Order) MarkPaid() error {
@@ -72,7 +80,7 @@ func (o *Order) ApprovePaymentReview() error {
 }
 
 func (o *Order) MarkShipped(shippedAt time.Time) error {
-	if o.Status != OrderStatusPaid {
+	if o.Status != OrderStatusPaid && o.Status != OrderStatusPartiallyShipped {
 		return ErrOrderNotShippable
 	}
 
@@ -82,11 +90,73 @@ func (o *Order) MarkShipped(shippedAt time.Time) error {
 }
 
 func (o *Order) Cancel() error {
-	if o.Status == OrderStatusShipped || o.Status == OrderStatusCancelled {
+	if o.Status == OrderStatusPartiallyShipped || o.Status == OrderStatusShipped || o.Status == OrderStatusCancelled {
 		return ErrOrderNotCancellable
 	}
 
 	o.Status = OrderStatusCancelled
+	return nil
+}
+
+func (o Order) RemainingShipmentSelections() []ShipmentSelection {
+	lines := make([]ShipmentSelection, 0, len(o.Lines))
+	for _, line := range o.Lines {
+		remaining := line.Quantity - line.ShippedQuantity
+		if remaining > 0 {
+			lines = append(lines, ShipmentSelection{
+				ProductSKU: line.ProductSKU,
+				Quantity:   remaining,
+			})
+		}
+	}
+
+	return lines
+}
+
+func (o *Order) ApplyShipment(selections []ShipmentSelection, shippedAt time.Time) error {
+	if o.Status != OrderStatusPaid && o.Status != OrderStatusPartiallyShipped {
+		return ErrOrderNotShippable
+	}
+
+	if len(selections) == 0 {
+		return ErrShipmentQuantityInvalid
+	}
+
+	for _, selection := range selections {
+		if selection.Quantity <= 0 {
+			return ErrShipmentQuantityInvalid
+		}
+
+		matched := false
+		for i := range o.Lines {
+			line := &o.Lines[i]
+			if line.ProductSKU != selection.ProductSKU {
+				continue
+			}
+
+			remaining := line.Quantity - line.ShippedQuantity
+			if selection.Quantity > remaining {
+				return ErrShipmentQuantityInvalid
+			}
+
+			line.ShippedQuantity += selection.Quantity
+			matched = true
+			break
+		}
+
+		if !matched {
+			return ErrShipmentQuantityInvalid
+		}
+	}
+
+	remainingSelections := o.RemainingShipmentSelections()
+	if len(remainingSelections) == 0 {
+		o.Status = OrderStatusShipped
+		o.ShippedAt = shippedAt
+		return nil
+	}
+
+	o.Status = OrderStatusPartiallyShipped
 	return nil
 }
 

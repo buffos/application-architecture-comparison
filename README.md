@@ -256,6 +256,7 @@ Architectures currently implemented in this repository:
 - `027` Low stock items report: [027-low-stock-items-report.md](modular-monolith/lessons/027-low-stock-items-report.md)
 - `028` Orders awaiting approval report: [028-orders-awaiting-approval-report.md](modular-monolith/lessons/028-orders-awaiting-approval-report.md)
 - `029` Payment review workflow: [029-payment-review-workflow.md](modular-monolith/lessons/029-payment-review-workflow.md)
+- `030` Partial shipment support: [030-partial-shipment-support.md](modular-monolith/lessons/030-partial-shipment-support.md)
 
 ## How To Maintain This File
 
