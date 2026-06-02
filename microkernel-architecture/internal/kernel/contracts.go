@@ -5,6 +5,7 @@ import "errors"
 var ErrPluginAlreadyRegistered = errors.New("plugin already registered")
 var ErrCustomerDirectoryNotRegistered = errors.New("customer directory capability not registered")
 var ErrQuoteServiceNotRegistered = errors.New("quote service capability not registered")
+var ErrQuoteReaderNotRegistered = errors.New("quote reader capability not registered")
 
 type Plugin interface {
 	ID() string
@@ -27,4 +28,18 @@ type CreateDraftQuoteResult struct {
 
 type QuoteService interface {
 	CreateDraftQuote(command CreateDraftQuoteCommand) (CreateDraftQuoteResult, error)
+}
+
+type GetQuoteQuery struct {
+	QuoteID string
+}
+
+type QuoteDetails struct {
+	QuoteID    string
+	CustomerID string
+	Status     string
+}
+
+type QuoteReader interface {
+	GetQuote(query GetQuoteQuery) (QuoteDetails, error)
 }

@@ -4,6 +4,7 @@ type Host struct {
 	plugins           map[string]struct{}
 	customerDirectory CustomerDirectory
 	quoteService      QuoteService
+	quoteReader       QuoteReader
 }
 
 func NewHost() *Host {
@@ -33,6 +34,10 @@ func (h *Host) ExposeQuoteService(service QuoteService) {
 	h.quoteService = service
 }
 
+func (h *Host) ExposeQuoteReader(reader QuoteReader) {
+	h.quoteReader = reader
+}
+
 func (h *Host) CustomerDirectory() (CustomerDirectory, error) {
 	if h.customerDirectory == nil {
 		return nil, ErrCustomerDirectoryNotRegistered
@@ -47,4 +52,12 @@ func (h *Host) QuoteService() (QuoteService, error) {
 	}
 
 	return h.quoteService, nil
+}
+
+func (h *Host) QuoteReader() (QuoteReader, error) {
+	if h.quoteReader == nil {
+		return nil, ErrQuoteReaderNotRegistered
+	}
+
+	return h.quoteReader, nil
 }

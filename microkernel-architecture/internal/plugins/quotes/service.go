@@ -34,3 +34,16 @@ func (s Service) CreateDraftQuote(command kernel.CreateDraftQuoteCommand) (kerne
 		Status:     quote.Status,
 	}, nil
 }
+
+func (s Service) GetQuote(query kernel.GetQuoteQuery) (kernel.QuoteDetails, error) {
+	quote, err := s.quotes.FindByID(query.QuoteID)
+	if err != nil {
+		return kernel.QuoteDetails{}, err
+	}
+
+	return kernel.QuoteDetails{
+		QuoteID:    quote.ID,
+		CustomerID: quote.CustomerID,
+		Status:     quote.Status,
+	}, nil
+}

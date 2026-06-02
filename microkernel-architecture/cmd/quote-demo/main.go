@@ -36,6 +36,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	quoteReader, err := host.QuoteReader()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	result, err := quoteService.CreateDraftQuote(kernel.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
 	})
@@ -44,4 +49,13 @@ func main() {
 	}
 
 	fmt.Printf("created draft quote: id=%s customer=%s status=%s\n", result.QuoteID, result.CustomerID, result.Status)
+
+	details, err := quoteReader.GetQuote(kernel.GetQuoteQuery{
+		QuoteID: result.QuoteID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("loaded quote: id=%s customer=%s status=%s\n", details.QuoteID, details.CustomerID, details.Status)
 }
