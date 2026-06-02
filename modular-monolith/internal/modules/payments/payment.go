@@ -5,3 +5,10 @@ type PaymentRequest struct {
 	CustomerID string
 	Amount     int
 }
+
+type RefundRequest struct {
+	OrderID    string
+	CustomerID string
+	Amount     int
+	Reason     string
+}

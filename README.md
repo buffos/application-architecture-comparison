@@ -238,6 +238,7 @@ Architectures currently implemented in this repository:
 - `009` Payment gateway and order capture: [009-payment-gateway-and-order-capture.md](modular-monolith/lessons/009-payment-gateway-and-order-capture.md)
 - `010` Shipment creation after payment: [010-shipment-creation-after-payment.md](modular-monolith/lessons/010-shipment-creation-after-payment.md)
 - `011` Order cancellation and release: [011-order-cancellation-and-release.md](modular-monolith/lessons/011-order-cancellation-and-release.md)
+- `012` Return request and refund boundary: [012-return-request-and-refund-boundary.md](modular-monolith/lessons/012-return-request-and-refund-boundary.md)
 
 ## How To Maintain This File
 

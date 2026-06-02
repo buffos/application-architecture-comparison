@@ -11,3 +11,7 @@ func NewAcceptAllGateway() AcceptAllGateway {
 func (g AcceptAllGateway) Capture(request payments.PaymentRequest) error {
 	return nil
 }
+
+func (g AcceptAllGateway) Refund(request payments.RefundRequest) error {
+	return nil
+}

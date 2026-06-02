@@ -46,6 +46,20 @@ type CreateShipmentResult struct {
 	LineCount  int
 }
 
+type ReturnableOrder struct {
+	OrderID    string
+	CustomerID string
+	Lines      []ReturnableOrderLine
+}
+
+type ReturnableOrderLine struct {
+	ProductSKU      string
+	ProductName     string
+	ProductCategory string
+	Quantity        int
+	UnitPrice       int
+}
+
 type CancelOrderCommand struct {
 	OrderID string
 }
@@ -215,5 +229,33 @@ func (s Service) CancelOrder(command CancelOrderCommand) (CancelOrderResult, err
 		CustomerID: order.CustomerID,
 		Status:     order.Status,
 		LineCount:  len(order.Lines),
+	}, nil
+}
+
+func (s Service) GetReturnableOrder(orderID string) (ReturnableOrder, error) {
+	order, err := s.orders.FindByID(orderID)
+	if err != nil {
+		return ReturnableOrder{}, err
+	}
+
+	if err := order.EnsureReturnable(); err != nil {
+		return ReturnableOrder{}, err
+	}
+
+	lines := make([]ReturnableOrderLine, 0, len(order.Lines))
+	for _, line := range order.Lines {
+		lines = append(lines, ReturnableOrderLine{
+			ProductSKU:      line.ProductSKU,
+			ProductName:     line.ProductName,
+			ProductCategory: line.ProductCategory,
+			Quantity:        line.Quantity,
+			UnitPrice:       line.UnitPrice,
+		})
+	}
+
+	return ReturnableOrder{
+		OrderID:    order.ID,
+		CustomerID: order.CustomerID,
+		Lines:      lines,
 	}, nil
 }

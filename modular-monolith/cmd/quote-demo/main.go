@@ -11,6 +11,7 @@ import (
 	"modular-monolith/internal/modules/payments"
 	"modular-monolith/internal/modules/products"
 	"modular-monolith/internal/modules/quotes"
+	"modular-monolith/internal/modules/returns"
 	"modular-monolith/internal/modules/shipments"
 	"modular-monolith/internal/platform/memory"
 	paymentadapter "modular-monolith/internal/platform/services/payment"
@@ -22,6 +23,7 @@ func main() {
 	orderRepository := memory.NewOrderRepository()
 	productRepository := memory.NewProductRepository()
 	quoteRepository := memory.NewQuoteRepository()
+	returnRequestRepository := memory.NewReturnRequestRepository()
 	shipmentRepository := memory.NewShipmentRepository()
 
 	if err := customerRepository.Save(customers.Customer{
@@ -73,6 +75,7 @@ func main() {
 	quoteModule := quotes.NewService(quoteRepository, customerModule, productModule, approvalModule)
 	shipmentModule := shipments.NewService(shipmentRepository)
 	orderModule := orders.NewService(orderRepository, quoteModule, inventoryModule, paymentModule, shipmentModule)
+	returnModule := returns.NewService(returnRequestRepository, orderModule, paymentModule)
 
 	result, err := quoteModule.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -172,4 +175,14 @@ func main() {
 	}
 
 	fmt.Printf("created shipment: shipment=%s order=%s customer=%s status=%s lines=%d\n", shipmentResult.ShipmentID, shipmentResult.OrderID, shipmentResult.CustomerID, shipmentResult.Status, shipmentResult.LineCount)
+
+	returnResult, err := returnModule.RequestReturn(returns.RequestReturnCommand{
+		OrderID: orderResult.OrderID,
+		Reason:  "damaged item",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("requested return: return=%s order=%s customer=%s status=%s lines=%d\n", returnResult.ReturnRequestID, returnResult.OrderID, returnResult.CustomerID, returnResult.Status, returnResult.LineCount)
 }
