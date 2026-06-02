@@ -8,9 +8,11 @@ import (
 	"modular-monolith/internal/modules/customers"
 	"modular-monolith/internal/modules/inventory"
 	"modular-monolith/internal/modules/orders"
+	"modular-monolith/internal/modules/payments"
 	"modular-monolith/internal/modules/products"
 	"modular-monolith/internal/modules/quotes"
 	"modular-monolith/internal/platform/memory"
+	paymentadapter "modular-monolith/internal/platform/services/payment"
 )
 
 func main() {
@@ -63,10 +65,11 @@ func main() {
 
 	customerModule := customers.NewService(customerRepository)
 	inventoryModule := inventory.NewService(inventoryRepository)
+	paymentModule := payments.NewService(paymentadapter.NewAcceptAllGateway())
 	productModule := products.NewService(productRepository)
 	approvalModule := approvals.NewService()
 	quoteModule := quotes.NewService(quoteRepository, customerModule, productModule, approvalModule)
-	orderModule := orders.NewService(orderRepository, quoteModule, inventoryModule)
+	orderModule := orders.NewService(orderRepository, quoteModule, inventoryModule, paymentModule)
 
 	result, err := quoteModule.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -148,4 +151,13 @@ func main() {
 	}
 
 	fmt.Printf("converted quote to order: order=%s quote=%s customer=%s status=%s lines=%d\n", orderResult.OrderID, orderResult.QuoteID, orderResult.CustomerID, orderResult.Status, orderResult.LineCount)
+
+	paidResult, err := orderModule.CapturePayment(orders.CapturePaymentCommand{
+		OrderID: orderResult.OrderID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("captured payment: order=%s customer=%s status=%s lines=%d\n", paidResult.OrderID, paidResult.CustomerID, paidResult.Status, paidResult.LineCount)
 }

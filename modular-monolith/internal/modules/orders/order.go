@@ -9,8 +9,12 @@ import (
 )
 
 var ErrOrderNotFound = errors.New("order not found")
+var ErrOrderNotPayable = errors.New("order is not payable")
 
-const OrderStatusPendingPayment = "PendingPayment"
+const (
+	OrderStatusPendingPayment = "PendingPayment"
+	OrderStatusPaid           = "Paid"
+)
 
 var orderSequence uint64
 
@@ -28,6 +32,15 @@ type OrderLine struct {
 	ProductCategory string
 	Quantity        int
 	UnitPrice       int
+}
+
+func (o *Order) MarkPaid() error {
+	if o.Status != OrderStatusPendingPayment {
+		return ErrOrderNotPayable
+	}
+
+	o.Status = OrderStatusPaid
+	return nil
 }
 
 func NewOrderFromApprovedQuote(quote quotes.ApprovedQuote) Order {
