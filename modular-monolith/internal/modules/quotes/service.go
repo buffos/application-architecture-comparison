@@ -2,6 +2,7 @@ package quotes
 
 import (
 	"modular-monolith/internal/modules/approvals"
+	"modular-monolith/internal/modules/pricing"
 	"modular-monolith/internal/modules/products"
 )
 
@@ -73,14 +74,16 @@ type Service struct {
 	quotes    Repository
 	customers CustomerDirectory
 	products  products.Catalog
+	pricing   pricing.QuotePricer
 	approvals approvals.Evaluator
 }
 
-func NewService(quotes Repository, customers CustomerDirectory, products products.Catalog, approvals approvals.Evaluator) Service {
+func NewService(quotes Repository, customers CustomerDirectory, products products.Catalog, pricing pricing.QuotePricer, approvals approvals.Evaluator) Service {
 	return Service{
 		quotes:    quotes,
 		customers: customers,
 		products:  products,
+		pricing:   pricing,
 		approvals: approvals,
 	}
 }
@@ -117,11 +120,16 @@ func (s Service) AddQuoteLine(command AddQuoteLineCommand) (AddQuoteLineResult, 
 		return AddQuoteLineResult{}, err
 	}
 
+	unitPrice, err := s.pricing.UnitPrice(product)
+	if err != nil {
+		return AddQuoteLineResult{}, err
+	}
+
 	if err := quote.AddLine(ProductInput{
 		SKU:              product.SKU,
 		Name:             product.Name,
 		Category:         product.Category,
-		UnitPrice:        product.UnitPrice,
+		UnitPrice:        unitPrice,
 		ReturnWindowDays: product.ReturnWindowDays,
 	}, command.Quantity); err != nil {
 		return AddQuoteLineResult{}, err

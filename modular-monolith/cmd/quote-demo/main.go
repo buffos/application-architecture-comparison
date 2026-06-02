@@ -10,6 +10,8 @@ import (
 	"modular-monolith/internal/modules/inventory"
 	"modular-monolith/internal/modules/orders"
 	"modular-monolith/internal/modules/payments"
+	"modular-monolith/internal/modules/plugins"
+	"modular-monolith/internal/modules/pricing"
 	"modular-monolith/internal/modules/products"
 	"modular-monolith/internal/modules/quotes"
 	"modular-monolith/internal/modules/reporting"
@@ -26,6 +28,7 @@ func main() {
 	inventoryRepository := memory.NewInventoryRepository()
 	orderRepository := memory.NewOrderRepository()
 	productRepository := memory.NewProductRepository()
+	pluginRepository := memory.NewPluginRepository()
 	quoteRepository := memory.NewQuoteRepository()
 	returnRequestRepository := memory.NewReturnRequestRepository()
 	shipmentRepository := memory.NewShipmentRepository()
@@ -77,11 +80,13 @@ func main() {
 	customerModule := customers.NewService(customerRepository)
 	inventoryModule := inventory.NewService(inventoryRepository)
 	paymentModule := payments.NewService(paymentadapter.NewManualReviewGateway())
+	pluginModule := plugins.NewService(pluginRepository)
+	pricingModule := pricing.NewService(pluginModule)
 	productModule := products.NewService(productRepository)
 	approvalModule := approvals.NewService()
 	clock := timeadapter.NewSystemClock()
 	idempotencyModule := idempotency.NewService(idempotencyStore)
-	quoteModule := quotes.NewService(quoteRepository, customerModule, productModule, approvalModule)
+	quoteModule := quotes.NewService(quoteRepository, customerModule, productModule, pricingModule, approvalModule)
 	returnEligibilityModule := returneligibility.NewService()
 	shipmentModule := shipments.NewService(shipmentRepository)
 	orderModule := orders.NewService(orderRepository, quoteModule, inventoryModule, paymentModule, shipmentModule, clock)
@@ -171,6 +176,31 @@ func main() {
 	}
 
 	fmt.Printf("listed active customers: count=%d\n", len(customerList))
+
+	registeredPlugin, err := pluginModule.RegisterPricingPlugin(plugins.RegisterPricingPluginCommand{
+		PluginID: "seasonal-pricing",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("registered plugin: id=%s type=%s enabled=%t\n", registeredPlugin.PluginID, registeredPlugin.Type, registeredPlugin.Enabled)
+
+	enabledPlugin, err := pluginModule.EnablePlugin(plugins.EnablePluginCommand{
+		PluginID: "seasonal-pricing",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("enabled plugin: id=%s type=%s enabled=%t\n", enabledPlugin.PluginID, enabledPlugin.Type, enabledPlugin.Enabled)
+
+	pluginList, err := pluginModule.ListPlugins(plugins.ListPluginsQuery{})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("listed plugins: count=%d\n", len(pluginList))
 
 	pendingResult, err := quoteModule.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",

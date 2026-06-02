@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(modular-monolith): complete lesson 031 partial returns by line
+feat(modular-monolith): complete lesson 032 plugin pricing extension point
 
 # Add tag
 
-git tag -a modular-monolith-031 -m "Modular Monolith Lesson 031" && git push origin --tags
-git push origin modular-monolith-031
+git tag -a modular-monolith-032 -m "Modular Monolith Lesson 032" && git push origin --tags
+git push origin modular-monolith-032
 
 or
 

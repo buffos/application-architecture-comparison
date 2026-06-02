@@ -258,6 +258,7 @@ Architectures currently implemented in this repository:
 - `029` Payment review workflow: [029-payment-review-workflow.md](modular-monolith/lessons/029-payment-review-workflow.md)
 - `030` Partial shipment support: [030-partial-shipment-support.md](modular-monolith/lessons/030-partial-shipment-support.md)
 - `031` Partial returns by line: [031-partial-returns-by-line.md](modular-monolith/lessons/031-partial-returns-by-line.md)
+- `032` Plugin pricing extension point: [032-plugin-pricing-extension-point.md](modular-monolith/lessons/032-plugin-pricing-extension-point.md)
 
 ## How To Maintain This File
 

@@ -56,13 +56,28 @@ type stubApprovalEvaluator struct {
 	requiresApproval bool
 }
 
+type stubQuotePricer struct {
+	unitPrice int
+	err       error
+}
+
 func (e stubApprovalEvaluator) RequiresApproval(submission approvals.QuoteSubmission) bool {
 	return e.requiresApproval
 }
 
+func (p stubQuotePricer) UnitPrice(product products.ProductForQuote) (int, error) {
+	if p.err != nil {
+		return 0, p.err
+	}
+	if p.unitPrice == 0 {
+		return product.UnitPrice, nil
+	}
+	return p.unitPrice, nil
+}
+
 func TestCreateDraftQuoteCreatesDraftForActiveCustomer(t *testing.T) {
 	quotes := &stubQuoteRepository{}
-	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalEvaluator{})
+	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubQuotePricer{}, stubApprovalEvaluator{})
 
 	result, err := service.CreateDraftQuote(CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -84,7 +99,7 @@ func TestCreateDraftQuoteRejectsInactiveCustomer(t *testing.T) {
 	quotes := &stubQuoteRepository{}
 	service := NewService(quotes, stubCustomerDirectory{
 		err: customers.ErrCustomerInactive,
-	}, stubProductCatalog{}, stubApprovalEvaluator{})
+	}, stubProductCatalog{}, stubQuotePricer{}, stubApprovalEvaluator{})
 
 	_, err := service.CreateDraftQuote(CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -109,7 +124,7 @@ func TestAddQuoteLineAddsLineToExistingQuote(t *testing.T) {
 			Category:  "Standard",
 			UnitPrice: 15000,
 		},
-	}, stubApprovalEvaluator{})
+	}, stubQuotePricer{}, stubApprovalEvaluator{})
 
 	result, err := service.AddQuoteLine(AddQuoteLineCommand{
 		QuoteID:    "quote-001",
@@ -129,6 +144,37 @@ func TestAddQuoteLineAddsLineToExistingQuote(t *testing.T) {
 	}
 }
 
+func TestAddQuoteLineUsesPricingPolicyUnitPrice(t *testing.T) {
+	quotes := &stubQuoteRepository{
+		saved: Quote{
+			ID:         "quote-001",
+			CustomerID: "customer-001",
+			Status:     QuoteStatusDraft,
+		},
+	}
+	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{
+		product: products.ProductForQuote{
+			SKU:       "sku-001",
+			Name:      "Desk",
+			Category:  "Standard",
+			UnitPrice: 10000,
+		},
+	}, stubQuotePricer{unitPrice: 9500}, stubApprovalEvaluator{})
+
+	_, err := service.AddQuoteLine(AddQuoteLineCommand{
+		QuoteID:    "quote-001",
+		ProductSKU: "sku-001",
+		Quantity:   1,
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if quotes.saved.Lines[0].UnitPrice != 9500 {
+		t.Fatalf("expected priced unit 9500, got %d", quotes.saved.Lines[0].UnitPrice)
+	}
+}
+
 func TestSubmitQuoteSubmitsQuoteWithLines(t *testing.T) {
 	quotes := &stubQuoteRepository{
 		saved: Quote{
@@ -140,7 +186,7 @@ func TestSubmitQuoteSubmitsQuoteWithLines(t *testing.T) {
 			},
 		},
 	}
-	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalEvaluator{
+	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubQuotePricer{}, stubApprovalEvaluator{
 		requiresApproval: false,
 	})
 
@@ -162,7 +208,7 @@ func TestSubmitQuoteRejectsEmptyQuote(t *testing.T) {
 			Status:     QuoteStatusDraft,
 		},
 	}
-	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalEvaluator{})
+	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubQuotePricer{}, stubApprovalEvaluator{})
 
 	_, err := service.SubmitQuote(SubmitQuoteCommand{QuoteID: "quote-001"})
 	if err != ErrQuoteCannotBeSubmittedWithoutLines {
@@ -181,7 +227,7 @@ func TestSubmitQuoteMovesCustomQuoteToPendingApproval(t *testing.T) {
 			},
 		},
 	}
-	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalEvaluator{
+	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubQuotePricer{}, stubApprovalEvaluator{
 		requiresApproval: true,
 	})
 
@@ -206,7 +252,7 @@ func TestApproveQuoteApprovesPendingQuote(t *testing.T) {
 			},
 		},
 	}
-	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalEvaluator{})
+	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubQuotePricer{}, stubApprovalEvaluator{})
 
 	result, err := service.ApproveQuote(ApproveQuoteCommand{QuoteID: "quote-001"})
 	if err != nil {
@@ -229,7 +275,7 @@ func TestApproveQuoteRejectsAlreadyApprovedQuote(t *testing.T) {
 			},
 		},
 	}
-	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalEvaluator{})
+	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubQuotePricer{}, stubApprovalEvaluator{})
 
 	_, err := service.ApproveQuote(ApproveQuoteCommand{QuoteID: "quote-001"})
 	if err != ErrQuoteNotApprovable {

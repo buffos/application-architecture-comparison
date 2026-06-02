@@ -11,7 +11,7 @@ func TestGetQuoteReturnsQuoteDetails(t *testing.T) {
 		},
 	}
 
-	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalEvaluator{})
+	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubQuotePricer{}, stubApprovalEvaluator{})
 
 	result, err := service.GetQuote(GetQuoteQuery{QuoteID: "quote-001"})
 	if err != nil {
@@ -54,7 +54,7 @@ func TestListQuotesFiltersByStatus(t *testing.T) {
 		},
 	}
 
-	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalEvaluator{})
+	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubQuotePricer{}, stubApprovalEvaluator{})
 
 	result, err := service.ListQuotes(ListQuotesQuery{Status: QuoteStatusApproved})
 	if err != nil {
