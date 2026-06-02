@@ -6,6 +6,7 @@ import (
 
 	"modular-monolith/internal/modules/approvals"
 	"modular-monolith/internal/modules/customers"
+	"modular-monolith/internal/modules/orders"
 	"modular-monolith/internal/modules/products"
 	"modular-monolith/internal/modules/quotes"
 	"modular-monolith/internal/platform/memory"
@@ -13,6 +14,7 @@ import (
 
 func main() {
 	customerRepository := memory.NewCustomerRepository()
+	orderRepository := memory.NewOrderRepository()
 	productRepository := memory.NewProductRepository()
 	quoteRepository := memory.NewQuoteRepository()
 
@@ -47,6 +49,7 @@ func main() {
 	productModule := products.NewService(productRepository)
 	approvalModule := approvals.NewService()
 	quoteModule := quotes.NewService(quoteRepository, customerModule, productModule, approvalModule)
+	orderModule := orders.NewService(orderRepository, quoteModule)
 
 	result, err := quoteModule.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -119,4 +122,13 @@ func main() {
 	}
 
 	fmt.Printf("approved pending quote: id=%s lines=%d items=%d status=%s\n", approvedPending.QuoteID, approvedPending.LineCount, approvedPending.TotalItems, approvedPending.Status)
+
+	orderResult, err := orderModule.ConvertQuoteToOrder(orders.ConvertQuoteToOrderCommand{
+		QuoteID: pendingResult.QuoteID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("converted quote to order: order=%s quote=%s customer=%s status=%s lines=%d\n", orderResult.OrderID, orderResult.QuoteID, orderResult.CustomerID, orderResult.Status, orderResult.LineCount)
 }

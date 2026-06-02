@@ -54,6 +54,20 @@ type ApproveQuoteResult struct {
 	Status     string
 }
 
+type ApprovedQuote struct {
+	QuoteID    string
+	CustomerID string
+	Lines      []ApprovedQuoteLine
+}
+
+type ApprovedQuoteLine struct {
+	ProductSKU      string
+	ProductName     string
+	ProductCategory string
+	Quantity        int
+	UnitPrice       int
+}
+
 type Service struct {
 	quotes    Repository
 	customers CustomerDirectory
@@ -173,5 +187,33 @@ func (s Service) ApproveQuote(command ApproveQuoteCommand) (ApproveQuoteResult, 
 		LineCount:  len(quote.Lines),
 		TotalItems: quote.TotalQuantity(),
 		Status:     quote.Status,
+	}, nil
+}
+
+func (s Service) GetApprovedQuoteForOrder(quoteID string) (ApprovedQuote, error) {
+	quote, err := s.quotes.FindByID(quoteID)
+	if err != nil {
+		return ApprovedQuote{}, err
+	}
+
+	if err := quote.EnsureConvertible(); err != nil {
+		return ApprovedQuote{}, err
+	}
+
+	lines := make([]ApprovedQuoteLine, 0, len(quote.Lines))
+	for _, line := range quote.Lines {
+		lines = append(lines, ApprovedQuoteLine{
+			ProductSKU:      line.ProductSKU,
+			ProductName:     line.ProductName,
+			ProductCategory: line.ProductCategory,
+			Quantity:        line.Quantity,
+			UnitPrice:       line.UnitPrice,
+		})
+	}
+
+	return ApprovedQuote{
+		QuoteID:    quote.ID,
+		CustomerID: quote.CustomerID,
+		Lines:      lines,
 	}, nil
 }

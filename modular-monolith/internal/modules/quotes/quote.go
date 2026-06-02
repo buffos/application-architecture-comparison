@@ -13,6 +13,7 @@ var ErrQuoteNotSubmittable = errors.New("quote is not submittable")
 var ErrQuoteCannotBeSubmittedWithoutLines = errors.New("quote cannot be submitted without lines")
 var ErrQuoteNotEditable = errors.New("quote is not editable")
 var ErrQuoteNotApprovable = errors.New("quote is not approvable")
+var ErrQuoteNotConvertible = errors.New("quote is not convertible")
 
 const QuoteStatusDraft = "Draft"
 const QuoteStatusPendingApproval = "PendingApproval"
@@ -109,5 +110,13 @@ func (q *Quote) Approve() error {
 	}
 
 	q.Status = QuoteStatusApproved
+	return nil
+}
+
+func (q Quote) EnsureConvertible() error {
+	if q.Status != QuoteStatusApproved {
+		return ErrQuoteNotConvertible
+	}
+
 	return nil
 }

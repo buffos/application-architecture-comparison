@@ -233,6 +233,7 @@ Architectures currently implemented in this repository:
 - `004` Submit quote state transition: [004-submit-quote-state-transition.md](modular-monolith/lessons/004-submit-quote-state-transition.md)
 - `005` Approval policy module: [005-approval-policy-module.md](modular-monolith/lessons/005-approval-policy-module.md)
 - `006` Approve pending quote: [006-approve-pending-quote.md](modular-monolith/lessons/006-approve-pending-quote.md)
+- `007` Convert quote to order: [007-convert-quote-to-order.md](modular-monolith/lessons/007-convert-quote-to-order.md)
 
 ## How To Maintain This File
 
