@@ -228,6 +228,7 @@ Architectures currently implemented in this repository:
 
 - `000` From onion to modular monolith: [000-from-onion-to-modular-monolith.md](modular-monolith/lessons/000-from-onion-to-modular-monolith.md)
 - `001` Modular monolith skeleton: [001-modular-monolith-skeleton.md](modular-monolith/lessons/001-modular-monolith-skeleton.md)
+- `002` Quote query through module API: [002-quote-query-through-module-api.md](modular-monolith/lessons/002-quote-query-through-module-api.md)
 
 ## How To Maintain This File
 
