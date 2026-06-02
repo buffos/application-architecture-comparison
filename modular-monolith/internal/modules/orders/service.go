@@ -5,10 +5,15 @@ import (
 	"modular-monolith/internal/modules/payments"
 	"modular-monolith/internal/modules/quotes"
 	"modular-monolith/internal/modules/shipments"
+	"time"
 )
 
 type ApprovedQuoteSource interface {
 	GetApprovedQuoteForOrder(quoteID string) (quotes.ApprovedQuote, error)
+}
+
+type Clock interface {
+	Now() time.Time
 }
 
 type ConvertQuoteToOrderCommand struct {
@@ -49,15 +54,17 @@ type CreateShipmentResult struct {
 type ReturnableOrder struct {
 	OrderID    string
 	CustomerID string
+	ShippedAt  time.Time
 	Lines      []ReturnableOrderLine
 }
 
 type ReturnableOrderLine struct {
-	ProductSKU      string
-	ProductName     string
-	ProductCategory string
-	Quantity        int
-	UnitPrice       int
+	ProductSKU       string
+	ProductName      string
+	ProductCategory  string
+	Quantity         int
+	UnitPrice        int
+	ReturnWindowDays int
 }
 
 type CancelOrderCommand struct {
@@ -77,15 +84,17 @@ type Service struct {
 	inventory inventory.StockKeeper
 	payments  payments.Processor
 	shipments shipments.Creator
+	clock     Clock
 }
 
-func NewService(orders Repository, quotes ApprovedQuoteSource, inventory inventory.StockKeeper, payments payments.Processor, shipments shipments.Creator) Service {
+func NewService(orders Repository, quotes ApprovedQuoteSource, inventory inventory.StockKeeper, payments payments.Processor, shipments shipments.Creator, clock Clock) Service {
 	return Service{
 		orders:    orders,
 		quotes:    quotes,
 		inventory: inventory,
 		payments:  payments,
 		shipments: shipments,
+		clock:     clock,
 	}
 }
 
@@ -181,7 +190,7 @@ func (s Service) CreateShipment(command CreateShipmentCommand) (CreateShipmentRe
 		return CreateShipmentResult{}, err
 	}
 
-	if err := order.MarkShipped(); err != nil {
+	if err := order.MarkShipped(s.clock.Now()); err != nil {
 		return CreateShipmentResult{}, err
 	}
 
@@ -245,17 +254,19 @@ func (s Service) GetReturnableOrder(orderID string) (ReturnableOrder, error) {
 	lines := make([]ReturnableOrderLine, 0, len(order.Lines))
 	for _, line := range order.Lines {
 		lines = append(lines, ReturnableOrderLine{
-			ProductSKU:      line.ProductSKU,
-			ProductName:     line.ProductName,
-			ProductCategory: line.ProductCategory,
-			Quantity:        line.Quantity,
-			UnitPrice:       line.UnitPrice,
+			ProductSKU:       line.ProductSKU,
+			ProductName:      line.ProductName,
+			ProductCategory:  line.ProductCategory,
+			Quantity:         line.Quantity,
+			UnitPrice:        line.UnitPrice,
+			ReturnWindowDays: line.ReturnWindowDays,
 		})
 	}
 
 	return ReturnableOrder{
 		OrderID:    order.ID,
 		CustomerID: order.CustomerID,
+		ShippedAt:  order.ShippedAt,
 		Lines:      lines,
 	}, nil
 }

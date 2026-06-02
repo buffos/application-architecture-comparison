@@ -2,6 +2,7 @@ package orders
 
 import (
 	"testing"
+	"time"
 
 	"modular-monolith/internal/modules/inventory"
 	"modular-monolith/internal/modules/payments"
@@ -42,6 +43,10 @@ type stubShipmentCreator struct {
 	request  shipments.ShipmentRequest
 	shipment shipments.Shipment
 	err      error
+}
+
+type stubClock struct {
+	now time.Time
 }
 
 func (s *stubInventoryReserver) Reserve(items []inventory.ReservationItem) error {
@@ -89,6 +94,10 @@ func (s *stubShipmentCreator) Create(request shipments.ShipmentRequest) (shipmen
 	return s.shipment, nil
 }
 
+func (c stubClock) Now() time.Time {
+	return c.now
+}
+
 func (s stubApprovedQuoteSource) GetApprovedQuoteForOrder(quoteID string) (quotes.ApprovedQuote, error) {
 	if s.err != nil {
 		return quotes.ApprovedQuote{}, s.err
@@ -110,7 +119,7 @@ func TestConvertQuoteToOrderCreatesPendingPaymentOrder(t *testing.T) {
 				{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000},
 			},
 		},
-	}, reserver, paymentProcessor, shipmentCreator)
+	}, reserver, paymentProcessor, shipmentCreator, stubClock{})
 
 	result, err := service.ConvertQuoteToOrder(ConvertQuoteToOrderCommand{QuoteID: "quote-001"})
 	if err != nil {
@@ -137,7 +146,7 @@ func TestConvertQuoteToOrderRejectsNonApprovedQuote(t *testing.T) {
 	shipmentCreator := &stubShipmentCreator{}
 	service := NewService(orders, stubApprovedQuoteSource{
 		err: quotes.ErrQuoteNotConvertible,
-	}, reserver, paymentProcessor, shipmentCreator)
+	}, reserver, paymentProcessor, shipmentCreator, stubClock{})
 
 	_, err := service.ConvertQuoteToOrder(ConvertQuoteToOrderCommand{QuoteID: "quote-001"})
 	if err != quotes.ErrQuoteNotConvertible {
@@ -158,7 +167,7 @@ func TestConvertQuoteToOrderStopsWhenReservationFails(t *testing.T) {
 				{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000},
 			},
 		},
-	}, reserver, paymentProcessor, shipmentCreator)
+	}, reserver, paymentProcessor, shipmentCreator, stubClock{})
 
 	_, err := service.ConvertQuoteToOrder(ConvertQuoteToOrderCommand{QuoteID: "quote-001"})
 	if err != inventory.ErrInsufficientStock {
@@ -182,7 +191,7 @@ func TestCapturePaymentMarksOrderPaid(t *testing.T) {
 		},
 	}
 	paymentProcessor := &stubPaymentProcessor{}
-	service := NewService(orders, stubApprovedQuoteSource{}, &stubInventoryReserver{}, paymentProcessor, &stubShipmentCreator{})
+	service := NewService(orders, stubApprovedQuoteSource{}, &stubInventoryReserver{}, paymentProcessor, &stubShipmentCreator{}, stubClock{})
 
 	result, err := service.CapturePayment(CapturePaymentCommand{OrderID: "order-001"})
 	if err != nil {
@@ -205,7 +214,7 @@ func TestCapturePaymentRejectsOrderThatIsNotPayable(t *testing.T) {
 			Status: OrderStatusPaid,
 		},
 	}
-	service := NewService(orders, stubApprovedQuoteSource{}, &stubInventoryReserver{}, &stubPaymentProcessor{}, &stubShipmentCreator{})
+	service := NewService(orders, stubApprovedQuoteSource{}, &stubInventoryReserver{}, &stubPaymentProcessor{}, &stubShipmentCreator{}, stubClock{})
 
 	_, err := service.CapturePayment(CapturePaymentCommand{OrderID: "order-001"})
 	if err != ErrOrderNotPayable {
@@ -225,7 +234,8 @@ func TestCreateShipmentMarksOrderShipped(t *testing.T) {
 		},
 	}
 	shipmentCreator := &stubShipmentCreator{}
-	service := NewService(orders, stubApprovedQuoteSource{}, &stubInventoryReserver{}, &stubPaymentProcessor{}, shipmentCreator)
+	clock := stubClock{now: time.Date(2026, 6, 2, 12, 0, 0, 0, time.UTC)}
+	service := NewService(orders, stubApprovedQuoteSource{}, &stubInventoryReserver{}, &stubPaymentProcessor{}, shipmentCreator, clock)
 
 	result, err := service.CreateShipment(CreateShipmentCommand{OrderID: "order-001"})
 	if err != nil {
@@ -239,6 +249,10 @@ func TestCreateShipmentMarksOrderShipped(t *testing.T) {
 	if shipmentCreator.request.OrderID != "order-001" {
 		t.Fatalf("expected shipment for order-001, got %s", shipmentCreator.request.OrderID)
 	}
+
+	if !orders.saved.ShippedAt.Equal(clock.now) {
+		t.Fatalf("expected shipped time to be recorded")
+	}
 }
 
 func TestCreateShipmentRejectsOrderThatIsNotPaid(t *testing.T) {
@@ -248,7 +262,7 @@ func TestCreateShipmentRejectsOrderThatIsNotPaid(t *testing.T) {
 			Status: OrderStatusPendingPayment,
 		},
 	}
-	service := NewService(orders, stubApprovedQuoteSource{}, &stubInventoryReserver{}, &stubPaymentProcessor{}, &stubShipmentCreator{})
+	service := NewService(orders, stubApprovedQuoteSource{}, &stubInventoryReserver{}, &stubPaymentProcessor{}, &stubShipmentCreator{}, stubClock{})
 
 	_, err := service.CreateShipment(CreateShipmentCommand{OrderID: "order-001"})
 	if err != ErrOrderNotShippable {
@@ -268,7 +282,7 @@ func TestCancelOrderReleasesInventoryAndMarksOrderCancelled(t *testing.T) {
 		},
 	}
 	inventoryModule := &stubInventoryReserver{}
-	service := NewService(orders, stubApprovedQuoteSource{}, inventoryModule, &stubPaymentProcessor{}, &stubShipmentCreator{})
+	service := NewService(orders, stubApprovedQuoteSource{}, inventoryModule, &stubPaymentProcessor{}, &stubShipmentCreator{}, stubClock{})
 
 	result, err := service.CancelOrder(CancelOrderCommand{OrderID: "order-001"})
 	if err != nil {
@@ -291,7 +305,7 @@ func TestCancelOrderRejectsShippedOrder(t *testing.T) {
 			Status: OrderStatusShipped,
 		},
 	}
-	service := NewService(orders, stubApprovedQuoteSource{}, &stubInventoryReserver{}, &stubPaymentProcessor{}, &stubShipmentCreator{})
+	service := NewService(orders, stubApprovedQuoteSource{}, &stubInventoryReserver{}, &stubPaymentProcessor{}, &stubShipmentCreator{}, stubClock{})
 
 	_, err := service.CancelOrder(CancelOrderCommand{OrderID: "order-001"})
 	if err != ErrOrderNotCancellable {

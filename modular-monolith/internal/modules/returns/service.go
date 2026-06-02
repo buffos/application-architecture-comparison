@@ -5,10 +5,15 @@ import (
 	"modular-monolith/internal/modules/orders"
 	"modular-monolith/internal/modules/payments"
 	"modular-monolith/internal/modules/returneligibility"
+	"time"
 )
 
 type ReturnableOrderSource interface {
 	GetReturnableOrder(orderID string) (orders.ReturnableOrder, error)
+}
+
+type Clock interface {
+	Now() time.Time
 }
 
 type RequestReturnCommand struct {
@@ -42,15 +47,17 @@ type Service struct {
 	eligibility returneligibility.Evaluator
 	inventory   inventory.Restocker
 	payments    payments.Refunder
+	clock       Clock
 }
 
-func NewService(returns Repository, orders ReturnableOrderSource, eligibility returneligibility.Evaluator, inventory inventory.Restocker, payments payments.Refunder) Service {
+func NewService(returns Repository, orders ReturnableOrderSource, eligibility returneligibility.Evaluator, inventory inventory.Restocker, payments payments.Refunder, clock Clock) Service {
 	return Service{
 		returns:     returns,
 		orders:      orders,
 		eligibility: eligibility,
 		inventory:   inventory,
 		payments:    payments,
+		clock:       clock,
 	}
 }
 
@@ -63,19 +70,21 @@ func (s Service) RequestReturn(command RequestReturnCommand) (RequestReturnResul
 	lines := make([]ReturnableOrderLine, 0, len(order.Lines))
 	for _, line := range order.Lines {
 		lines = append(lines, ReturnableOrderLine{
-			ProductSKU:      line.ProductSKU,
-			ProductName:     line.ProductName,
-			ProductCategory: line.ProductCategory,
-			Quantity:        line.Quantity,
-			UnitPrice:       line.UnitPrice,
+			ProductSKU:       line.ProductSKU,
+			ProductName:      line.ProductName,
+			ProductCategory:  line.ProductCategory,
+			Quantity:         line.Quantity,
+			UnitPrice:        line.UnitPrice,
+			ReturnWindowDays: line.ReturnWindowDays,
 		})
 	}
 
 	returnRequest := NewRequestedReturnRequest(ReturnableOrder{
 		OrderID:    order.OrderID,
 		CustomerID: order.CustomerID,
+		ShippedAt:  order.ShippedAt,
 		Lines:      lines,
-	}, command.Reason)
+	}, command.Reason, s.clock.Now())
 
 	if err := s.returns.Save(returnRequest); err != nil {
 		return RequestReturnResult{}, err
@@ -97,7 +106,18 @@ func (s Service) AcceptReturn(command ReviewReturnCommand) (ReviewReturnResult, 
 	}
 
 	if !s.eligibility.Allows(returneligibility.ReviewRequest{
-		Reason: returnRequest.Reason,
+		Reason:      returnRequest.Reason,
+		ShippedAt:   returnRequest.ShippedAt,
+		RequestedAt: returnRequest.RequestedAt,
+		Lines: func() []returneligibility.ReviewLine {
+			lines := make([]returneligibility.ReviewLine, 0, len(returnRequest.Lines))
+			for _, line := range returnRequest.Lines {
+				lines = append(lines, returneligibility.ReviewLine{
+					ReturnWindowDays: line.ReturnWindowDays,
+				})
+			}
+			return lines
+		}(),
 	}) {
 		if err := returnRequest.Reject(); err != nil {
 			return ReviewReturnResult{}, err

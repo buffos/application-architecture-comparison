@@ -242,6 +242,7 @@ Architectures currently implemented in this repository:
 - `013` Return restocking boundary: [013-return-restocking-boundary.md](modular-monolith/lessons/013-return-restocking-boundary.md)
 - `014` Return review boundary: [014-return-review-boundary.md](modular-monolith/lessons/014-return-review-boundary.md)
 - `015` Return eligibility policy: [015-return-eligibility-policy.md](modular-monolith/lessons/015-return-eligibility-policy.md)
+- `016` Real return window policy: [016-real-return-window-policy.md](modular-monolith/lessons/016-real-return-window-policy.md)
 
 ## How To Maintain This File
 

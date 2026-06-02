@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync/atomic"
+	"time"
 )
 
 var ErrReturnRequestNotFound = errors.New("return request not found")
@@ -21,49 +22,55 @@ const (
 var returnRequestSequence uint64
 
 type ReturnRequest struct {
-	ID         string
-	OrderID    string
-	CustomerID string
-	Reason     string
-	Status     string
-	Lines      []ReturnRequestLine
+	ID          string
+	OrderID     string
+	CustomerID  string
+	Reason      string
+	Status      string
+	ShippedAt   time.Time
+	RequestedAt time.Time
+	Lines       []ReturnRequestLine
 }
 
 type ReturnRequestLine struct {
-	ProductSKU      string
-	ProductName     string
-	ProductCategory string
-	Quantity        int
-	UnitPrice       int
+	ProductSKU       string
+	ProductName      string
+	ProductCategory  string
+	Quantity         int
+	UnitPrice        int
+	ReturnWindowDays int
 }
 
-func NewRefundedReturnRequest(order ReturnableOrder, reason string) ReturnRequest {
-	returnRequest := NewRequestedReturnRequest(order, reason)
+func NewRefundedReturnRequest(order ReturnableOrder, reason string, requestedAt time.Time) ReturnRequest {
+	returnRequest := NewRequestedReturnRequest(order, reason, requestedAt)
 	returnRequest.Status = ReturnRequestStatusRefunded
 	return returnRequest
 }
 
-func NewRequestedReturnRequest(order ReturnableOrder, reason string) ReturnRequest {
+func NewRequestedReturnRequest(order ReturnableOrder, reason string, requestedAt time.Time) ReturnRequest {
 	id := atomic.AddUint64(&returnRequestSequence, 1)
 
 	lines := make([]ReturnRequestLine, 0, len(order.Lines))
 	for _, line := range order.Lines {
 		lines = append(lines, ReturnRequestLine{
-			ProductSKU:      line.ProductSKU,
-			ProductName:     line.ProductName,
-			ProductCategory: line.ProductCategory,
-			Quantity:        line.Quantity,
-			UnitPrice:       line.UnitPrice,
+			ProductSKU:       line.ProductSKU,
+			ProductName:      line.ProductName,
+			ProductCategory:  line.ProductCategory,
+			Quantity:         line.Quantity,
+			UnitPrice:        line.UnitPrice,
+			ReturnWindowDays: line.ReturnWindowDays,
 		})
 	}
 
 	return ReturnRequest{
-		ID:         fmt.Sprintf("return-%03d", id),
-		OrderID:    order.OrderID,
-		CustomerID: order.CustomerID,
-		Reason:     reason,
-		Status:     ReturnRequestStatusRequested,
-		Lines:      lines,
+		ID:          fmt.Sprintf("return-%03d", id),
+		OrderID:     order.OrderID,
+		CustomerID:  order.CustomerID,
+		Reason:      reason,
+		Status:      ReturnRequestStatusRequested,
+		ShippedAt:   order.ShippedAt,
+		RequestedAt: requestedAt,
+		Lines:       lines,
 	}
 }
 

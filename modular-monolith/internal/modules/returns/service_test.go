@@ -2,6 +2,7 @@ package returns
 
 import (
 	"testing"
+	"time"
 
 	"modular-monolith/internal/modules/inventory"
 	"modular-monolith/internal/modules/orders"
@@ -49,6 +50,10 @@ type stubEligibility struct {
 	allows bool
 }
 
+type stubClock struct {
+	now time.Time
+}
+
 func (s *stubRefunder) Refund(request payments.RefundRequest) error {
 	if s.err != nil {
 		return s.err
@@ -71,19 +76,25 @@ func (s stubEligibility) Allows(request returneligibility.ReviewRequest) bool {
 	return s.allows
 }
 
+func (c stubClock) Now() time.Time {
+	return c.now
+}
+
 func TestRequestReturnStoresRequestedReturn(t *testing.T) {
 	repository := &stubRepository{}
 	refunder := &stubRefunder{}
 	restocker := &stubRestocker{}
+	clock := stubClock{now: time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC)}
 	service := NewService(repository, stubOrderSource{
 		order: orders.ReturnableOrder{
 			OrderID:    "order-001",
 			CustomerID: "customer-001",
+			ShippedAt:  time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC),
 			Lines: []orders.ReturnableOrderLine{
-				{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000},
+				{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 			},
 		},
-	}, stubEligibility{allows: true}, restocker, refunder)
+	}, stubEligibility{allows: true}, restocker, refunder, clock)
 
 	result, err := service.RequestReturn(RequestReturnCommand{
 		OrderID: "order-001",
@@ -104,6 +115,10 @@ func TestRequestReturnStoresRequestedReturn(t *testing.T) {
 	if len(restocker.items) != 0 {
 		t.Fatalf("expected no restock during request, got %+v", restocker.items)
 	}
+
+	if !repository.saved.RequestedAt.Equal(clock.now) {
+		t.Fatalf("expected requested time to be recorded")
+	}
 }
 
 func TestRequestReturnRejectsNonReturnableOrder(t *testing.T) {
@@ -112,7 +127,7 @@ func TestRequestReturnRejectsNonReturnableOrder(t *testing.T) {
 	restocker := &stubRestocker{}
 	service := NewService(repository, stubOrderSource{
 		err: orders.ErrOrderNotReturnable,
-	}, stubEligibility{allows: true}, restocker, refunder)
+	}, stubEligibility{allows: true}, restocker, refunder, stubClock{})
 
 	_, err := service.RequestReturn(RequestReturnCommand{
 		OrderID: "order-001",
@@ -127,14 +142,15 @@ func TestRequestReturnStopsWhenRestockFails(t *testing.T) {
 	repository := &stubRepository{}
 	refunder := &stubRefunder{}
 	restocker := &stubRestocker{err: inventory.ErrStockNotFound}
-	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: true}, restocker, refunder)
+	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: true}, restocker, refunder, stubClock{})
 	repository.saved = NewRequestedReturnRequest(ReturnableOrder{
 		OrderID:    "order-001",
 		CustomerID: "customer-001",
+		ShippedAt:  time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC),
 		Lines: []ReturnableOrderLine{
-			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000},
+			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 		},
-	}, "damaged item")
+	}, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC))
 
 	_, err := service.AcceptReturn(ReviewReturnCommand{
 		ReturnRequestID: repository.saved.ID,
@@ -151,11 +167,12 @@ func TestAcceptReturnRefundsRestocksAndStoresUpdatedStatus(t *testing.T) {
 	repository.saved = NewRequestedReturnRequest(ReturnableOrder{
 		OrderID:    "order-001",
 		CustomerID: "customer-001",
+		ShippedAt:  time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC),
 		Lines: []ReturnableOrderLine{
-			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000},
+			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 		},
-	}, "damaged item")
-	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: true}, restocker, refunder)
+	}, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC))
+	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: true}, restocker, refunder, stubClock{})
 
 	result, err := service.AcceptReturn(ReviewReturnCommand{ReturnRequestID: repository.saved.ID})
 	if err != nil {
@@ -182,11 +199,12 @@ func TestRejectReturnStoresRejectedStatus(t *testing.T) {
 	repository.saved = NewRequestedReturnRequest(ReturnableOrder{
 		OrderID:    "order-001",
 		CustomerID: "customer-001",
+		ShippedAt:  time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC),
 		Lines: []ReturnableOrderLine{
-			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000},
+			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 		},
-	}, "damaged item")
-	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: true}, restocker, refunder)
+	}, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC))
+	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: true}, restocker, refunder, stubClock{})
 
 	result, err := service.RejectReturn(ReviewReturnCommand{ReturnRequestID: repository.saved.ID})
 	if err != nil {
@@ -209,11 +227,12 @@ func TestAcceptReturnRejectsWhenPolicyBlocksEligibility(t *testing.T) {
 	repository.saved = NewRequestedReturnRequest(ReturnableOrder{
 		OrderID:    "order-001",
 		CustomerID: "customer-001",
+		ShippedAt:  time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC),
 		Lines: []ReturnableOrderLine{
-			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000},
+			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 		},
-	}, "outside return window")
-	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: false}, restocker, refunder)
+	}, "outside return window", time.Date(2026, 7, 12, 12, 0, 0, 0, time.UTC))
+	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: false}, restocker, refunder, stubClock{})
 
 	result, err := service.AcceptReturn(ReviewReturnCommand{ReturnRequestID: repository.saved.ID})
 	if err != nil {

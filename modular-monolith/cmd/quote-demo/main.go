@@ -16,6 +16,7 @@ import (
 	"modular-monolith/internal/modules/shipments"
 	"modular-monolith/internal/platform/memory"
 	paymentadapter "modular-monolith/internal/platform/services/payment"
+	timeadapter "modular-monolith/internal/platform/time"
 )
 
 func main() {
@@ -35,21 +36,23 @@ func main() {
 	}
 
 	if err := productRepository.Save(products.Product{
-		SKU:       "sku-001",
-		Name:      "Desk",
-		Category:  "Standard",
-		Active:    true,
-		UnitPrice: 15000,
+		SKU:              "sku-001",
+		Name:             "Desk",
+		Category:         "Standard",
+		Active:           true,
+		UnitPrice:        15000,
+		ReturnWindowDays: 30,
 	}); err != nil {
 		log.Fatal(err)
 	}
 
 	if err := productRepository.Save(products.Product{
-		SKU:       "sku-002",
-		Name:      "Custom Desk",
-		Category:  "CustomBuild",
-		Active:    true,
-		UnitPrice: 45000,
+		SKU:              "sku-002",
+		Name:             "Custom Desk",
+		Category:         "CustomBuild",
+		Active:           true,
+		UnitPrice:        45000,
+		ReturnWindowDays: 14,
 	}); err != nil {
 		log.Fatal(err)
 	}
@@ -73,11 +76,12 @@ func main() {
 	paymentModule := payments.NewService(paymentadapter.NewAcceptAllGateway())
 	productModule := products.NewService(productRepository)
 	approvalModule := approvals.NewService()
+	clock := timeadapter.NewSystemClock()
 	quoteModule := quotes.NewService(quoteRepository, customerModule, productModule, approvalModule)
 	returnEligibilityModule := returneligibility.NewService()
 	shipmentModule := shipments.NewService(shipmentRepository)
-	orderModule := orders.NewService(orderRepository, quoteModule, inventoryModule, paymentModule, shipmentModule)
-	returnModule := returns.NewService(returnRequestRepository, orderModule, returnEligibilityModule, inventoryModule, paymentModule)
+	orderModule := orders.NewService(orderRepository, quoteModule, inventoryModule, paymentModule, shipmentModule, clock)
+	returnModule := returns.NewService(returnRequestRepository, orderModule, returnEligibilityModule, inventoryModule, paymentModule, clock)
 
 	result, err := quoteModule.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",

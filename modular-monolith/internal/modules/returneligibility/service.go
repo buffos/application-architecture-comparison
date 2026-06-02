@@ -7,5 +7,20 @@ func NewService() Service {
 }
 
 func (s Service) Allows(request ReviewRequest) bool {
-	return request.Reason != "outside return window"
+	if request.Reason == "outside return window" {
+		return false
+	}
+
+	if request.ShippedAt.IsZero() || request.RequestedAt.Before(request.ShippedAt) {
+		return false
+	}
+
+	for _, line := range request.Lines {
+		deadline := request.ShippedAt.AddDate(0, 0, line.ReturnWindowDays)
+		if request.RequestedAt.After(deadline) {
+			return false
+		}
+	}
+
+	return true
 }

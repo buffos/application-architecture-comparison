@@ -61,11 +61,12 @@ type ApprovedQuote struct {
 }
 
 type ApprovedQuoteLine struct {
-	ProductSKU      string
-	ProductName     string
-	ProductCategory string
-	Quantity        int
-	UnitPrice       int
+	ProductSKU       string
+	ProductName      string
+	ProductCategory  string
+	Quantity         int
+	UnitPrice        int
+	ReturnWindowDays int
 }
 
 type Service struct {
@@ -117,10 +118,11 @@ func (s Service) AddQuoteLine(command AddQuoteLineCommand) (AddQuoteLineResult, 
 	}
 
 	if err := quote.AddLine(ProductInput{
-		SKU:       product.SKU,
-		Name:      product.Name,
-		Category:  product.Category,
-		UnitPrice: product.UnitPrice,
+		SKU:              product.SKU,
+		Name:             product.Name,
+		Category:         product.Category,
+		UnitPrice:        product.UnitPrice,
+		ReturnWindowDays: product.ReturnWindowDays,
 	}, command.Quantity); err != nil {
 		return AddQuoteLineResult{}, err
 	}
@@ -203,11 +205,12 @@ func (s Service) GetApprovedQuoteForOrder(quoteID string) (ApprovedQuote, error)
 	lines := make([]ApprovedQuoteLine, 0, len(quote.Lines))
 	for _, line := range quote.Lines {
 		lines = append(lines, ApprovedQuoteLine{
-			ProductSKU:      line.ProductSKU,
-			ProductName:     line.ProductName,
-			ProductCategory: line.ProductCategory,
-			Quantity:        line.Quantity,
-			UnitPrice:       line.UnitPrice,
+			ProductSKU:       line.ProductSKU,
+			ProductName:      line.ProductName,
+			ProductCategory:  line.ProductCategory,
+			Quantity:         line.Quantity,
+			UnitPrice:        line.UnitPrice,
+			ReturnWindowDays: line.ReturnWindowDays,
 		})
 	}
 
