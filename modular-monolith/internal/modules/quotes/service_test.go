@@ -109,3 +109,42 @@ func TestAddQuoteLineAddsLineToExistingQuote(t *testing.T) {
 		t.Fatalf("expected total items 2, got %d", result.TotalItems)
 	}
 }
+
+func TestSubmitQuoteSubmitsQuoteWithLines(t *testing.T) {
+	quotes := &stubQuoteRepository{
+		saved: Quote{
+			ID:         "quote-001",
+			CustomerID: "customer-001",
+			Status:     QuoteStatusDraft,
+			Lines: []QuoteLine{
+				{ProductSKU: "sku-001", Quantity: 1, UnitPrice: 15000},
+			},
+		},
+	}
+	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{})
+
+	result, err := service.SubmitQuote(SubmitQuoteCommand{QuoteID: "quote-001"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if result.Status != QuoteStatusSubmitted {
+		t.Fatalf("expected status %s, got %s", QuoteStatusSubmitted, result.Status)
+	}
+}
+
+func TestSubmitQuoteRejectsEmptyQuote(t *testing.T) {
+	quotes := &stubQuoteRepository{
+		saved: Quote{
+			ID:         "quote-001",
+			CustomerID: "customer-001",
+			Status:     QuoteStatusDraft,
+		},
+	}
+	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{})
+
+	_, err := service.SubmitQuote(SubmitQuoteCommand{QuoteID: "quote-001"})
+	if err != ErrQuoteCannotBeSubmittedWithoutLines {
+		t.Fatalf("expected %v, got %v", ErrQuoteCannotBeSubmittedWithoutLines, err)
+	}
+}

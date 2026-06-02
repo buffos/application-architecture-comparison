@@ -56,6 +56,15 @@ func main() {
 
 	fmt.Printf("added quote line: id=%s lines=%d items=%d status=%s\n", lineResult.QuoteID, lineResult.LineCount, lineResult.TotalItems, lineResult.Status)
 
+	submitResult, err := quoteModule.SubmitQuote(quotes.SubmitQuoteCommand{
+		QuoteID: result.QuoteID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("submitted quote: id=%s lines=%d items=%d status=%s\n", submitResult.QuoteID, submitResult.LineCount, submitResult.TotalItems, submitResult.Status)
+
 	details, err := quoteModule.GetQuote(quotes.GetQuoteQuery{
 		QuoteID: result.QuoteID,
 	})

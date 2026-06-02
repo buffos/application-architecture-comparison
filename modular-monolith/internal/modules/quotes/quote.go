@@ -9,8 +9,12 @@ import (
 var ErrCustomerIDRequired = errors.New("customer id is required")
 var ErrQuoteNotFound = errors.New("quote not found")
 var ErrQuantityMustBePositive = errors.New("quantity must be positive")
+var ErrQuoteNotSubmittable = errors.New("quote is not submittable")
+var ErrQuoteCannotBeSubmittedWithoutLines = errors.New("quote cannot be submitted without lines")
+var ErrQuoteNotEditable = errors.New("quote is not editable")
 
 const QuoteStatusDraft = "Draft"
+const QuoteStatusSubmitted = "Submitted"
 
 var quoteSequence uint64
 
@@ -51,6 +55,10 @@ func NewDraftQuote(customerID string) (Quote, error) {
 }
 
 func (q *Quote) AddLine(product ProductInput, quantity int) error {
+	if q.Status != QuoteStatusDraft {
+		return ErrQuoteNotEditable
+	}
+
 	if quantity <= 0 {
 		return ErrQuantityMustBePositive
 	}
@@ -73,4 +81,17 @@ func (q Quote) TotalQuantity() int {
 	}
 
 	return total
+}
+
+func (q *Quote) Submit() error {
+	if q.Status != QuoteStatusDraft {
+		return ErrQuoteNotSubmittable
+	}
+
+	if len(q.Lines) == 0 {
+		return ErrQuoteCannotBeSubmittedWithoutLines
+	}
+
+	q.Status = QuoteStatusSubmitted
+	return nil
 }

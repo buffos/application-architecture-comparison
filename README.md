@@ -230,6 +230,7 @@ Architectures currently implemented in this repository:
 - `001` Modular monolith skeleton: [001-modular-monolith-skeleton.md](modular-monolith/lessons/001-modular-monolith-skeleton.md)
 - `002` Quote query through module API: [002-quote-query-through-module-api.md](modular-monolith/lessons/002-quote-query-through-module-api.md)
 - `003` Add quote line with product module: [003-add-quote-line-with-product-module.md](modular-monolith/lessons/003-add-quote-line-with-product-module.md)
+- `004` Submit quote state transition: [004-submit-quote-state-transition.md](modular-monolith/lessons/004-submit-quote-state-transition.md)
 
 ## How To Maintain This File
 

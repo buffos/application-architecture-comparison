@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(modular-monolith): complete lesson 003 add quote line with product module
+feat(modular-monolith): complete lesson 004 submit quote state transition
 
 # Add tag
 
-git tag -a modular-monolith-003 -m "Modular Monolith Lesson 003"
-git push origin modular-monolith-003
+git tag -a modular-monolith-004 -m "Modular Monolith Lesson 004"
+git push origin modular-monolith-004
 
 or
 

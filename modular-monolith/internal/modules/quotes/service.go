@@ -29,6 +29,17 @@ type AddQuoteLineResult struct {
 	Status     string
 }
 
+type SubmitQuoteCommand struct {
+	QuoteID string
+}
+
+type SubmitQuoteResult struct {
+	QuoteID    string
+	LineCount  int
+	TotalItems int
+	Status     string
+}
+
 type Service struct {
 	quotes    Repository
 	customers CustomerDirectory
@@ -89,6 +100,28 @@ func (s Service) AddQuoteLine(command AddQuoteLineCommand) (AddQuoteLineResult, 
 	}
 
 	return AddQuoteLineResult{
+		QuoteID:    quote.ID,
+		LineCount:  len(quote.Lines),
+		TotalItems: quote.TotalQuantity(),
+		Status:     quote.Status,
+	}, nil
+}
+
+func (s Service) SubmitQuote(command SubmitQuoteCommand) (SubmitQuoteResult, error) {
+	quote, err := s.quotes.FindByID(command.QuoteID)
+	if err != nil {
+		return SubmitQuoteResult{}, err
+	}
+
+	if err := quote.Submit(); err != nil {
+		return SubmitQuoteResult{}, err
+	}
+
+	if err := s.quotes.Save(quote); err != nil {
+		return SubmitQuoteResult{}, err
+	}
+
+	return SubmitQuoteResult{
 		QuoteID:    quote.ID,
 		LineCount:  len(quote.Lines),
 		TotalItems: quote.TotalQuantity(),
