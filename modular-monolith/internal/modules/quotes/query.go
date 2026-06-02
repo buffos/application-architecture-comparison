@@ -5,10 +5,11 @@ type GetQuoteQuery struct {
 }
 
 type QuoteDetails struct {
-	QuoteID    string
-	CustomerID string
-	Status     string
-	LineCount  int
+	QuoteID     string
+	CustomerID  string
+	Status      string
+	LineCount   int
+	TotalAmount int
 }
 
 type ListQuotesQuery struct {
@@ -22,10 +23,11 @@ func (s Service) GetQuote(query GetQuoteQuery) (QuoteDetails, error) {
 	}
 
 	return QuoteDetails{
-		QuoteID:    quote.ID,
-		CustomerID: quote.CustomerID,
-		Status:     quote.Status,
-		LineCount:  len(quote.Lines),
+		QuoteID:     quote.ID,
+		CustomerID:  quote.CustomerID,
+		Status:      quote.Status,
+		LineCount:   len(quote.Lines),
+		TotalAmount: totalAmount(quote.Lines),
 	}, nil
 }
 
@@ -38,12 +40,22 @@ func (s Service) ListQuotes(query ListQuotesQuery) ([]QuoteDetails, error) {
 	list := make([]QuoteDetails, 0, len(quotes))
 	for _, quote := range quotes {
 		list = append(list, QuoteDetails{
-			QuoteID:    quote.ID,
-			CustomerID: quote.CustomerID,
-			Status:     quote.Status,
-			LineCount:  len(quote.Lines),
+			QuoteID:     quote.ID,
+			CustomerID:  quote.CustomerID,
+			Status:      quote.Status,
+			LineCount:   len(quote.Lines),
+			TotalAmount: totalAmount(quote.Lines),
 		})
 	}
 
 	return list, nil
+}
+
+func totalAmount(lines []QuoteLine) int {
+	total := 0
+	for _, line := range lines {
+		total += line.Quantity * line.UnitPrice
+	}
+
+	return total
 }

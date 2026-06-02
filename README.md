@@ -254,6 +254,7 @@ Architectures currently implemented in this repository:
 - `025` Quote conversion report: [025-quote-conversion-report.md](modular-monolith/lessons/025-quote-conversion-report.md)
 - `026` Return rate by category report: [026-return-rate-by-category-report.md](modular-monolith/lessons/026-return-rate-by-category-report.md)
 - `027` Low stock items report: [027-low-stock-items-report.md](modular-monolith/lessons/027-low-stock-items-report.md)
+- `028` Orders awaiting approval report: [028-orders-awaiting-approval-report.md](modular-monolith/lessons/028-orders-awaiting-approval-report.md)
 
 ## How To Maintain This File
 

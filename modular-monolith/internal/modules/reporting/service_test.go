@@ -191,3 +191,36 @@ func TestLowStockItemsReportFiltersByThreshold(t *testing.T) {
 		t.Fatalf("expected two low stock rows, got %+v", report.Rows)
 	}
 }
+
+func TestOrdersAwaitingApprovalReportReturnsPendingApprovalQueue(t *testing.T) {
+	service := NewService(
+		stubQuoteReader{
+			list: func(query quotes.ListQuotesQuery) ([]quotes.QuoteDetails, error) {
+				if query.Status != quotes.QuoteStatusPendingApproval {
+					return nil, nil
+				}
+
+				return []quotes.QuoteDetails{
+					{QuoteID: "quote-002", CustomerID: "customer-001", Status: quotes.QuoteStatusPendingApproval, LineCount: 2, TotalAmount: 60000},
+				}, nil
+			},
+		},
+		stubOrderReader{list: func(query orders.ListOrdersQuery) ([]orders.OrderDetails, error) { return nil, nil }},
+		stubReturnReader{list: func(query returns.ListReturnRequestsQuery) ([]returns.ReturnRequestDetails, error) { return nil, nil }},
+		stubInventoryReader{list: func() ([]inventory.StockSnapshot, error) { return nil, nil }},
+	)
+
+	report, err := service.OrdersAwaitingApprovalReport()
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(report.Rows) != 1 {
+		t.Fatalf("expected one pending approval row, got %+v", report.Rows)
+	}
+
+	row := report.Rows[0]
+	if row.QuoteID != "quote-002" || row.TotalAmount != 60000 || row.LineCount != 2 {
+		t.Fatalf("unexpected approval queue row %+v", row)
+	}
+}

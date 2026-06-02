@@ -66,6 +66,17 @@ type LowStockItemsReport struct {
 	Rows []LowStockItemsReportRow
 }
 
+type OrdersAwaitingApprovalRow struct {
+	QuoteID     string
+	CustomerID  string
+	LineCount   int
+	TotalAmount int
+}
+
+type OrdersAwaitingApprovalReport struct {
+	Rows []OrdersAwaitingApprovalRow
+}
+
 func (s Service) QuoteConversionReport() (QuoteConversionReport, error) {
 	allQuotes, err := s.quotes.ListQuotes(quotes.ListQuotesQuery{})
 	if err != nil {
@@ -159,6 +170,27 @@ func (s Service) LowStockItemsReport(threshold int) (LowStockItemsReport, error)
 				Available:  item.Available,
 			})
 		}
+	}
+
+	return report, nil
+}
+
+func (s Service) OrdersAwaitingApprovalReport() (OrdersAwaitingApprovalReport, error) {
+	pendingQuotes, err := s.quotes.ListQuotes(quotes.ListQuotesQuery{Status: quotes.QuoteStatusPendingApproval})
+	if err != nil {
+		return OrdersAwaitingApprovalReport{}, err
+	}
+
+	report := OrdersAwaitingApprovalReport{
+		Rows: make([]OrdersAwaitingApprovalRow, 0, len(pendingQuotes)),
+	}
+	for _, quote := range pendingQuotes {
+		report.Rows = append(report.Rows, OrdersAwaitingApprovalRow{
+			QuoteID:     quote.QuoteID,
+			CustomerID:  quote.CustomerID,
+			LineCount:   quote.LineCount,
+			TotalAmount: quote.TotalAmount,
+		})
 	}
 
 	return report, nil

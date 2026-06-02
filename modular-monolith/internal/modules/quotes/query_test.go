@@ -29,6 +29,10 @@ func TestGetQuoteReturnsQuoteDetails(t *testing.T) {
 	if result.LineCount != 0 {
 		t.Fatalf("expected line count 0, got %d", result.LineCount)
 	}
+
+	if result.TotalAmount != 0 {
+		t.Fatalf("expected total amount 0, got %d", result.TotalAmount)
+	}
 }
 
 func TestListQuotesFiltersByStatus(t *testing.T) {
@@ -63,6 +67,10 @@ func TestListQuotesFiltersByStatus(t *testing.T) {
 
 	if result[0].QuoteID != "quote-002" || result[0].Status != QuoteStatusApproved {
 		t.Fatalf("expected approved quote-002, got %+v", result[0])
+	}
+
+	if result[0].TotalAmount != 30000 {
+		t.Fatalf("expected total amount 30000, got %d", result[0].TotalAmount)
 	}
 }
 

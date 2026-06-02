@@ -197,6 +197,15 @@ func main() {
 
 	fmt.Printf("submitted custom quote: id=%s lines=%d items=%d status=%s\n", pendingSubmit.QuoteID, pendingSubmit.LineCount, pendingSubmit.TotalItems, pendingSubmit.Status)
 
+	approvalQueue, err := reportingModule.OrdersAwaitingApprovalReport()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, row := range approvalQueue.Rows {
+		fmt.Printf("approval queue item: quote=%s customer=%s lines=%d total=%d\n", row.QuoteID, row.CustomerID, row.LineCount, row.TotalAmount)
+	}
+
 	approvedPending, err := quoteModule.ApproveQuote(quotes.ApproveQuoteCommand{
 		QuoteID: pendingResult.QuoteID,
 	})
