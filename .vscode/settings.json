@@ -3,6 +3,7 @@
         "Approvable",
         "Interactor",
         "interfaceadapters",
+        "Microkernel",
         "returneligibility",
         "usecase",
         "usecases"

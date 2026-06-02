@@ -84,6 +84,7 @@ Architectures currently implemented in this repository:
 - Clean Architecture
 - Onion Architecture
 - Modular Monolith
+- Microkernel / Plugin Architecture
 
 ## Lesson Index
 
@@ -260,6 +261,13 @@ Architectures currently implemented in this repository:
 - `031` Partial returns by line: [031-partial-returns-by-line.md](modular-monolith/lessons/031-partial-returns-by-line.md)
 - `032` Plugin pricing extension point: [032-plugin-pricing-extension-point.md](modular-monolith/lessons/032-plugin-pricing-extension-point.md)
 - `033` Why not stop at modular monolith?: [033-why-not-stop-at-modular-monolith.md](modular-monolith/lessons/033-why-not-stop-at-modular-monolith.md)
+
+### Microkernel / Plugin Architecture
+
+#### Lessons
+
+- `000` From modular monolith to microkernel: [000-from-modular-monolith-to-microkernel.md](microkernel-architecture/lessons/000-from-modular-monolith-to-microkernel.md)
+- `001` Microkernel skeleton: [001-microkernel-skeleton.md](microkernel-architecture/lessons/001-microkernel-skeleton.md)
 
 ## How To Maintain This File
 

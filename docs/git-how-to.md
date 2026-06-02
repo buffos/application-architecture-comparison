@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(modular-monolith): complete lesson 033 why not stop at modular monolith
+feat(microkernel): complete lesson 001 microkernel skeleton
 
 # Add tag
 
-git tag -a modular-monolith-033 -m "Modular Monolith Lesson 033" && git push origin --tags
-git push origin modular-monolith-033
+git tag -a microkernel-001 -m "Microkernel Lesson 001" && git push origin --tags
+git push origin microkernel-001
 
 or
 
