@@ -17,8 +17,9 @@ type Clock interface {
 }
 
 type RequestReturnCommand struct {
-	OrderID string
-	Reason  string
+	OrderID     string
+	Reason      string
+	RequestedBy string
 }
 
 type RequestReturnResult struct {
@@ -31,6 +32,8 @@ type RequestReturnResult struct {
 
 type ReviewReturnCommand struct {
 	ReturnRequestID string
+	ActorID         string
+	ReviewNote      string
 }
 
 type ReviewReturnResult struct {
@@ -79,12 +82,15 @@ func (s Service) RequestReturn(command RequestReturnCommand) (RequestReturnResul
 		})
 	}
 
-	returnRequest := NewRequestedReturnRequest(ReturnableOrder{
+	returnRequest, err := NewRequestedReturnRequest(ReturnableOrder{
 		OrderID:    order.OrderID,
 		CustomerID: order.CustomerID,
 		ShippedAt:  order.ShippedAt,
 		Lines:      lines,
-	}, command.Reason, s.clock.Now())
+	}, command.Reason, s.clock.Now(), command.RequestedBy)
+	if err != nil {
+		return RequestReturnResult{}, err
+	}
 
 	if err := s.returns.Save(returnRequest); err != nil {
 		return RequestReturnResult{}, err
@@ -119,7 +125,7 @@ func (s Service) AcceptReturn(command ReviewReturnCommand) (ReviewReturnResult, 
 			return lines
 		}(),
 	}) {
-		if err := returnRequest.Reject(); err != nil {
+		if err := returnRequest.Reject(command.ActorID, command.ReviewNote); err != nil {
 			return ReviewReturnResult{}, err
 		}
 
@@ -159,7 +165,7 @@ func (s Service) AcceptReturn(command ReviewReturnCommand) (ReviewReturnResult, 
 		return ReviewReturnResult{}, err
 	}
 
-	if err := returnRequest.Refund(); err != nil {
+	if err := returnRequest.Refund(command.ActorID, command.ActorID, command.ReviewNote); err != nil {
 		return ReviewReturnResult{}, err
 	}
 
@@ -182,7 +188,7 @@ func (s Service) RejectReturn(command ReviewReturnCommand) (ReviewReturnResult, 
 		return ReviewReturnResult{}, err
 	}
 
-	if err := returnRequest.Reject(); err != nil {
+	if err := returnRequest.Reject(command.ActorID, command.ReviewNote); err != nil {
 		return ReviewReturnResult{}, err
 	}
 

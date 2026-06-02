@@ -97,8 +97,9 @@ func TestRequestReturnStoresRequestedReturn(t *testing.T) {
 	}, stubEligibility{allows: true}, restocker, refunder, clock)
 
 	result, err := service.RequestReturn(RequestReturnCommand{
-		OrderID: "order-001",
-		Reason:  "damaged item",
+		OrderID:     "order-001",
+		Reason:      "damaged item",
+		RequestedBy: "customer-001",
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -119,6 +120,10 @@ func TestRequestReturnStoresRequestedReturn(t *testing.T) {
 	if !repository.saved.RequestedAt.Equal(clock.now) {
 		t.Fatalf("expected requested time to be recorded")
 	}
+
+	if repository.saved.RequestedBy != "customer-001" {
+		t.Fatalf("expected requested by customer-001, got %s", repository.saved.RequestedBy)
+	}
 }
 
 func TestRequestReturnRejectsNonReturnableOrder(t *testing.T) {
@@ -130,11 +135,37 @@ func TestRequestReturnRejectsNonReturnableOrder(t *testing.T) {
 	}, stubEligibility{allows: true}, restocker, refunder, stubClock{})
 
 	_, err := service.RequestReturn(RequestReturnCommand{
-		OrderID: "order-001",
-		Reason:  "damaged item",
+		OrderID:     "order-001",
+		Reason:      "damaged item",
+		RequestedBy: "customer-001",
 	})
 	if err != orders.ErrOrderNotReturnable {
 		t.Fatalf("expected %v, got %v", orders.ErrOrderNotReturnable, err)
+	}
+}
+
+func TestRequestReturnRejectsMissingActor(t *testing.T) {
+	repository := &stubRepository{}
+	refunder := &stubRefunder{}
+	restocker := &stubRestocker{}
+	clock := stubClock{now: time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC)}
+	service := NewService(repository, stubOrderSource{
+		order: orders.ReturnableOrder{
+			OrderID:    "order-001",
+			CustomerID: "customer-001",
+			ShippedAt:  time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC),
+			Lines: []orders.ReturnableOrderLine{
+				{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
+			},
+		},
+	}, stubEligibility{allows: true}, restocker, refunder, clock)
+
+	_, err := service.RequestReturn(RequestReturnCommand{
+		OrderID: "order-001",
+		Reason:  "damaged item",
+	})
+	if err != ErrActorRequired {
+		t.Fatalf("expected %v, got %v", ErrActorRequired, err)
 	}
 }
 
@@ -143,17 +174,19 @@ func TestRequestReturnStopsWhenRestockFails(t *testing.T) {
 	refunder := &stubRefunder{}
 	restocker := &stubRestocker{err: inventory.ErrStockNotFound}
 	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: true}, restocker, refunder, stubClock{})
-	repository.saved = NewRequestedReturnRequest(ReturnableOrder{
+	repository.saved, _ = NewRequestedReturnRequest(ReturnableOrder{
 		OrderID:    "order-001",
 		CustomerID: "customer-001",
 		ShippedAt:  time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC),
 		Lines: []ReturnableOrderLine{
 			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 		},
-	}, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC))
+	}, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC), "customer-001")
 
 	_, err := service.AcceptReturn(ReviewReturnCommand{
 		ReturnRequestID: repository.saved.ID,
+		ActorID:         "agent-001",
+		ReviewNote:      "warehouse restock failed",
 	})
 	if err != inventory.ErrStockNotFound {
 		t.Fatalf("expected %v, got %v", inventory.ErrStockNotFound, err)
@@ -164,17 +197,17 @@ func TestAcceptReturnRefundsRestocksAndStoresUpdatedStatus(t *testing.T) {
 	repository := &stubRepository{}
 	refunder := &stubRefunder{}
 	restocker := &stubRestocker{}
-	repository.saved = NewRequestedReturnRequest(ReturnableOrder{
+	repository.saved, _ = NewRequestedReturnRequest(ReturnableOrder{
 		OrderID:    "order-001",
 		CustomerID: "customer-001",
 		ShippedAt:  time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC),
 		Lines: []ReturnableOrderLine{
 			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 		},
-	}, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC))
+	}, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC), "customer-001")
 	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: true}, restocker, refunder, stubClock{})
 
-	result, err := service.AcceptReturn(ReviewReturnCommand{ReturnRequestID: repository.saved.ID})
+	result, err := service.AcceptReturn(ReviewReturnCommand{ReturnRequestID: repository.saved.ID, ActorID: "agent-001", ReviewNote: "accepted after inspection"})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -190,23 +223,27 @@ func TestAcceptReturnRefundsRestocksAndStoresUpdatedStatus(t *testing.T) {
 	if len(restocker.items) != 1 || restocker.items[0].Quantity != 2 {
 		t.Fatalf("expected restock quantity 2, got %+v", restocker.items)
 	}
+
+	if repository.saved.ReviewedBy != "agent-001" || repository.saved.ProcessedBy != "agent-001" {
+		t.Fatalf("expected review and process actor to be recorded")
+	}
 }
 
 func TestRejectReturnStoresRejectedStatus(t *testing.T) {
 	repository := &stubRepository{}
 	refunder := &stubRefunder{}
 	restocker := &stubRestocker{}
-	repository.saved = NewRequestedReturnRequest(ReturnableOrder{
+	repository.saved, _ = NewRequestedReturnRequest(ReturnableOrder{
 		OrderID:    "order-001",
 		CustomerID: "customer-001",
 		ShippedAt:  time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC),
 		Lines: []ReturnableOrderLine{
 			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 		},
-	}, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC))
+	}, "damaged item", time.Date(2026, 6, 12, 12, 0, 0, 0, time.UTC), "customer-001")
 	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: true}, restocker, refunder, stubClock{})
 
-	result, err := service.RejectReturn(ReviewReturnCommand{ReturnRequestID: repository.saved.ID})
+	result, err := service.RejectReturn(ReviewReturnCommand{ReturnRequestID: repository.saved.ID, ActorID: "agent-002", ReviewNote: "rejected on inspection"})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -218,23 +255,27 @@ func TestRejectReturnStoresRejectedStatus(t *testing.T) {
 	if refunder.request.Amount != 0 {
 		t.Fatalf("expected no refund on rejection, got %d", refunder.request.Amount)
 	}
+
+	if repository.saved.ReviewedBy != "agent-002" {
+		t.Fatalf("expected reviewer to be recorded")
+	}
 }
 
 func TestAcceptReturnRejectsWhenPolicyBlocksEligibility(t *testing.T) {
 	repository := &stubRepository{}
 	refunder := &stubRefunder{}
 	restocker := &stubRestocker{}
-	repository.saved = NewRequestedReturnRequest(ReturnableOrder{
+	repository.saved, _ = NewRequestedReturnRequest(ReturnableOrder{
 		OrderID:    "order-001",
 		CustomerID: "customer-001",
 		ShippedAt:  time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC),
 		Lines: []ReturnableOrderLine{
 			{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30},
 		},
-	}, "outside return window", time.Date(2026, 7, 12, 12, 0, 0, 0, time.UTC))
+	}, "outside return window", time.Date(2026, 7, 12, 12, 0, 0, 0, time.UTC), "customer-001")
 	service := NewService(repository, stubOrderSource{}, stubEligibility{allows: false}, restocker, refunder, stubClock{})
 
-	result, err := service.AcceptReturn(ReviewReturnCommand{ReturnRequestID: repository.saved.ID})
+	result, err := service.AcceptReturn(ReviewReturnCommand{ReturnRequestID: repository.saved.ID, ActorID: "agent-003", ReviewNote: "window exceeded"})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -249,5 +290,9 @@ func TestAcceptReturnRejectsWhenPolicyBlocksEligibility(t *testing.T) {
 
 	if len(restocker.items) != 0 {
 		t.Fatalf("expected no restock when policy blocks return, got %+v", restocker.items)
+	}
+
+	if repository.saved.ReviewedBy != "agent-003" {
+		t.Fatalf("expected policy reviewer to be recorded")
 	}
 }

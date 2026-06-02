@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(modular-monolith): complete lesson 016 real return window policy
+feat(modular-monolith): complete lesson 017 return actor metadata
 
 # Add tag
 
-git tag -a modular-monolith-016 -m "Modular Monolith Lesson 016" && git push origin --tags
-git push origin modular-monolith-016
+git tag -a modular-monolith-017 -m "Modular Monolith Lesson 017" && git push origin --tags
+git push origin modular-monolith-017
 
 or
 

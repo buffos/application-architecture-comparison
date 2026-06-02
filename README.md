@@ -243,6 +243,7 @@ Architectures currently implemented in this repository:
 - `014` Return review boundary: [014-return-review-boundary.md](modular-monolith/lessons/014-return-review-boundary.md)
 - `015` Return eligibility policy: [015-return-eligibility-policy.md](modular-monolith/lessons/015-return-eligibility-policy.md)
 - `016` Real return window policy: [016-real-return-window-policy.md](modular-monolith/lessons/016-real-return-window-policy.md)
+- `017` Return actor metadata: [017-return-actor-metadata.md](modular-monolith/lessons/017-return-actor-metadata.md)
 
 ## How To Maintain This File
 
