@@ -12,6 +12,7 @@ import (
 	"modular-monolith/internal/modules/payments"
 	"modular-monolith/internal/modules/products"
 	"modular-monolith/internal/modules/quotes"
+	"modular-monolith/internal/modules/reporting"
 	"modular-monolith/internal/modules/returneligibility"
 	"modular-monolith/internal/modules/returns"
 	"modular-monolith/internal/modules/shipments"
@@ -85,6 +86,7 @@ func main() {
 	shipmentModule := shipments.NewService(shipmentRepository)
 	orderModule := orders.NewService(orderRepository, quoteModule, inventoryModule, paymentModule, shipmentModule, clock)
 	returnModule := returns.NewService(returnRequestRepository, orderModule, returnEligibilityModule, inventoryModule, idempotencyModule, paymentModule, clock)
+	reportingModule := reporting.NewService(quoteModule, orderModule)
 
 	result, err := quoteModule.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -212,6 +214,13 @@ func main() {
 	}
 
 	fmt.Printf("converted quote to order: order=%s quote=%s customer=%s status=%s lines=%d\n", orderResult.OrderID, orderResult.QuoteID, orderResult.CustomerID, orderResult.Status, orderResult.LineCount)
+
+	conversionReport, err := reportingModule.QuoteConversionReport()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("quote conversion report: total=%d approved=%d converted=%d rate=%.2f\n", conversionReport.TotalQuotes, conversionReport.ApprovedQuotes, conversionReport.ConvertedQuotes, conversionReport.ConversionRate)
 
 	paidResult, err := orderModule.CapturePayment(orders.CapturePaymentCommand{
 		OrderID: orderResult.OrderID,
