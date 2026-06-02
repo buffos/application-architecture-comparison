@@ -33,6 +33,16 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if err := productRepository.Save(products.Product{
+		SKU:       "sku-002",
+		Name:      "Custom Desk",
+		Category:  "CustomBuild",
+		Active:    true,
+		UnitPrice: 45000,
+	}); err != nil {
+		log.Fatal(err)
+	}
+
 	customerModule := customers.NewService(customerRepository)
 	productModule := products.NewService(productRepository)
 	approvalModule := approvals.NewService()
@@ -75,4 +85,38 @@ func main() {
 	}
 
 	fmt.Printf("loaded quote: id=%s customer=%s status=%s lines=%d\n", details.QuoteID, details.CustomerID, details.Status, details.LineCount)
+
+	pendingResult, err := quoteModule.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
+		CustomerID: "customer-001",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = quoteModule.AddQuoteLine(quotes.AddQuoteLineCommand{
+		QuoteID:    pendingResult.QuoteID,
+		ProductSKU: "sku-002",
+		Quantity:   1,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	pendingSubmit, err := quoteModule.SubmitQuote(quotes.SubmitQuoteCommand{
+		QuoteID: pendingResult.QuoteID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("submitted custom quote: id=%s lines=%d items=%d status=%s\n", pendingSubmit.QuoteID, pendingSubmit.LineCount, pendingSubmit.TotalItems, pendingSubmit.Status)
+
+	approvedPending, err := quoteModule.ApproveQuote(quotes.ApproveQuoteCommand{
+		QuoteID: pendingResult.QuoteID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("approved pending quote: id=%s lines=%d items=%d status=%s\n", approvedPending.QuoteID, approvedPending.LineCount, approvedPending.TotalItems, approvedPending.Status)
 }

@@ -184,3 +184,45 @@ func TestSubmitQuoteMovesCustomQuoteToPendingApproval(t *testing.T) {
 		t.Fatalf("expected status %s, got %s", QuoteStatusPendingApproval, result.Status)
 	}
 }
+
+func TestApproveQuoteApprovesPendingQuote(t *testing.T) {
+	quotes := &stubQuoteRepository{
+		saved: Quote{
+			ID:         "quote-001",
+			CustomerID: "customer-001",
+			Status:     QuoteStatusPendingApproval,
+			Lines: []QuoteLine{
+				{ProductSKU: "sku-002", ProductCategory: "CustomBuild", Quantity: 1, UnitPrice: 45000},
+			},
+		},
+	}
+	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalEvaluator{})
+
+	result, err := service.ApproveQuote(ApproveQuoteCommand{QuoteID: "quote-001"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if result.Status != QuoteStatusApproved {
+		t.Fatalf("expected status %s, got %s", QuoteStatusApproved, result.Status)
+	}
+}
+
+func TestApproveQuoteRejectsAlreadyApprovedQuote(t *testing.T) {
+	quotes := &stubQuoteRepository{
+		saved: Quote{
+			ID:         "quote-001",
+			CustomerID: "customer-001",
+			Status:     QuoteStatusApproved,
+			Lines: []QuoteLine{
+				{ProductSKU: "sku-001", ProductCategory: "Standard", Quantity: 1, UnitPrice: 15000},
+			},
+		},
+	}
+	service := NewService(quotes, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalEvaluator{})
+
+	_, err := service.ApproveQuote(ApproveQuoteCommand{QuoteID: "quote-001"})
+	if err != ErrQuoteNotApprovable {
+		t.Fatalf("expected %v, got %v", ErrQuoteNotApprovable, err)
+	}
+}

@@ -12,6 +12,7 @@ var ErrQuantityMustBePositive = errors.New("quantity must be positive")
 var ErrQuoteNotSubmittable = errors.New("quote is not submittable")
 var ErrQuoteCannotBeSubmittedWithoutLines = errors.New("quote cannot be submitted without lines")
 var ErrQuoteNotEditable = errors.New("quote is not editable")
+var ErrQuoteNotApprovable = errors.New("quote is not approvable")
 
 const QuoteStatusDraft = "Draft"
 const QuoteStatusPendingApproval = "PendingApproval"
@@ -96,6 +97,15 @@ func (q *Quote) Submit(requiresApproval bool) error {
 	if requiresApproval {
 		q.Status = QuoteStatusPendingApproval
 		return nil
+	}
+
+	q.Status = QuoteStatusApproved
+	return nil
+}
+
+func (q *Quote) Approve() error {
+	if q.Status != QuoteStatusPendingApproval {
+		return ErrQuoteNotApprovable
 	}
 
 	q.Status = QuoteStatusApproved

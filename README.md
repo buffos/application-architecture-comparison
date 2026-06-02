@@ -232,6 +232,7 @@ Architectures currently implemented in this repository:
 - `003` Add quote line with product module: [003-add-quote-line-with-product-module.md](modular-monolith/lessons/003-add-quote-line-with-product-module.md)
 - `004` Submit quote state transition: [004-submit-quote-state-transition.md](modular-monolith/lessons/004-submit-quote-state-transition.md)
 - `005` Approval policy module: [005-approval-policy-module.md](modular-monolith/lessons/005-approval-policy-module.md)
+- `006` Approve pending quote: [006-approve-pending-quote.md](modular-monolith/lessons/006-approve-pending-quote.md)
 
 ## How To Maintain This File
 

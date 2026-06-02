@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(modular-monolith): complete lesson 005 approval policy module
+feat(modular-monolith): complete lesson 006 approve pending quote
 
 # Add tag
 
-git tag -a modular-monolith-005 -m "Modular Monolith Lesson 005"
-git push origin modular-monolith-005
+git tag -a modular-monolith-006 -m "Modular Monolith Lesson 006"
+git push origin modular-monolith-006
 
 or
 

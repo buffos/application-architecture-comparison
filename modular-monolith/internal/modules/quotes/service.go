@@ -43,6 +43,17 @@ type SubmitQuoteResult struct {
 	Status     string
 }
 
+type ApproveQuoteCommand struct {
+	QuoteID string
+}
+
+type ApproveQuoteResult struct {
+	QuoteID    string
+	LineCount  int
+	TotalItems int
+	Status     string
+}
+
 type Service struct {
 	quotes    Repository
 	customers CustomerDirectory
@@ -136,6 +147,28 @@ func (s Service) SubmitQuote(command SubmitQuoteCommand) (SubmitQuoteResult, err
 	}
 
 	return SubmitQuoteResult{
+		QuoteID:    quote.ID,
+		LineCount:  len(quote.Lines),
+		TotalItems: quote.TotalQuantity(),
+		Status:     quote.Status,
+	}, nil
+}
+
+func (s Service) ApproveQuote(command ApproveQuoteCommand) (ApproveQuoteResult, error) {
+	quote, err := s.quotes.FindByID(command.QuoteID)
+	if err != nil {
+		return ApproveQuoteResult{}, err
+	}
+
+	if err := quote.Approve(); err != nil {
+		return ApproveQuoteResult{}, err
+	}
+
+	if err := s.quotes.Save(quote); err != nil {
+		return ApproveQuoteResult{}, err
+	}
+
+	return ApproveQuoteResult{
 		QuoteID:    quote.ID,
 		LineCount:  len(quote.Lines),
 		TotalItems: quote.TotalQuantity(),
