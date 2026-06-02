@@ -1,7 +1,7 @@
 package payments
 
 type Processor interface {
-	Capture(request PaymentRequest) error
+	Capture(request PaymentRequest) (CaptureResult, error)
 }
 
 type Refunder interface {
@@ -18,7 +18,7 @@ func NewService(gateway Gateway) Service {
 	}
 }
 
-func (s Service) Capture(request PaymentRequest) error {
+func (s Service) Capture(request PaymentRequest) (CaptureResult, error) {
 	return s.gateway.Capture(request)
 }
 

@@ -8,8 +8,8 @@ func NewAcceptAllGateway() AcceptAllGateway {
 	return AcceptAllGateway{}
 }
 
-func (g AcceptAllGateway) Capture(request payments.PaymentRequest) error {
-	return nil
+func (g AcceptAllGateway) Capture(request payments.PaymentRequest) (payments.CaptureResult, error) {
+	return payments.CaptureResult{Outcome: payments.CaptureOutcomeApproved}, nil
 }
 
 func (g AcceptAllGateway) Refund(request payments.RefundRequest) error {

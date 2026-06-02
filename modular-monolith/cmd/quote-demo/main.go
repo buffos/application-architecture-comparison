@@ -76,7 +76,7 @@ func main() {
 
 	customerModule := customers.NewService(customerRepository)
 	inventoryModule := inventory.NewService(inventoryRepository)
-	paymentModule := payments.NewService(paymentadapter.NewAcceptAllGateway())
+	paymentModule := payments.NewService(paymentadapter.NewManualReviewGateway())
 	productModule := products.NewService(productRepository)
 	approvalModule := approvals.NewService()
 	clock := timeadapter.NewSystemClock()
@@ -239,6 +239,15 @@ func main() {
 	}
 
 	fmt.Printf("captured payment: order=%s customer=%s status=%s lines=%d\n", paidResult.OrderID, paidResult.CustomerID, paidResult.Status, paidResult.LineCount)
+
+	approvedPayment, err := orderModule.ApprovePaymentReview(orders.ApprovePaymentReviewCommand{
+		OrderID: orderResult.OrderID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("approved payment review: order=%s customer=%s status=%s lines=%d\n", approvedPayment.OrderID, approvedPayment.CustomerID, approvedPayment.Status, approvedPayment.LineCount)
 
 	shipmentResult, err := orderModule.CreateShipment(orders.CreateShipmentCommand{
 		OrderID: orderResult.OrderID,

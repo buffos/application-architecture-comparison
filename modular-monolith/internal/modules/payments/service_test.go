@@ -4,17 +4,21 @@ import "testing"
 
 type stubGateway struct {
 	captureRequest PaymentRequest
+	captureResult  CaptureResult
 	refundRequest  RefundRequest
 	err            error
 }
 
-func (g *stubGateway) Capture(request PaymentRequest) error {
+func (g *stubGateway) Capture(request PaymentRequest) (CaptureResult, error) {
 	if g.err != nil {
-		return g.err
+		return CaptureResult{}, g.err
 	}
 
 	g.captureRequest = request
-	return nil
+	if g.captureResult.Outcome == "" {
+		g.captureResult = CaptureResult{Outcome: CaptureOutcomeApproved}
+	}
+	return g.captureResult, nil
 }
 
 func (g *stubGateway) Refund(request RefundRequest) error {
@@ -30,7 +34,7 @@ func TestCaptureDelegatesToGateway(t *testing.T) {
 	gateway := &stubGateway{}
 	service := NewService(gateway)
 
-	err := service.Capture(PaymentRequest{
+	result, err := service.Capture(PaymentRequest{
 		OrderID:    "order-001",
 		CustomerID: "customer-001",
 		Amount:     30000,
@@ -41,6 +45,10 @@ func TestCaptureDelegatesToGateway(t *testing.T) {
 
 	if gateway.captureRequest.OrderID != "order-001" {
 		t.Fatalf("expected order-001, got %s", gateway.captureRequest.OrderID)
+	}
+
+	if result.Outcome != CaptureOutcomeApproved {
+		t.Fatalf("expected approved outcome, got %s", result.Outcome)
 	}
 }
 

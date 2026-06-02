@@ -45,9 +45,12 @@ type stubInventoryReserver struct {
 }
 
 type stubPaymentProcessor struct {
-	request payments.PaymentRequest
+	request PaymentRequestAlias
+	result  payments.CaptureResult
 	err     error
 }
+
+type PaymentRequestAlias = payments.PaymentRequest
 
 type stubShipmentCreator struct {
 	request  shipments.ShipmentRequest
@@ -77,13 +80,16 @@ func (s *stubInventoryReserver) Release(items []inventory.ReleaseItem) error {
 	return nil
 }
 
-func (s *stubPaymentProcessor) Capture(request payments.PaymentRequest) error {
+func (s *stubPaymentProcessor) Capture(request payments.PaymentRequest) (payments.CaptureResult, error) {
 	if s.err != nil {
-		return s.err
+		return payments.CaptureResult{}, s.err
 	}
 
 	s.request = request
-	return nil
+	if s.result.Outcome == "" {
+		s.result = payments.CaptureResult{Outcome: payments.CaptureOutcomeApproved}
+	}
+	return s.result, nil
 }
 
 func (s *stubShipmentCreator) Create(request shipments.ShipmentRequest) (shipments.Shipment, error) {
@@ -217,6 +223,32 @@ func TestCapturePaymentMarksOrderPaid(t *testing.T) {
 	}
 }
 
+func TestCapturePaymentMovesOrderToPaymentReviewWhenGatewayRequestsReview(t *testing.T) {
+	orders := &stubOrderRepository{
+		saved: Order{
+			ID:         "order-001",
+			CustomerID: "customer-001",
+			Status:     OrderStatusPendingPayment,
+			Lines: []OrderLine{
+				{ProductSKU: "sku-001", Quantity: 2, UnitPrice: 15000},
+			},
+		},
+	}
+	paymentProcessor := &stubPaymentProcessor{
+		result: payments.CaptureResult{Outcome: payments.CaptureOutcomeReview},
+	}
+	service := NewService(orders, stubApprovedQuoteSource{}, &stubInventoryReserver{}, paymentProcessor, &stubShipmentCreator{}, stubClock{})
+
+	result, err := service.CapturePayment(CapturePaymentCommand{OrderID: "order-001"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if result.Status != OrderStatusPaymentReview {
+		t.Fatalf("expected %s, got %s", OrderStatusPaymentReview, result.Status)
+	}
+}
+
 func TestCapturePaymentRejectsOrderThatIsNotPayable(t *testing.T) {
 	orders := &stubOrderRepository{
 		saved: Order{
@@ -277,6 +309,44 @@ func TestCreateShipmentRejectsOrderThatIsNotPaid(t *testing.T) {
 	_, err := service.CreateShipment(CreateShipmentCommand{OrderID: "order-001"})
 	if err != ErrOrderNotShippable {
 		t.Fatalf("expected %v, got %v", ErrOrderNotShippable, err)
+	}
+}
+
+func TestCreateShipmentRejectsOrderThatIsInPaymentReview(t *testing.T) {
+	orders := &stubOrderRepository{
+		saved: Order{
+			ID:     "order-001",
+			Status: OrderStatusPaymentReview,
+		},
+	}
+	service := NewService(orders, stubApprovedQuoteSource{}, &stubInventoryReserver{}, &stubPaymentProcessor{}, &stubShipmentCreator{}, stubClock{})
+
+	_, err := service.CreateShipment(CreateShipmentCommand{OrderID: "order-001"})
+	if err != ErrOrderNotShippable {
+		t.Fatalf("expected %v, got %v", ErrOrderNotShippable, err)
+	}
+}
+
+func TestApprovePaymentReviewMovesOrderToPaid(t *testing.T) {
+	orders := &stubOrderRepository{
+		saved: Order{
+			ID:         "order-001",
+			CustomerID: "customer-001",
+			Status:     OrderStatusPaymentReview,
+			Lines: []OrderLine{
+				{ProductSKU: "sku-001", Quantity: 2, UnitPrice: 15000},
+			},
+		},
+	}
+	service := NewService(orders, stubApprovedQuoteSource{}, &stubInventoryReserver{}, &stubPaymentProcessor{}, &stubShipmentCreator{}, stubClock{})
+
+	result, err := service.ApprovePaymentReview(ApprovePaymentReviewCommand{OrderID: "order-001"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if result.Status != OrderStatusPaid {
+		t.Fatalf("expected %s, got %s", OrderStatusPaid, result.Status)
 	}
 }
 

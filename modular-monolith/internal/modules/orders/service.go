@@ -39,6 +39,17 @@ type CapturePaymentResult struct {
 	LineCount  int
 }
 
+type ApprovePaymentReviewCommand struct {
+	OrderID string
+}
+
+type ApprovePaymentReviewResult struct {
+	OrderID    string
+	CustomerID string
+	Status     string
+	LineCount  int
+}
+
 type CreateShipmentCommand struct {
 	OrderID string
 }
@@ -142,16 +153,24 @@ func (s Service) CapturePayment(command CapturePaymentCommand) (CapturePaymentRe
 		totalAmount += line.Quantity * line.UnitPrice
 	}
 
-	if err := s.payments.Capture(payments.PaymentRequest{
+	result, err := s.payments.Capture(payments.PaymentRequest{
 		OrderID:    order.ID,
 		CustomerID: order.CustomerID,
 		Amount:     totalAmount,
-	}); err != nil {
+	})
+	if err != nil {
 		return CapturePaymentResult{}, err
 	}
 
-	if err := order.MarkPaid(); err != nil {
-		return CapturePaymentResult{}, err
+	switch result.Outcome {
+	case payments.CaptureOutcomeReview:
+		if err := order.MarkPaymentReview(); err != nil {
+			return CapturePaymentResult{}, err
+		}
+	default:
+		if err := order.MarkPaid(); err != nil {
+			return CapturePaymentResult{}, err
+		}
 	}
 
 	if err := s.orders.Save(order); err != nil {
@@ -159,6 +178,28 @@ func (s Service) CapturePayment(command CapturePaymentCommand) (CapturePaymentRe
 	}
 
 	return CapturePaymentResult{
+		OrderID:    order.ID,
+		CustomerID: order.CustomerID,
+		Status:     order.Status,
+		LineCount:  len(order.Lines),
+	}, nil
+}
+
+func (s Service) ApprovePaymentReview(command ApprovePaymentReviewCommand) (ApprovePaymentReviewResult, error) {
+	order, err := s.orders.FindByID(command.OrderID)
+	if err != nil {
+		return ApprovePaymentReviewResult{}, err
+	}
+
+	if err := order.ApprovePaymentReview(); err != nil {
+		return ApprovePaymentReviewResult{}, err
+	}
+
+	if err := s.orders.Save(order); err != nil {
+		return ApprovePaymentReviewResult{}, err
+	}
+
+	return ApprovePaymentReviewResult{
 		OrderID:    order.ID,
 		CustomerID: order.CustomerID,
 		Status:     order.Status,

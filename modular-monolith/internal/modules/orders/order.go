@@ -11,12 +11,14 @@ import (
 
 var ErrOrderNotFound = errors.New("order not found")
 var ErrOrderNotPayable = errors.New("order is not payable")
+var ErrOrderNotInPaymentReview = errors.New("order is not in payment review")
 var ErrOrderNotShippable = errors.New("order is not shippable")
 var ErrOrderNotCancellable = errors.New("order is not cancellable")
 var ErrOrderNotReturnable = errors.New("order is not returnable")
 
 const (
 	OrderStatusPendingPayment = "PendingPayment"
+	OrderStatusPaymentReview  = "PaymentReview"
 	OrderStatusPaid           = "Paid"
 	OrderStatusShipped        = "Shipped"
 	OrderStatusCancelled      = "Cancelled"
@@ -43,8 +45,26 @@ type OrderLine struct {
 }
 
 func (o *Order) MarkPaid() error {
+	if o.Status != OrderStatusPendingPayment && o.Status != OrderStatusPaymentReview {
+		return ErrOrderNotPayable
+	}
+
+	o.Status = OrderStatusPaid
+	return nil
+}
+
+func (o *Order) MarkPaymentReview() error {
 	if o.Status != OrderStatusPendingPayment {
 		return ErrOrderNotPayable
+	}
+
+	o.Status = OrderStatusPaymentReview
+	return nil
+}
+
+func (o *Order) ApprovePaymentReview() error {
+	if o.Status != OrderStatusPaymentReview {
+		return ErrOrderNotInPaymentReview
 	}
 
 	o.Status = OrderStatusPaid
