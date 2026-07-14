@@ -40,6 +40,14 @@ func (r stubInventoryReservation) Reserve(items []kernel.InventoryReservationIte
 	return r.err
 }
 
+type stubInventoryRelease struct {
+	err error
+}
+
+func (r stubInventoryRelease) Release(items []kernel.InventoryReservationItem) error {
+	return r.err
+}
+
 type stubPaymentCapture struct {
 	err error
 }
@@ -73,7 +81,7 @@ func TestConvertQuoteToOrder(t *testing.T) {
 				},
 			},
 		},
-	}, stubInventoryReservation{}, stubPaymentCapture{}, stubShipmentCreation{})
+	}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{})
 
 	result, err := service.ConvertQuoteToOrder(kernel.ConvertQuoteToOrderCommand{
 		QuoteID: "quote-001",
@@ -109,7 +117,7 @@ func TestConvertQuoteToOrderRejectsReservationFailure(t *testing.T) {
 		},
 	}, stubInventoryReservation{
 		err: kernel.ErrPluginAlreadyRegistered,
-	}, stubPaymentCapture{}, stubShipmentCreation{})
+	}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{})
 
 	_, err := service.ConvertQuoteToOrder(kernel.ConvertQuoteToOrderCommand{
 		QuoteID: "quote-001",
@@ -137,7 +145,7 @@ func TestCapturePayment(t *testing.T) {
 			},
 		},
 	}
-	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubPaymentCapture{}, stubShipmentCreation{})
+	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{})
 
 	result, err := service.CapturePayment(kernel.CapturePaymentCommand{
 		OrderID: "order-001",
@@ -160,7 +168,7 @@ func TestCapturePaymentRejectsNonPayableOrder(t *testing.T) {
 			Status:     OrderStatusPaid,
 		},
 	}
-	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubPaymentCapture{}, stubShipmentCreation{})
+	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{})
 
 	_, err := service.CapturePayment(kernel.CapturePaymentCommand{
 		OrderID: "order-001",
@@ -188,7 +196,7 @@ func TestCreateShipment(t *testing.T) {
 			},
 		},
 	}
-	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubPaymentCapture{}, stubShipmentCreation{
+	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{
 		result: kernel.ShipmentCreationResult{
 			ShipmentID: "shipment-001",
 			OrderID:    "order-001",
@@ -218,7 +226,7 @@ func TestCreateShipmentRejectsNonShippableOrder(t *testing.T) {
 			Status:     OrderStatusPendingPayment,
 		},
 	}
-	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubPaymentCapture{}, stubShipmentCreation{
+	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{
 		result: kernel.ShipmentCreationResult{
 			ShipmentID: "shipment-001",
 			OrderID:    "order-001",
@@ -232,5 +240,56 @@ func TestCreateShipmentRejectsNonShippableOrder(t *testing.T) {
 	})
 	if err != ErrOrderNotShippable {
 		t.Fatalf("expected not shippable error, got %v", err)
+	}
+}
+
+func TestCancelOrder(t *testing.T) {
+	repository := &stubRepository{
+		saved: Order{
+			ID:         "order-001",
+			QuoteID:    "quote-001",
+			CustomerID: "customer-001",
+			Status:     OrderStatusPendingPayment,
+			Lines: []OrderLine{
+				{
+					ProductSKU:      "sku-002",
+					ProductName:     "Custom Desk",
+					ProductCategory: "CustomBuild",
+					Quantity:        1,
+					UnitPrice:       45000,
+				},
+			},
+		},
+	}
+	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{})
+
+	result, err := service.CancelOrder(kernel.CancelOrderCommand{
+		OrderID: "order-001",
+	})
+	if err != nil {
+		t.Fatalf("expected cancel order to succeed, got %v", err)
+	}
+
+	if result.Status != OrderStatusCancelled {
+		t.Fatalf("expected cancelled status, got %s", result.Status)
+	}
+}
+
+func TestCancelOrderRejectsShippedOrder(t *testing.T) {
+	repository := &stubRepository{
+		saved: Order{
+			ID:         "order-001",
+			QuoteID:    "quote-001",
+			CustomerID: "customer-001",
+			Status:     OrderStatusShipped,
+		},
+	}
+	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{})
+
+	_, err := service.CancelOrder(kernel.CancelOrderCommand{
+		OrderID: "order-001",
+	})
+	if err != ErrOrderNotCancellable {
+		t.Fatalf("expected not cancellable error, got %v", err)
 	}
 }

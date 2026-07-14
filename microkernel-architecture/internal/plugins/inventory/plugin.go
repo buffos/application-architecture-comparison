@@ -17,6 +17,8 @@ func (p Plugin) ID() string {
 }
 
 func (p Plugin) Register(host *kernel.Host) error {
-	host.ExposeInventoryReservation(NewService(p.stock))
+	service := NewService(p.stock)
+	host.ExposeInventoryReservation(service)
+	host.ExposeInventoryRelease(service)
 	return nil
 }

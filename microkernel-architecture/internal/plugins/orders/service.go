@@ -3,20 +3,22 @@ package orders
 import "microkernel-architecture/internal/kernel"
 
 type Service struct {
-	orders Repository
-	quotes kernel.ApprovedQuoteProvider
-	stock  kernel.InventoryReservation
-	pay    kernel.PaymentCapture
-	ship   kernel.ShipmentCreation
+	orders  Repository
+	quotes  kernel.ApprovedQuoteProvider
+	stock   kernel.InventoryReservation
+	release kernel.InventoryRelease
+	pay     kernel.PaymentCapture
+	ship    kernel.ShipmentCreation
 }
 
-func NewService(orders Repository, quotes kernel.ApprovedQuoteProvider, stock kernel.InventoryReservation, pay kernel.PaymentCapture, ship kernel.ShipmentCreation) Service {
+func NewService(orders Repository, quotes kernel.ApprovedQuoteProvider, stock kernel.InventoryReservation, release kernel.InventoryRelease, pay kernel.PaymentCapture, ship kernel.ShipmentCreation) Service {
 	return Service{
-		orders: orders,
-		quotes: quotes,
-		stock:  stock,
-		pay:    pay,
-		ship:   ship,
+		orders:  orders,
+		quotes:  quotes,
+		stock:   stock,
+		release: release,
+		pay:     pay,
+		ship:    ship,
 	}
 }
 
@@ -121,6 +123,41 @@ func (s Service) CreateShipment(command kernel.CreateShipmentCommand) (kernel.Cr
 	return kernel.CreateShipmentResult{
 		ShipmentID: shipment.ShipmentID,
 		OrderID:    order.ID,
+		CustomerID: order.CustomerID,
+		Status:     order.Status,
+		LineCount:  len(order.Lines),
+	}, nil
+}
+
+func (s Service) CancelOrder(command kernel.CancelOrderCommand) (kernel.CancelOrderResult, error) {
+	order, err := s.orders.FindByID(command.OrderID)
+	if err != nil {
+		return kernel.CancelOrderResult{}, err
+	}
+
+	items := make([]kernel.InventoryReservationItem, 0, len(order.Lines))
+	for _, line := range order.Lines {
+		items = append(items, kernel.InventoryReservationItem{
+			ProductSKU: line.ProductSKU,
+			Quantity:   line.Quantity,
+		})
+	}
+
+	if err := order.Cancel(); err != nil {
+		return kernel.CancelOrderResult{}, err
+	}
+
+	if err := s.release.Release(items); err != nil {
+		return kernel.CancelOrderResult{}, err
+	}
+
+	if err := s.orders.Save(order); err != nil {
+		return kernel.CancelOrderResult{}, err
+	}
+
+	return kernel.CancelOrderResult{
+		OrderID:    order.ID,
+		QuoteID:    order.QuoteID,
 		CustomerID: order.CustomerID,
 		Status:     order.Status,
 		LineCount:  len(order.Lines),

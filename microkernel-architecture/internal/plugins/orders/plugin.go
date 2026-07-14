@@ -27,6 +27,11 @@ func (p Plugin) Register(host *kernel.Host) error {
 		return err
 	}
 
+	release, err := host.InventoryRelease()
+	if err != nil {
+		return err
+	}
+
 	payments, err := host.PaymentCapture()
 	if err != nil {
 		return err
@@ -37,6 +42,6 @@ func (p Plugin) Register(host *kernel.Host) error {
 		return err
 	}
 
-	host.ExposeOrderService(NewService(p.orders, quotes, stock, payments, shipments))
+	host.ExposeOrderService(NewService(p.orders, quotes, stock, release, payments, shipments))
 	return nil
 }

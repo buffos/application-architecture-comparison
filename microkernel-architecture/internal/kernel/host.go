@@ -9,6 +9,7 @@ type Host struct {
 	quoteReader       QuoteReader
 	approvedQuotes    ApprovedQuoteProvider
 	inventory         InventoryReservation
+	inventoryRelease  InventoryRelease
 	payments          PaymentCapture
 	shipments         ShipmentCreation
 	orderService      OrderService
@@ -51,6 +52,10 @@ func (h *Host) ExposeApprovedQuoteProvider(provider ApprovedQuoteProvider) {
 
 func (h *Host) ExposeInventoryReservation(reservation InventoryReservation) {
 	h.inventory = reservation
+}
+
+func (h *Host) ExposeInventoryRelease(release InventoryRelease) {
+	h.inventoryRelease = release
 }
 
 func (h *Host) ExposePaymentCapture(payments PaymentCapture) {
@@ -123,6 +128,14 @@ func (h *Host) InventoryReservation() (InventoryReservation, error) {
 	}
 
 	return h.inventory, nil
+}
+
+func (h *Host) InventoryRelease() (InventoryRelease, error) {
+	if h.inventoryRelease == nil {
+		return nil, ErrInventoryReleaseNotRegistered
+	}
+
+	return h.inventoryRelease, nil
 }
 
 func (h *Host) PaymentCapture() (PaymentCapture, error) {

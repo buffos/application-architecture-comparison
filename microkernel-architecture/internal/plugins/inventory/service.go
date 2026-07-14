@@ -37,3 +37,25 @@ func (s Service) Reserve(items []kernel.InventoryReservationItem) error {
 
 	return nil
 }
+
+func (s Service) Release(items []kernel.InventoryReservationItem) error {
+	updated := make([]StockRecord, 0, len(items))
+
+	for _, item := range items {
+		record, err := s.stock.FindBySKU(item.ProductSKU)
+		if err != nil {
+			return err
+		}
+
+		record.Available += item.Quantity
+		updated = append(updated, record)
+	}
+
+	for _, record := range updated {
+		if err := s.stock.Save(record); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
