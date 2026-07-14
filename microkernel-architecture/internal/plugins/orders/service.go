@@ -5,12 +5,14 @@ import "microkernel-architecture/internal/kernel"
 type Service struct {
 	orders Repository
 	quotes kernel.ApprovedQuoteProvider
+	stock  kernel.InventoryReservation
 }
 
-func NewService(orders Repository, quotes kernel.ApprovedQuoteProvider) Service {
+func NewService(orders Repository, quotes kernel.ApprovedQuoteProvider, stock kernel.InventoryReservation) Service {
 	return Service{
 		orders: orders,
 		quotes: quotes,
+		stock:  stock,
 	}
 }
 
@@ -21,6 +23,7 @@ func (s Service) ConvertQuoteToOrder(command kernel.ConvertQuoteToOrderCommand) 
 	}
 
 	lines := make([]OrderLine, 0, len(quote.Lines))
+	reservationItems := make([]kernel.InventoryReservationItem, 0, len(quote.Lines))
 	for _, line := range quote.Lines {
 		lines = append(lines, OrderLine{
 			ProductSKU:      line.ProductSKU,
@@ -29,9 +32,17 @@ func (s Service) ConvertQuoteToOrder(command kernel.ConvertQuoteToOrderCommand) 
 			Quantity:        line.Quantity,
 			UnitPrice:       line.UnitPrice,
 		})
+		reservationItems = append(reservationItems, kernel.InventoryReservationItem{
+			ProductSKU: line.ProductSKU,
+			Quantity:   line.Quantity,
+		})
 	}
 
 	order := NewOrderFromApprovedQuote(quote.QuoteID, quote.CustomerID, lines)
+	if err := s.stock.Reserve(reservationItems); err != nil {
+		return kernel.ConvertQuoteToOrderResult{}, err
+	}
+
 	if err := s.orders.Save(order); err != nil {
 		return kernel.ConvertQuoteToOrderResult{}, err
 	}

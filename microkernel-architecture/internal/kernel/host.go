@@ -8,6 +8,7 @@ type Host struct {
 	quoteService      QuoteService
 	quoteReader       QuoteReader
 	approvedQuotes    ApprovedQuoteProvider
+	inventory         InventoryReservation
 	orderService      OrderService
 }
 
@@ -44,6 +45,10 @@ func (h *Host) ExposeQuoteReader(reader QuoteReader) {
 
 func (h *Host) ExposeApprovedQuoteProvider(provider ApprovedQuoteProvider) {
 	h.approvedQuotes = provider
+}
+
+func (h *Host) ExposeInventoryReservation(reservation InventoryReservation) {
+	h.inventory = reservation
 }
 
 func (h *Host) ExposeProductCatalog(catalog ProductCatalog) {
@@ -100,6 +105,14 @@ func (h *Host) ApprovedQuoteProvider() (ApprovedQuoteProvider, error) {
 	}
 
 	return h.approvedQuotes, nil
+}
+
+func (h *Host) InventoryReservation() (InventoryReservation, error) {
+	if h.inventory == nil {
+		return nil, ErrInventoryReservationNotRegistered
+	}
+
+	return h.inventory, nil
 }
 
 func (h *Host) ExposeOrderService(service OrderService) {

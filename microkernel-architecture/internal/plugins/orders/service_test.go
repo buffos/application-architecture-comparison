@@ -32,6 +32,14 @@ func (p stubApprovedQuoteProvider) GetApprovedQuoteForOrder(quoteID string) (ker
 	return p.quote, p.err
 }
 
+type stubInventoryReservation struct {
+	err error
+}
+
+func (r stubInventoryReservation) Reserve(items []kernel.InventoryReservationItem) error {
+	return r.err
+}
+
 func TestConvertQuoteToOrder(t *testing.T) {
 	repository := &stubRepository{}
 	service := NewService(repository, stubApprovedQuoteProvider{
@@ -48,7 +56,7 @@ func TestConvertQuoteToOrder(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, stubInventoryReservation{})
 
 	result, err := service.ConvertQuoteToOrder(kernel.ConvertQuoteToOrderCommand{
 		QuoteID: "quote-001",
@@ -63,5 +71,33 @@ func TestConvertQuoteToOrder(t *testing.T) {
 
 	if repository.saved.Status != OrderStatusPendingPayment {
 		t.Fatalf("expected pending payment status, got %s", repository.saved.Status)
+	}
+}
+
+func TestConvertQuoteToOrderRejectsReservationFailure(t *testing.T) {
+	repository := &stubRepository{}
+	service := NewService(repository, stubApprovedQuoteProvider{
+		quote: kernel.ApprovedQuote{
+			QuoteID:    "quote-001",
+			CustomerID: "customer-001",
+			Lines: []kernel.ApprovedQuoteLine{
+				{
+					ProductSKU:      "sku-001",
+					ProductName:     "Desk",
+					ProductCategory: "Standard",
+					Quantity:        2,
+					UnitPrice:       15000,
+				},
+			},
+		},
+	}, stubInventoryReservation{
+		err: kernel.ErrPluginAlreadyRegistered,
+	})
+
+	_, err := service.ConvertQuoteToOrder(kernel.ConvertQuoteToOrderCommand{
+		QuoteID: "quote-001",
+	})
+	if err != kernel.ErrPluginAlreadyRegistered {
+		t.Fatalf("expected reservation error to propagate, got %v", err)
 	}
 }

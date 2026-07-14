@@ -22,6 +22,11 @@ func (p Plugin) Register(host *kernel.Host) error {
 		return err
 	}
 
-	host.ExposeOrderService(NewService(p.orders, quotes))
+	stock, err := host.InventoryReservation()
+	if err != nil {
+		return err
+	}
+
+	host.ExposeOrderService(NewService(p.orders, quotes, stock))
 	return nil
 }

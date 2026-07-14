@@ -8,6 +8,7 @@ import (
 	"microkernel-architecture/internal/platform/memory"
 	"microkernel-architecture/internal/plugins/approvals"
 	"microkernel-architecture/internal/plugins/customers"
+	"microkernel-architecture/internal/plugins/inventory"
 	"microkernel-architecture/internal/plugins/orders"
 	"microkernel-architecture/internal/plugins/products"
 	"microkernel-architecture/internal/plugins/quotes"
@@ -17,6 +18,7 @@ func main() {
 	host := kernel.NewHost()
 
 	customerRepository := memory.NewCustomerRepository()
+	inventoryRepository := memory.NewInventoryRepository()
 	orderRepository := memory.NewOrderRepository()
 	productRepository := memory.NewProductRepository()
 	quoteRepository := memory.NewQuoteRepository()
@@ -48,6 +50,20 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if err := inventoryRepository.Save(inventory.StockRecord{
+		ProductSKU: "sku-001",
+		Available:  10,
+	}); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := inventoryRepository.Save(inventory.StockRecord{
+		ProductSKU: "sku-002",
+		Available:  3,
+	}); err != nil {
+		log.Fatal(err)
+	}
+
 	if err := host.RegisterPlugin(customers.NewPlugin(customerRepository)); err != nil {
 		log.Fatal(err)
 	}
@@ -61,6 +77,10 @@ func main() {
 	}
 
 	if err := host.RegisterPlugin(quotes.NewPlugin(quoteRepository)); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := host.RegisterPlugin(inventory.NewPlugin(inventoryRepository)); err != nil {
 		log.Fatal(err)
 	}
 
