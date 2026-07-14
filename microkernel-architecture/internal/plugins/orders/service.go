@@ -6,13 +6,15 @@ type Service struct {
 	orders Repository
 	quotes kernel.ApprovedQuoteProvider
 	stock  kernel.InventoryReservation
+	pay    kernel.PaymentCapture
 }
 
-func NewService(orders Repository, quotes kernel.ApprovedQuoteProvider, stock kernel.InventoryReservation) Service {
+func NewService(orders Repository, quotes kernel.ApprovedQuoteProvider, stock kernel.InventoryReservation, pay kernel.PaymentCapture) Service {
 	return Service{
 		orders: orders,
 		quotes: quotes,
 		stock:  stock,
+		pay:    pay,
 	}
 }
 
@@ -48,6 +50,33 @@ func (s Service) ConvertQuoteToOrder(command kernel.ConvertQuoteToOrderCommand) 
 	}
 
 	return kernel.ConvertQuoteToOrderResult{
+		OrderID:    order.ID,
+		QuoteID:    order.QuoteID,
+		CustomerID: order.CustomerID,
+		Status:     order.Status,
+		LineCount:  len(order.Lines),
+	}, nil
+}
+
+func (s Service) CapturePayment(command kernel.CapturePaymentCommand) (kernel.CapturePaymentResult, error) {
+	order, err := s.orders.FindByID(command.OrderID)
+	if err != nil {
+		return kernel.CapturePaymentResult{}, err
+	}
+
+	if err := s.pay.Capture(order.ID, order.TotalAmount()); err != nil {
+		return kernel.CapturePaymentResult{}, err
+	}
+
+	if err := order.MarkPaid(); err != nil {
+		return kernel.CapturePaymentResult{}, err
+	}
+
+	if err := s.orders.Save(order); err != nil {
+		return kernel.CapturePaymentResult{}, err
+	}
+
+	return kernel.CapturePaymentResult{
 		OrderID:    order.ID,
 		QuoteID:    order.QuoteID,
 		CustomerID: order.CustomerID,

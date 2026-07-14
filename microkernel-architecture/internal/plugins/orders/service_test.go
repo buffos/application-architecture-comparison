@@ -40,6 +40,14 @@ func (r stubInventoryReservation) Reserve(items []kernel.InventoryReservationIte
 	return r.err
 }
 
+type stubPaymentCapture struct {
+	err error
+}
+
+func (p stubPaymentCapture) Capture(orderID string, amount int) error {
+	return p.err
+}
+
 func TestConvertQuoteToOrder(t *testing.T) {
 	repository := &stubRepository{}
 	service := NewService(repository, stubApprovedQuoteProvider{
@@ -56,7 +64,7 @@ func TestConvertQuoteToOrder(t *testing.T) {
 				},
 			},
 		},
-	}, stubInventoryReservation{})
+	}, stubInventoryReservation{}, stubPaymentCapture{})
 
 	result, err := service.ConvertQuoteToOrder(kernel.ConvertQuoteToOrderCommand{
 		QuoteID: "quote-001",
@@ -92,12 +100,63 @@ func TestConvertQuoteToOrderRejectsReservationFailure(t *testing.T) {
 		},
 	}, stubInventoryReservation{
 		err: kernel.ErrPluginAlreadyRegistered,
-	})
+	}, stubPaymentCapture{})
 
 	_, err := service.ConvertQuoteToOrder(kernel.ConvertQuoteToOrderCommand{
 		QuoteID: "quote-001",
 	})
 	if err != kernel.ErrPluginAlreadyRegistered {
 		t.Fatalf("expected reservation error to propagate, got %v", err)
+	}
+}
+
+func TestCapturePayment(t *testing.T) {
+	repository := &stubRepository{
+		saved: Order{
+			ID:         "order-001",
+			QuoteID:    "quote-001",
+			CustomerID: "customer-001",
+			Status:     OrderStatusPendingPayment,
+			Lines: []OrderLine{
+				{
+					ProductSKU:      "sku-001",
+					ProductName:     "Desk",
+					ProductCategory: "Standard",
+					Quantity:        2,
+					UnitPrice:       15000,
+				},
+			},
+		},
+	}
+	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubPaymentCapture{})
+
+	result, err := service.CapturePayment(kernel.CapturePaymentCommand{
+		OrderID: "order-001",
+	})
+	if err != nil {
+		t.Fatalf("expected capture payment to succeed, got %v", err)
+	}
+
+	if result.Status != OrderStatusPaid {
+		t.Fatalf("expected paid status, got %s", result.Status)
+	}
+}
+
+func TestCapturePaymentRejectsNonPayableOrder(t *testing.T) {
+	repository := &stubRepository{
+		saved: Order{
+			ID:         "order-001",
+			QuoteID:    "quote-001",
+			CustomerID: "customer-001",
+			Status:     OrderStatusPaid,
+		},
+	}
+	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubPaymentCapture{})
+
+	_, err := service.CapturePayment(kernel.CapturePaymentCommand{
+		OrderID: "order-001",
+	})
+	if err != ErrOrderNotPayable {
+		t.Fatalf("expected not payable error, got %v", err)
 	}
 }

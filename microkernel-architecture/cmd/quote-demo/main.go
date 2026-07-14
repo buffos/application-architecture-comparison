@@ -10,6 +10,7 @@ import (
 	"microkernel-architecture/internal/plugins/customers"
 	"microkernel-architecture/internal/plugins/inventory"
 	"microkernel-architecture/internal/plugins/orders"
+	"microkernel-architecture/internal/plugins/payments"
 	"microkernel-architecture/internal/plugins/products"
 	"microkernel-architecture/internal/plugins/quotes"
 )
@@ -81,6 +82,10 @@ func main() {
 	}
 
 	if err := host.RegisterPlugin(inventory.NewPlugin(inventoryRepository)); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := host.RegisterPlugin(payments.NewPlugin()); err != nil {
 		log.Fatal(err)
 	}
 
@@ -183,4 +188,13 @@ func main() {
 	}
 
 	fmt.Printf("converted quote to order: order=%s quote=%s customer=%s status=%s lines=%d\n", orderResult.OrderID, orderResult.QuoteID, orderResult.CustomerID, orderResult.Status, orderResult.LineCount)
+
+	paidResult, err := orderService.CapturePayment(kernel.CapturePaymentCommand{
+		OrderID: orderResult.OrderID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("captured payment: order=%s quote=%s customer=%s status=%s lines=%d\n", paidResult.OrderID, paidResult.QuoteID, paidResult.CustomerID, paidResult.Status, paidResult.LineCount)
 }

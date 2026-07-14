@@ -7,8 +7,10 @@ import (
 )
 
 var ErrOrderNotFound = errors.New("order not found")
+var ErrOrderNotPayable = errors.New("order is not payable")
 
 const OrderStatusPendingPayment = "PendingPayment"
+const OrderStatusPaid = "Paid"
 
 var orderSequence uint64
 
@@ -38,4 +40,22 @@ func NewOrderFromApprovedQuote(quoteID string, customerID string, lines []OrderL
 		Status:     OrderStatusPendingPayment,
 		Lines:      lines,
 	}
+}
+
+func (o Order) TotalAmount() int {
+	total := 0
+	for _, line := range o.Lines {
+		total += line.Quantity * line.UnitPrice
+	}
+
+	return total
+}
+
+func (o *Order) MarkPaid() error {
+	if o.Status != OrderStatusPendingPayment {
+		return ErrOrderNotPayable
+	}
+
+	o.Status = OrderStatusPaid
+	return nil
 }

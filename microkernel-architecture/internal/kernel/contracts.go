@@ -10,6 +10,7 @@ var ErrQuoteServiceNotRegistered = errors.New("quote service capability not regi
 var ErrQuoteReaderNotRegistered = errors.New("quote reader capability not registered")
 var ErrApprovedQuoteProviderNotRegistered = errors.New("approved quote provider capability not registered")
 var ErrInventoryReservationNotRegistered = errors.New("inventory reservation capability not registered")
+var ErrPaymentCaptureNotRegistered = errors.New("payment capture capability not registered")
 var ErrOrderServiceNotRegistered = errors.New("order service capability not registered")
 
 type Plugin interface {
@@ -139,6 +140,10 @@ type InventoryReservation interface {
 	Reserve(items []InventoryReservationItem) error
 }
 
+type PaymentCapture interface {
+	Capture(orderID string, amount int) error
+}
+
 type ConvertQuoteToOrderCommand struct {
 	QuoteID string
 }
@@ -151,6 +156,19 @@ type ConvertQuoteToOrderResult struct {
 	LineCount  int
 }
 
+type CapturePaymentCommand struct {
+	OrderID string
+}
+
+type CapturePaymentResult struct {
+	OrderID    string
+	QuoteID    string
+	CustomerID string
+	Status     string
+	LineCount  int
+}
+
 type OrderService interface {
 	ConvertQuoteToOrder(command ConvertQuoteToOrderCommand) (ConvertQuoteToOrderResult, error)
+	CapturePayment(command CapturePaymentCommand) (CapturePaymentResult, error)
 }
