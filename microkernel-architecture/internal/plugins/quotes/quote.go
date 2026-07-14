@@ -10,8 +10,11 @@ var ErrCustomerIDRequired = errors.New("customer id is required")
 var ErrQuoteNotFound = errors.New("quote not found")
 var ErrQuantityMustBePositive = errors.New("quantity must be positive")
 var ErrQuoteNotEditable = errors.New("quote is not editable")
+var ErrQuoteNotSubmittable = errors.New("quote is not submittable")
+var ErrQuoteCannotBeSubmittedWithoutLines = errors.New("quote cannot be submitted without lines")
 
 const QuoteStatusDraft = "Draft"
+const QuoteStatusSubmitted = "Submitted"
 
 var quoteSequence uint64
 
@@ -69,6 +72,19 @@ func (q Quote) TotalQuantity() int {
 	}
 
 	return total
+}
+
+func (q *Quote) Submit() error {
+	if q.Status != QuoteStatusDraft {
+		return ErrQuoteNotSubmittable
+	}
+
+	if len(q.Lines) == 0 {
+		return ErrQuoteCannotBeSubmittedWithoutLines
+	}
+
+	q.Status = QuoteStatusSubmitted
+	return nil
 }
 
 type kernelProductInput struct {

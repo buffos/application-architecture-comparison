@@ -82,3 +82,25 @@ func (s Service) AddQuoteLine(command kernel.AddQuoteLineCommand) (kernel.AddQuo
 		Status:     quote.Status,
 	}, nil
 }
+
+func (s Service) SubmitQuote(command kernel.SubmitQuoteCommand) (kernel.SubmitQuoteResult, error) {
+	quote, err := s.quotes.FindByID(command.QuoteID)
+	if err != nil {
+		return kernel.SubmitQuoteResult{}, err
+	}
+
+	if err := quote.Submit(); err != nil {
+		return kernel.SubmitQuoteResult{}, err
+	}
+
+	if err := s.quotes.Save(quote); err != nil {
+		return kernel.SubmitQuoteResult{}, err
+	}
+
+	return kernel.SubmitQuoteResult{
+		QuoteID:    quote.ID,
+		LineCount:  len(quote.Lines),
+		TotalItems: quote.TotalQuantity(),
+		Status:     quote.Status,
+	}, nil
+}

@@ -50,9 +50,21 @@ type AddQuoteLineResult struct {
 	Status     string
 }
 
+type SubmitQuoteCommand struct {
+	QuoteID string
+}
+
+type SubmitQuoteResult struct {
+	QuoteID    string
+	LineCount  int
+	TotalItems int
+	Status     string
+}
+
 type QuoteService interface {
 	CreateDraftQuote(command CreateDraftQuoteCommand) (CreateDraftQuoteResult, error)
 	AddQuoteLine(command AddQuoteLineCommand) (AddQuoteLineResult, error)
+	SubmitQuote(command SubmitQuoteCommand) (SubmitQuoteResult, error)
 }
 
 type GetQuoteQuery struct {
