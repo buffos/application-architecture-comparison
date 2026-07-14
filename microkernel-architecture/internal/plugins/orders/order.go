@@ -10,6 +10,7 @@ var ErrOrderNotFound = errors.New("order not found")
 var ErrOrderNotPayable = errors.New("order is not payable")
 var ErrOrderNotShippable = errors.New("order is not shippable")
 var ErrOrderNotCancellable = errors.New("order is not cancellable")
+var ErrOrderNotReturnable = errors.New("order is not returnable")
 
 const OrderStatusPendingPayment = "PendingPayment"
 const OrderStatusPaid = "Paid"
@@ -79,5 +80,13 @@ func (o *Order) Cancel() error {
 	}
 
 	o.Status = OrderStatusCancelled
+	return nil
+}
+
+func (o Order) EnsureReturnable() error {
+	if o.Status != OrderStatusShipped {
+		return ErrOrderNotReturnable
+	}
+
 	return nil
 }

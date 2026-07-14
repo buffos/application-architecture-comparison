@@ -11,8 +11,11 @@ type Host struct {
 	inventory         InventoryReservation
 	inventoryRelease  InventoryRelease
 	payments          PaymentCapture
+	refunds           PaymentRefund
 	shipments         ShipmentCreation
 	orderService      OrderService
+	returnableOrders  ReturnableOrderProvider
+	returnService     ReturnService
 }
 
 func NewHost() *Host {
@@ -62,6 +65,10 @@ func (h *Host) ExposePaymentCapture(payments PaymentCapture) {
 	h.payments = payments
 }
 
+func (h *Host) ExposePaymentRefund(refunds PaymentRefund) {
+	h.refunds = refunds
+}
+
 func (h *Host) ExposeShipmentCreation(shipments ShipmentCreation) {
 	h.shipments = shipments
 }
@@ -72,6 +79,18 @@ func (h *Host) ExposeProductCatalog(catalog ProductCatalog) {
 
 func (h *Host) ExposeApprovalPolicy(policy ApprovalPolicy) {
 	h.approvalPolicy = policy
+}
+
+func (h *Host) ExposeOrderService(service OrderService) {
+	h.orderService = service
+}
+
+func (h *Host) ExposeReturnableOrderProvider(provider ReturnableOrderProvider) {
+	h.returnableOrders = provider
+}
+
+func (h *Host) ExposeReturnService(service ReturnService) {
+	h.returnService = service
 }
 
 func (h *Host) CustomerDirectory() (CustomerDirectory, error) {
@@ -146,6 +165,14 @@ func (h *Host) PaymentCapture() (PaymentCapture, error) {
 	return h.payments, nil
 }
 
+func (h *Host) PaymentRefund() (PaymentRefund, error) {
+	if h.refunds == nil {
+		return nil, ErrPaymentRefundNotRegistered
+	}
+
+	return h.refunds, nil
+}
+
 func (h *Host) ShipmentCreation() (ShipmentCreation, error) {
 	if h.shipments == nil {
 		return nil, ErrShipmentCreationNotRegistered
@@ -154,14 +181,26 @@ func (h *Host) ShipmentCreation() (ShipmentCreation, error) {
 	return h.shipments, nil
 }
 
-func (h *Host) ExposeOrderService(service OrderService) {
-	h.orderService = service
-}
-
 func (h *Host) OrderService() (OrderService, error) {
 	if h.orderService == nil {
 		return nil, ErrOrderServiceNotRegistered
 	}
 
 	return h.orderService, nil
+}
+
+func (h *Host) ReturnableOrderProvider() (ReturnableOrderProvider, error) {
+	if h.returnableOrders == nil {
+		return nil, ErrReturnableOrderProviderNotRegistered
+	}
+
+	return h.returnableOrders, nil
+}
+
+func (h *Host) ReturnService() (ReturnService, error) {
+	if h.returnService == nil {
+		return nil, ErrReturnServiceNotRegistered
+	}
+
+	return h.returnService, nil
 }

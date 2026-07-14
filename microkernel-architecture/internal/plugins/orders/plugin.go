@@ -42,6 +42,8 @@ func (p Plugin) Register(host *kernel.Host) error {
 		return err
 	}
 
-	host.ExposeOrderService(NewService(p.orders, quotes, stock, release, payments, shipments))
+	service := NewService(p.orders, quotes, stock, release, payments, shipments)
+	host.ExposeOrderService(service)
+	host.ExposeReturnableOrderProvider(service)
 	return nil
 }

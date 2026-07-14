@@ -293,3 +293,50 @@ func TestCancelOrderRejectsShippedOrder(t *testing.T) {
 		t.Fatalf("expected not cancellable error, got %v", err)
 	}
 }
+
+func TestGetReturnableOrder(t *testing.T) {
+	repository := &stubRepository{
+		saved: Order{
+			ID:         "order-001",
+			QuoteID:    "quote-001",
+			CustomerID: "customer-001",
+			Status:     OrderStatusShipped,
+			Lines: []OrderLine{
+				{
+					ProductSKU:      "sku-002",
+					ProductName:     "Custom Desk",
+					ProductCategory: "CustomBuild",
+					Quantity:        1,
+					UnitPrice:       45000,
+				},
+			},
+		},
+	}
+	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{})
+
+	result, err := service.GetReturnableOrder("order-001")
+	if err != nil {
+		t.Fatalf("expected returnable order lookup to succeed, got %v", err)
+	}
+
+	if result.OrderID != "order-001" {
+		t.Fatalf("expected order id order-001, got %s", result.OrderID)
+	}
+}
+
+func TestGetReturnableOrderRejectsNonShippedOrder(t *testing.T) {
+	repository := &stubRepository{
+		saved: Order{
+			ID:         "order-001",
+			QuoteID:    "quote-001",
+			CustomerID: "customer-001",
+			Status:     OrderStatusPaid,
+		},
+	}
+	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{})
+
+	_, err := service.GetReturnableOrder("order-001")
+	if err != ErrOrderNotReturnable {
+		t.Fatalf("expected not returnable error, got %v", err)
+	}
+}

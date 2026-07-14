@@ -13,6 +13,7 @@ import (
 	"microkernel-architecture/internal/plugins/payments"
 	"microkernel-architecture/internal/plugins/products"
 	"microkernel-architecture/internal/plugins/quotes"
+	"microkernel-architecture/internal/plugins/returns"
 	"microkernel-architecture/internal/plugins/shipments"
 )
 
@@ -24,6 +25,7 @@ func main() {
 	orderRepository := memory.NewOrderRepository()
 	productRepository := memory.NewProductRepository()
 	quoteRepository := memory.NewQuoteRepository()
+	returnRequestRepository := memory.NewReturnRequestRepository()
 	shipmentRepository := memory.NewShipmentRepository()
 
 	if err := customerRepository.Save(customers.Customer{
@@ -99,6 +101,10 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if err := host.RegisterPlugin(returns.NewPlugin(returnRequestRepository)); err != nil {
+		log.Fatal(err)
+	}
+
 	quoteService, err := host.QuoteService()
 	if err != nil {
 		log.Fatal(err)
@@ -110,6 +116,11 @@ func main() {
 	}
 
 	orderService, err := host.OrderService()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	returnService, err := host.ReturnService()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -212,4 +223,14 @@ func main() {
 	}
 
 	fmt.Printf("created shipment: shipment=%s order=%s customer=%s status=%s lines=%d\n", shipmentResult.ShipmentID, shipmentResult.OrderID, shipmentResult.CustomerID, shipmentResult.Status, shipmentResult.LineCount)
+
+	returnResult, err := returnService.RequestReturn(kernel.RequestReturnCommand{
+		OrderID: orderResult.OrderID,
+		Reason:  "damaged item",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("requested return: return=%s order=%s customer=%s status=%s lines=%d\n", returnResult.ReturnRequestID, returnResult.OrderID, returnResult.CustomerID, returnResult.Status, returnResult.LineCount)
 }

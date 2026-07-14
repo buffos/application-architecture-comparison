@@ -12,8 +12,11 @@ var ErrApprovedQuoteProviderNotRegistered = errors.New("approved quote provider 
 var ErrInventoryReservationNotRegistered = errors.New("inventory reservation capability not registered")
 var ErrInventoryReleaseNotRegistered = errors.New("inventory release capability not registered")
 var ErrPaymentCaptureNotRegistered = errors.New("payment capture capability not registered")
+var ErrPaymentRefundNotRegistered = errors.New("payment refund capability not registered")
 var ErrShipmentCreationNotRegistered = errors.New("shipment creation capability not registered")
 var ErrOrderServiceNotRegistered = errors.New("order service capability not registered")
+var ErrReturnableOrderProviderNotRegistered = errors.New("returnable order provider capability not registered")
+var ErrReturnServiceNotRegistered = errors.New("return service capability not registered")
 
 type Plugin interface {
 	ID() string
@@ -150,6 +153,10 @@ type PaymentCapture interface {
 	Capture(orderID string, amount int) error
 }
 
+type PaymentRefund interface {
+	Refund(orderID string, amount int) error
+}
+
 type ShipmentLine struct {
 	ProductSKU string
 	Quantity   int
@@ -220,9 +227,42 @@ type CancelOrderResult struct {
 	LineCount  int
 }
 
+type ReturnableOrder struct {
+	OrderID    string
+	CustomerID string
+	Lines      []ReturnableOrderLine
+}
+
+type ReturnableOrderLine struct {
+	ProductSKU string
+	Quantity   int
+	UnitPrice  int
+}
+
+type ReturnableOrderProvider interface {
+	GetReturnableOrder(orderID string) (ReturnableOrder, error)
+}
+
+type RequestReturnCommand struct {
+	OrderID string
+	Reason  string
+}
+
+type RequestReturnResult struct {
+	ReturnRequestID string
+	OrderID         string
+	CustomerID      string
+	Status          string
+	LineCount       int
+}
+
 type OrderService interface {
 	ConvertQuoteToOrder(command ConvertQuoteToOrderCommand) (ConvertQuoteToOrderResult, error)
 	CapturePayment(command CapturePaymentCommand) (CapturePaymentResult, error)
 	CreateShipment(command CreateShipmentCommand) (CreateShipmentResult, error)
 	CancelOrder(command CancelOrderCommand) (CancelOrderResult, error)
+}
+
+type ReturnService interface {
+	RequestReturn(command RequestReturnCommand) (RequestReturnResult, error)
 }

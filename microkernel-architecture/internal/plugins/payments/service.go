@@ -9,3 +9,7 @@ func NewService() Service {
 func (s Service) Capture(orderID string, amount int) error {
 	return nil
 }
+
+func (s Service) Refund(orderID string, amount int) error {
+	return nil
+}

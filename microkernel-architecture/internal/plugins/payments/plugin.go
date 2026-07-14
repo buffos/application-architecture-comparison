@@ -13,6 +13,8 @@ func (p Plugin) ID() string {
 }
 
 func (p Plugin) Register(host *kernel.Host) error {
-	host.ExposePaymentCapture(NewService())
+	service := NewService()
+	host.ExposePaymentCapture(service)
+	host.ExposePaymentRefund(service)
 	return nil
 }

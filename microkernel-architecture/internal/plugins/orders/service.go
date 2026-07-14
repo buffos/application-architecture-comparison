@@ -163,3 +163,29 @@ func (s Service) CancelOrder(command kernel.CancelOrderCommand) (kernel.CancelOr
 		LineCount:  len(order.Lines),
 	}, nil
 }
+
+func (s Service) GetReturnableOrder(orderID string) (kernel.ReturnableOrder, error) {
+	order, err := s.orders.FindByID(orderID)
+	if err != nil {
+		return kernel.ReturnableOrder{}, err
+	}
+
+	if err := order.EnsureReturnable(); err != nil {
+		return kernel.ReturnableOrder{}, err
+	}
+
+	lines := make([]kernel.ReturnableOrderLine, 0, len(order.Lines))
+	for _, line := range order.Lines {
+		lines = append(lines, kernel.ReturnableOrderLine{
+			ProductSKU: line.ProductSKU,
+			Quantity:   line.Quantity,
+			UnitPrice:  line.UnitPrice,
+		})
+	}
+
+	return kernel.ReturnableOrder{
+		OrderID:    order.ID,
+		CustomerID: order.CustomerID,
+		Lines:      lines,
+	}, nil
+}
