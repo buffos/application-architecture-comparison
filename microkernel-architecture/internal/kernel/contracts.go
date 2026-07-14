@@ -18,6 +18,7 @@ var ErrInventoryRestockNotRegistered = errors.New("inventory restock capability 
 var ErrPaymentCaptureNotRegistered = errors.New("payment capture capability not registered")
 var ErrPaymentRefundNotRegistered = errors.New("payment refund capability not registered")
 var ErrShipmentCreationNotRegistered = errors.New("shipment creation capability not registered")
+var ErrShipmentReaderNotRegistered = errors.New("shipment reader capability not registered")
 var ErrOrderServiceNotRegistered = errors.New("order service capability not registered")
 var ErrOrderReaderNotRegistered = errors.New("order reader capability not registered")
 var ErrReturnableOrderProviderNotRegistered = errors.New("returnable order provider capability not registered")
@@ -223,8 +224,35 @@ type ShipmentCreationResult struct {
 	LineCount  int
 }
 
+type GetShipmentQuery struct {
+	ShipmentID string
+}
+
+type ShipmentDetails struct {
+	ShipmentID string
+	OrderID    string
+	CustomerID string
+	LineCount  int
+}
+
+type ListShipmentsQuery struct {
+	OrderID string
+}
+
+type ShipmentSummary struct {
+	ShipmentID string
+	OrderID    string
+	CustomerID string
+	LineCount  int
+}
+
 type ShipmentCreation interface {
 	CreateShipment(record CreateShipmentRecord) (ShipmentCreationResult, error)
+}
+
+type ShipmentReader interface {
+	GetShipment(query GetShipmentQuery) (ShipmentDetails, error)
+	ListShipments(query ListShipmentsQuery) ([]ShipmentSummary, error)
 }
 
 type ConvertQuoteToOrderCommand struct {

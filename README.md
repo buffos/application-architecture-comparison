@@ -287,6 +287,7 @@ Architectures currently implemented in this repository:
 - `018` Return command idempotency plugin: [018-return-command-idempotency-plugin.md](microkernel-architecture/lessons/018-return-command-idempotency-plugin.md)
 - `019` Return query surface plugin: [019-return-query-surface-plugin.md](microkernel-architecture/lessons/019-return-query-surface-plugin.md)
 - `020` Order query surface plugin: [020-order-query-surface-plugin.md](microkernel-architecture/lessons/020-order-query-surface-plugin.md)
+- `021` Shipment query surface plugin: [021-shipment-query-surface-plugin.md](microkernel-architecture/lessons/021-shipment-query-surface-plugin.md)
 
 ## How To Maintain This File
 

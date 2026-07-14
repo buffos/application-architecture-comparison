@@ -14,6 +14,7 @@ type Host struct {
 	payments          PaymentCapture
 	refunds           PaymentRefund
 	shipments         ShipmentCreation
+	shipmentReader    ShipmentReader
 	orderService      OrderService
 	orderReader       OrderReader
 	returnableOrders  ReturnableOrderProvider
@@ -81,6 +82,10 @@ func (h *Host) ExposePaymentRefund(refunds PaymentRefund) {
 
 func (h *Host) ExposeShipmentCreation(shipments ShipmentCreation) {
 	h.shipments = shipments
+}
+
+func (h *Host) ExposeShipmentReader(reader ShipmentReader) {
+	h.shipmentReader = reader
 }
 
 func (h *Host) ExposeProductCatalog(catalog ProductCatalog) {
@@ -217,6 +222,14 @@ func (h *Host) ShipmentCreation() (ShipmentCreation, error) {
 	}
 
 	return h.shipments, nil
+}
+
+func (h *Host) ShipmentReader() (ShipmentReader, error) {
+	if h.shipmentReader == nil {
+		return nil, ErrShipmentReaderNotRegistered
+	}
+
+	return h.shipmentReader, nil
 }
 
 func (h *Host) OrderService() (OrderService, error) {

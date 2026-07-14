@@ -17,6 +17,8 @@ func (p Plugin) ID() string {
 }
 
 func (p Plugin) Register(host *kernel.Host) error {
-	host.ExposeShipmentCreation(NewService(p.shipments))
+	service := NewService(p.shipments)
+	host.ExposeShipmentCreation(service)
+	host.ExposeShipmentReader(service)
 	return nil
 }

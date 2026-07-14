@@ -33,3 +33,36 @@ func (s Service) CreateShipment(record kernel.CreateShipmentRecord) (kernel.Ship
 		LineCount:  len(shipment.Lines),
 	}, nil
 }
+
+func (s Service) GetShipment(query kernel.GetShipmentQuery) (kernel.ShipmentDetails, error) {
+	shipment, err := s.shipments.FindByID(query.ShipmentID)
+	if err != nil {
+		return kernel.ShipmentDetails{}, err
+	}
+
+	return kernel.ShipmentDetails{
+		ShipmentID: shipment.ID,
+		OrderID:    shipment.OrderID,
+		CustomerID: shipment.CustomerID,
+		LineCount:  len(shipment.Lines),
+	}, nil
+}
+
+func (s Service) ListShipments(query kernel.ListShipmentsQuery) ([]kernel.ShipmentSummary, error) {
+	shipmentsList, err := s.shipments.ListByOrderID(query.OrderID)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]kernel.ShipmentSummary, 0, len(shipmentsList))
+	for _, shipment := range shipmentsList {
+		results = append(results, kernel.ShipmentSummary{
+			ShipmentID: shipment.ID,
+			OrderID:    shipment.OrderID,
+			CustomerID: shipment.CustomerID,
+			LineCount:  len(shipment.Lines),
+		})
+	}
+
+	return results, nil
+}

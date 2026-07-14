@@ -153,6 +153,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	shipmentReader, err := host.ShipmentReader()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	result, err := quoteService.CreateDraftQuote(kernel.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
 	})
@@ -269,6 +274,24 @@ func main() {
 	}
 
 	fmt.Printf("created shipment: shipment=%s order=%s customer=%s status=%s lines=%d\n", shipmentResult.ShipmentID, shipmentResult.OrderID, shipmentResult.CustomerID, shipmentResult.Status, shipmentResult.LineCount)
+
+	shipmentDetails, err := shipmentReader.GetShipment(kernel.GetShipmentQuery{
+		ShipmentID: shipmentResult.ShipmentID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("loaded shipment: shipment=%s order=%s customer=%s lines=%d\n", shipmentDetails.ShipmentID, shipmentDetails.OrderID, shipmentDetails.CustomerID, shipmentDetails.LineCount)
+
+	shipmentList, err := shipmentReader.ListShipments(kernel.ListShipmentsQuery{
+		OrderID: shipmentResult.OrderID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("listed shipments: order=%s count=%d\n", shipmentResult.OrderID, len(shipmentList))
 
 	returnResult, err := returnService.RequestReturn(kernel.RequestReturnCommand{
 		OrderID:     orderResult.OrderID,
