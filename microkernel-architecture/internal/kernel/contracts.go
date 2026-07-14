@@ -23,6 +23,8 @@ var ErrReturnableOrderProviderNotRegistered = errors.New("returnable order provi
 var ErrReturnEligibilityPolicyNotRegistered = errors.New("return eligibility policy capability not registered")
 var ErrReturnServiceNotRegistered = errors.New("return service capability not registered")
 var ErrClockNotRegistered = errors.New("clock capability not registered")
+var ErrIdempotencyStoreNotRegistered = errors.New("idempotency store capability not registered")
+var ErrIdempotencyKeyRequired = errors.New("idempotency key is required")
 
 type Plugin interface {
 	ID() string
@@ -173,6 +175,19 @@ type Clock interface {
 	Now() time.Time
 }
 
+type IdempotencyResult struct {
+	ReturnRequestID string
+	OrderID         string
+	CustomerID      string
+	Status          string
+	LineCount       int
+}
+
+type IdempotencyStore interface {
+	Find(key string) (IdempotencyResult, bool, error)
+	Save(key string, result IdempotencyResult) error
+}
+
 type ReturnEligibilityReview struct {
 	Reason      string
 	ShippedAt   time.Time
@@ -292,6 +307,7 @@ type RequestReturnResult struct {
 
 type AcceptReturnCommand struct {
 	ReturnRequestID string
+	IdempotencyKey  string
 	ReviewedBy      string
 	ProcessedBy     string
 	ReviewNote      string
@@ -307,6 +323,7 @@ type AcceptReturnResult struct {
 
 type RejectReturnCommand struct {
 	ReturnRequestID string
+	IdempotencyKey  string
 	ReviewedBy      string
 	ReviewNote      string
 }

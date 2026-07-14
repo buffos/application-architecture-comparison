@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(microkernel): complete lesson 017 return actor metadata plugin
+feat(microkernel): complete lesson 018 return command idempotency plugin
 
 # Add tag
 
-git tag -a microkernel-017 -m "Microkernel Lesson 017" && git push origin --tags
-git push origin microkernel-017
+git tag -a microkernel-018 -m "Microkernel Lesson 018" && git push origin --tags
+git push origin microkernel-018
 
 or
 

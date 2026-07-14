@@ -284,6 +284,7 @@ Architectures currently implemented in this repository:
 - `015` Return eligibility plugin: [015-return-eligibility-plugin.md](microkernel-architecture/lessons/015-return-eligibility-plugin.md)
 - `016` Real return window plugin: [016-real-return-window-plugin.md](microkernel-architecture/lessons/016-real-return-window-plugin.md)
 - `017` Return actor metadata plugin: [017-return-actor-metadata-plugin.md](microkernel-architecture/lessons/017-return-actor-metadata-plugin.md)
+- `018` Return command idempotency plugin: [018-return-command-idempotency-plugin.md](microkernel-architecture/lessons/018-return-command-idempotency-plugin.md)
 
 ## How To Maintain This File
 

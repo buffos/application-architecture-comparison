@@ -37,11 +37,16 @@ func (p Plugin) Register(host *kernel.Host) error {
 		return err
 	}
 
+	idempotency, err := host.IdempotencyStore()
+	if err != nil {
+		return err
+	}
+
 	restock, err := host.InventoryRestock()
 	if err != nil {
 		return err
 	}
 
-	host.ExposeReturnService(NewService(p.requests, orders, clock, policy, refunds, restock))
+	host.ExposeReturnService(NewService(p.requests, orders, clock, policy, idempotency, refunds, restock))
 	return nil
 }

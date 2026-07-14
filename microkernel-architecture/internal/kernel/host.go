@@ -19,6 +19,7 @@ type Host struct {
 	returnEligibility ReturnEligibilityPolicy
 	returnService     ReturnService
 	clock             Clock
+	idempotency       IdempotencyStore
 }
 
 func NewHost() *Host {
@@ -106,6 +107,10 @@ func (h *Host) ExposeReturnService(service ReturnService) {
 
 func (h *Host) ExposeClock(clock Clock) {
 	h.clock = clock
+}
+
+func (h *Host) ExposeIdempotencyStore(store IdempotencyStore) {
+	h.idempotency = store
 }
 
 func (h *Host) CustomerDirectory() (CustomerDirectory, error) {
@@ -242,4 +247,12 @@ func (h *Host) Clock() (Clock, error) {
 	}
 
 	return h.clock, nil
+}
+
+func (h *Host) IdempotencyStore() (IdempotencyStore, error) {
+	if h.idempotency == nil {
+		return nil, ErrIdempotencyStoreNotRegistered
+	}
+
+	return h.idempotency, nil
 }

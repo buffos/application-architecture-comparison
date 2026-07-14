@@ -9,6 +9,7 @@ import (
 	"microkernel-architecture/internal/plugins/approvals"
 	"microkernel-architecture/internal/plugins/clock"
 	"microkernel-architecture/internal/plugins/customers"
+	"microkernel-architecture/internal/plugins/idempotency"
 	"microkernel-architecture/internal/plugins/inventory"
 	"microkernel-architecture/internal/plugins/orders"
 	"microkernel-architecture/internal/plugins/payments"
@@ -24,6 +25,7 @@ func main() {
 
 	customerRepository := memory.NewCustomerRepository()
 	inventoryRepository := memory.NewInventoryRepository()
+	idempotencyStore := memory.NewIdempotencyStore()
 	orderRepository := memory.NewOrderRepository()
 	productRepository := memory.NewProductRepository()
 	quoteRepository := memory.NewQuoteRepository()
@@ -110,6 +112,10 @@ func main() {
 	}
 
 	if err := host.RegisterPlugin(returneligibility.NewPlugin()); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := host.RegisterPlugin(idempotency.NewPlugin(idempotencyStore)); err != nil {
 		log.Fatal(err)
 	}
 
@@ -249,6 +255,7 @@ func main() {
 
 	acceptedReturn, err := returnService.AcceptReturn(kernel.AcceptReturnCommand{
 		ReturnRequestID: returnResult.ReturnRequestID,
+		IdempotencyKey:  "accept-return-001",
 		ReviewedBy:      "agent-001",
 		ProcessedBy:     "ops-001",
 		ReviewNote:      "approved after inspection",

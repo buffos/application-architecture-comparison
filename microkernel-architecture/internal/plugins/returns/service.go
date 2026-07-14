@@ -3,22 +3,24 @@ package returns
 import "microkernel-architecture/internal/kernel"
 
 type Service struct {
-	requests Repository
-	orders   kernel.ReturnableOrderProvider
-	clock    kernel.Clock
-	policy   kernel.ReturnEligibilityPolicy
-	refunds  kernel.PaymentRefund
-	restock  kernel.InventoryRestock
+	requests    Repository
+	orders      kernel.ReturnableOrderProvider
+	clock       kernel.Clock
+	policy      kernel.ReturnEligibilityPolicy
+	idempotency kernel.IdempotencyStore
+	refunds     kernel.PaymentRefund
+	restock     kernel.InventoryRestock
 }
 
-func NewService(requests Repository, orders kernel.ReturnableOrderProvider, clock kernel.Clock, policy kernel.ReturnEligibilityPolicy, refunds kernel.PaymentRefund, restock kernel.InventoryRestock) Service {
+func NewService(requests Repository, orders kernel.ReturnableOrderProvider, clock kernel.Clock, policy kernel.ReturnEligibilityPolicy, idempotency kernel.IdempotencyStore, refunds kernel.PaymentRefund, restock kernel.InventoryRestock) Service {
 	return Service{
-		requests: requests,
-		orders:   orders,
-		clock:    clock,
-		policy:   policy,
-		refunds:  refunds,
-		restock:  restock,
+		requests:    requests,
+		orders:      orders,
+		clock:       clock,
+		policy:      policy,
+		idempotency: idempotency,
+		refunds:     refunds,
+		restock:     restock,
 	}
 }
 
@@ -57,6 +59,20 @@ func (s Service) RequestReturn(command kernel.RequestReturnCommand) (kernel.Requ
 }
 
 func (s Service) AcceptReturn(command kernel.AcceptReturnCommand) (kernel.AcceptReturnResult, error) {
+	if command.IdempotencyKey == "" {
+		return kernel.AcceptReturnResult{}, kernel.ErrIdempotencyKeyRequired
+	}
+
+	if result, ok, err := s.idempotency.Find(command.IdempotencyKey); err != nil || ok {
+		return kernel.AcceptReturnResult{
+			ReturnRequestID: result.ReturnRequestID,
+			OrderID:         result.OrderID,
+			CustomerID:      result.CustomerID,
+			Status:          result.Status,
+			LineCount:       result.LineCount,
+		}, err
+	}
+
 	request, err := s.requests.FindByID(command.ReturnRequestID)
 	if err != nil {
 		return kernel.AcceptReturnResult{}, err
@@ -84,13 +100,23 @@ func (s Service) AcceptReturn(command kernel.AcceptReturnCommand) (kernel.Accept
 			return kernel.AcceptReturnResult{}, err
 		}
 
-		return kernel.AcceptReturnResult{
+		result := kernel.AcceptReturnResult{
 			ReturnRequestID: request.ID,
 			OrderID:         request.OrderID,
 			CustomerID:      request.CustomerID,
 			Status:          request.Status,
 			LineCount:       len(request.Lines),
-		}, nil
+		}
+		if err := s.idempotency.Save(command.IdempotencyKey, kernel.IdempotencyResult{
+			ReturnRequestID: result.ReturnRequestID,
+			OrderID:         result.OrderID,
+			CustomerID:      result.CustomerID,
+			Status:          result.Status,
+			LineCount:       result.LineCount,
+		}); err != nil {
+			return kernel.AcceptReturnResult{}, err
+		}
+		return result, nil
 	}
 
 	items := make([]kernel.InventoryReservationItem, 0, len(request.Lines))
@@ -117,16 +143,40 @@ func (s Service) AcceptReturn(command kernel.AcceptReturnCommand) (kernel.Accept
 		return kernel.AcceptReturnResult{}, err
 	}
 
-	return kernel.AcceptReturnResult{
+	result := kernel.AcceptReturnResult{
 		ReturnRequestID: request.ID,
 		OrderID:         request.OrderID,
 		CustomerID:      request.CustomerID,
 		Status:          request.Status,
 		LineCount:       len(request.Lines),
-	}, nil
+	}
+	if err := s.idempotency.Save(command.IdempotencyKey, kernel.IdempotencyResult{
+		ReturnRequestID: result.ReturnRequestID,
+		OrderID:         result.OrderID,
+		CustomerID:      result.CustomerID,
+		Status:          result.Status,
+		LineCount:       result.LineCount,
+	}); err != nil {
+		return kernel.AcceptReturnResult{}, err
+	}
+	return result, nil
 }
 
 func (s Service) RejectReturn(command kernel.RejectReturnCommand) (kernel.RejectReturnResult, error) {
+	if command.IdempotencyKey == "" {
+		return kernel.RejectReturnResult{}, kernel.ErrIdempotencyKeyRequired
+	}
+
+	if result, ok, err := s.idempotency.Find(command.IdempotencyKey); err != nil || ok {
+		return kernel.RejectReturnResult{
+			ReturnRequestID: result.ReturnRequestID,
+			OrderID:         result.OrderID,
+			CustomerID:      result.CustomerID,
+			Status:          result.Status,
+			LineCount:       result.LineCount,
+		}, err
+	}
+
 	request, err := s.requests.FindByID(command.ReturnRequestID)
 	if err != nil {
 		return kernel.RejectReturnResult{}, err
@@ -140,11 +190,21 @@ func (s Service) RejectReturn(command kernel.RejectReturnCommand) (kernel.Reject
 		return kernel.RejectReturnResult{}, err
 	}
 
-	return kernel.RejectReturnResult{
+	result := kernel.RejectReturnResult{
 		ReturnRequestID: request.ID,
 		OrderID:         request.OrderID,
 		CustomerID:      request.CustomerID,
 		Status:          request.Status,
 		LineCount:       len(request.Lines),
-	}, nil
+	}
+	if err := s.idempotency.Save(command.IdempotencyKey, kernel.IdempotencyResult{
+		ReturnRequestID: result.ReturnRequestID,
+		OrderID:         result.OrderID,
+		CustomerID:      result.CustomerID,
+		Status:          result.Status,
+		LineCount:       result.LineCount,
+	}); err != nil {
+		return kernel.RejectReturnResult{}, err
+	}
+	return result, nil
 }
