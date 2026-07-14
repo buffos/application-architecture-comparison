@@ -6,6 +6,7 @@ import (
 
 	"microkernel-architecture/internal/kernel"
 	"microkernel-architecture/internal/platform/memory"
+	"microkernel-architecture/internal/plugins/approvals"
 	"microkernel-architecture/internal/plugins/customers"
 	"microkernel-architecture/internal/plugins/products"
 	"microkernel-architecture/internal/plugins/quotes"
@@ -28,8 +29,19 @@ func main() {
 	if err := productRepository.Save(products.Product{
 		SKU:       "sku-001",
 		Name:      "Desk",
+		Category:  "Standard",
 		Active:    true,
 		UnitPrice: 15000,
+	}); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := productRepository.Save(products.Product{
+		SKU:       "sku-002",
+		Name:      "Custom Desk",
+		Category:  "CustomBuild",
+		Active:    true,
+		UnitPrice: 45000,
 	}); err != nil {
 		log.Fatal(err)
 	}
@@ -39,6 +51,10 @@ func main() {
 	}
 
 	if err := host.RegisterPlugin(products.NewPlugin(productRepository)); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := host.RegisterPlugin(approvals.NewPlugin()); err != nil {
 		log.Fatal(err)
 	}
 
@@ -93,4 +109,29 @@ func main() {
 	}
 
 	fmt.Printf("loaded quote: id=%s customer=%s status=%s lines=%d items=%d\n", details.QuoteID, details.CustomerID, details.Status, details.LineCount, details.TotalItems)
+
+	pendingResult, err := quoteService.CreateDraftQuote(kernel.CreateDraftQuoteCommand{
+		CustomerID: "customer-001",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = quoteService.AddQuoteLine(kernel.AddQuoteLineCommand{
+		QuoteID:    pendingResult.QuoteID,
+		ProductSKU: "sku-002",
+		Quantity:   1,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	pendingSubmit, err := quoteService.SubmitQuote(kernel.SubmitQuoteCommand{
+		QuoteID: pendingResult.QuoteID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("submitted custom quote: id=%s status=%s\n", pendingSubmit.QuoteID, pendingSubmit.Status)
 }

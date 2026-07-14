@@ -8,6 +8,7 @@ var ErrProductInactive = errors.New("product is inactive")
 type Product struct {
 	SKU       string
 	Name      string
+	Category  string
 	Active    bool
 	UnitPrice int
 }

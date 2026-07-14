@@ -4,6 +4,7 @@ type Host struct {
 	plugins           map[string]struct{}
 	customerDirectory CustomerDirectory
 	productCatalog    ProductCatalog
+	approvalPolicy    ApprovalPolicy
 	quoteService      QuoteService
 	quoteReader       QuoteReader
 }
@@ -43,6 +44,10 @@ func (h *Host) ExposeProductCatalog(catalog ProductCatalog) {
 	h.productCatalog = catalog
 }
 
+func (h *Host) ExposeApprovalPolicy(policy ApprovalPolicy) {
+	h.approvalPolicy = policy
+}
+
 func (h *Host) CustomerDirectory() (CustomerDirectory, error) {
 	if h.customerDirectory == nil {
 		return nil, ErrCustomerDirectoryNotRegistered
@@ -57,6 +62,14 @@ func (h *Host) ProductCatalog() (ProductCatalog, error) {
 	}
 
 	return h.productCatalog, nil
+}
+
+func (h *Host) ApprovalPolicy() (ApprovalPolicy, error) {
+	if h.approvalPolicy == nil {
+		return nil, ErrApprovalPolicyNotRegistered
+	}
+
+	return h.approvalPolicy, nil
 }
 
 func (h *Host) QuoteService() (QuoteService, error) {

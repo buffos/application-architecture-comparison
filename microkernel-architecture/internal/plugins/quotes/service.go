@@ -6,13 +6,15 @@ type Service struct {
 	quotes    Repository
 	customers kernel.CustomerDirectory
 	products  kernel.ProductCatalog
+	approvals kernel.ApprovalPolicy
 }
 
-func NewService(quotes Repository, customers kernel.CustomerDirectory, products kernel.ProductCatalog) Service {
+func NewService(quotes Repository, customers kernel.CustomerDirectory, products kernel.ProductCatalog, approvals kernel.ApprovalPolicy) Service {
 	return Service{
 		quotes:    quotes,
 		customers: customers,
 		products:  products,
+		approvals: approvals,
 	}
 }
 
@@ -66,6 +68,7 @@ func (s Service) AddQuoteLine(command kernel.AddQuoteLineCommand) (kernel.AddQuo
 	if err := quote.AddLine(kernelProductInput{
 		SKU:       product.SKU,
 		Name:      product.Name,
+		Category:  product.Category,
 		UnitPrice: product.UnitPrice,
 	}, command.Quantity); err != nil {
 		return kernel.AddQuoteLineResult{}, err
@@ -89,7 +92,16 @@ func (s Service) SubmitQuote(command kernel.SubmitQuoteCommand) (kernel.SubmitQu
 		return kernel.SubmitQuoteResult{}, err
 	}
 
-	if err := quote.Submit(); err != nil {
+	submission := kernel.QuoteSubmission{
+		Lines: make([]kernel.QuoteSubmissionLine, 0, len(quote.Lines)),
+	}
+	for _, line := range quote.Lines {
+		submission.Lines = append(submission.Lines, kernel.QuoteSubmissionLine{
+			ProductCategory: line.ProductCategory,
+		})
+	}
+
+	if err := quote.Submit(s.approvals.RequiresApproval(submission)); err != nil {
 		return kernel.SubmitQuoteResult{}, err
 	}
 

@@ -5,6 +5,7 @@ import "errors"
 var ErrPluginAlreadyRegistered = errors.New("plugin already registered")
 var ErrCustomerDirectoryNotRegistered = errors.New("customer directory capability not registered")
 var ErrProductCatalogNotRegistered = errors.New("product catalog capability not registered")
+var ErrApprovalPolicyNotRegistered = errors.New("approval policy capability not registered")
 var ErrQuoteServiceNotRegistered = errors.New("quote service capability not registered")
 var ErrQuoteReaderNotRegistered = errors.New("quote reader capability not registered")
 
@@ -20,11 +21,24 @@ type CustomerDirectory interface {
 type Product struct {
 	SKU       string
 	Name      string
+	Category  string
 	UnitPrice int
 }
 
 type ProductCatalog interface {
 	GetProductForQuote(sku string) (Product, error)
+}
+
+type QuoteSubmissionLine struct {
+	ProductCategory string
+}
+
+type QuoteSubmission struct {
+	Lines []QuoteSubmissionLine
+}
+
+type ApprovalPolicy interface {
+	RequiresApproval(submission QuoteSubmission) bool
 }
 
 type CreateDraftQuoteCommand struct {

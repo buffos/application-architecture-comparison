@@ -271,6 +271,7 @@ Architectures currently implemented in this repository:
 - `002` Quote query through kernel capability: [002-quote-query-through-kernel-capability.md](microkernel-architecture/lessons/002-quote-query-through-kernel-capability.md)
 - `003` Add quote line with product plugin: [003-add-quote-line-with-product-plugin.md](microkernel-architecture/lessons/003-add-quote-line-with-product-plugin.md)
 - `004` Submit quote state transition: [004-submit-quote-state-transition.md](microkernel-architecture/lessons/004-submit-quote-state-transition.md)
+- `005` Approval policy plugin: [005-approval-policy-plugin.md](microkernel-architecture/lessons/005-approval-policy-plugin.md)
 
 ## How To Maintain This File
 

@@ -40,9 +40,17 @@ func (c stubProductCatalog) GetProductForQuote(sku string) (kernel.Product, erro
 	return c.product, c.err
 }
 
+type stubApprovalPolicy struct {
+	requiresApproval bool
+}
+
+func (p stubApprovalPolicy) RequiresApproval(submission kernel.QuoteSubmission) bool {
+	return p.requiresApproval
+}
+
 func TestCreateDraftQuote(t *testing.T) {
 	repository := &stubRepository{}
-	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{})
+	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{})
 
 	result, err := service.CreateDraftQuote(kernel.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -68,7 +76,7 @@ func TestGetQuote(t *testing.T) {
 			Status:     QuoteStatusDraft,
 		},
 	}
-	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{})
+	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{})
 
 	result, err := service.GetQuote(kernel.GetQuoteQuery{
 		QuoteID: "quote-001",
@@ -94,9 +102,10 @@ func TestAddQuoteLine(t *testing.T) {
 		product: kernel.Product{
 			SKU:       "sku-001",
 			Name:      "Desk",
+			Category:  "Standard",
 			UnitPrice: 15000,
 		},
-	})
+	}, stubApprovalPolicy{})
 
 	result, err := service.AddQuoteLine(kernel.AddQuoteLineCommand{
 		QuoteID:    "quote-001",
@@ -124,15 +133,16 @@ func TestSubmitQuote(t *testing.T) {
 			Status:     QuoteStatusDraft,
 			Lines: []QuoteLine{
 				{
-					ProductSKU:  "sku-001",
-					ProductName: "Desk",
-					Quantity:    2,
-					UnitPrice:   15000,
+					ProductSKU:      "sku-001",
+					ProductName:     "Desk",
+					ProductCategory: "Standard",
+					Quantity:        2,
+					UnitPrice:       15000,
 				},
 			},
 		},
 	}
-	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{})
+	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{})
 
 	result, err := service.SubmitQuote(kernel.SubmitQuoteCommand{
 		QuoteID: "quote-001",
@@ -141,8 +151,8 @@ func TestSubmitQuote(t *testing.T) {
 		t.Fatalf("expected submit quote to succeed, got %v", err)
 	}
 
-	if result.Status != QuoteStatusSubmitted {
-		t.Fatalf("expected submitted status, got %s", result.Status)
+	if result.Status != QuoteStatusApproved {
+		t.Fatalf("expected approved status, got %s", result.Status)
 	}
 }
 
@@ -154,7 +164,7 @@ func TestSubmitQuoteRejectsEmptyQuote(t *testing.T) {
 			Status:     QuoteStatusDraft,
 		},
 	}
-	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{})
+	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{})
 
 	_, err := service.SubmitQuote(kernel.SubmitQuoteCommand{
 		QuoteID: "quote-001",
@@ -169,16 +179,17 @@ func TestAddQuoteLineRejectsSubmittedQuote(t *testing.T) {
 		saved: Quote{
 			ID:         "quote-001",
 			CustomerID: "customer-001",
-			Status:     QuoteStatusSubmitted,
+			Status:     QuoteStatusApproved,
 		},
 	}
 	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{
 		product: kernel.Product{
 			SKU:       "sku-001",
 			Name:      "Desk",
+			Category:  "Standard",
 			UnitPrice: 15000,
 		},
-	})
+	}, stubApprovalPolicy{})
 
 	_, err := service.AddQuoteLine(kernel.AddQuoteLineCommand{
 		QuoteID:    "quote-001",
@@ -187,5 +198,38 @@ func TestAddQuoteLineRejectsSubmittedQuote(t *testing.T) {
 	})
 	if err != ErrQuoteNotEditable {
 		t.Fatalf("expected not editable error, got %v", err)
+	}
+}
+
+func TestSubmitQuoteCanRequireApproval(t *testing.T) {
+	repository := &stubRepository{
+		saved: Quote{
+			ID:         "quote-001",
+			CustomerID: "customer-001",
+			Status:     QuoteStatusDraft,
+			Lines: []QuoteLine{
+				{
+					ProductSKU:      "sku-002",
+					ProductName:     "Custom Desk",
+					ProductCategory: "CustomBuild",
+					Quantity:        1,
+					UnitPrice:       45000,
+				},
+			},
+		},
+	}
+	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{
+		requiresApproval: true,
+	})
+
+	result, err := service.SubmitQuote(kernel.SubmitQuoteCommand{
+		QuoteID: "quote-001",
+	})
+	if err != nil {
+		t.Fatalf("expected submit quote to succeed, got %v", err)
+	}
+
+	if result.Status != QuoteStatusPendingApproval {
+		t.Fatalf("expected pending approval status, got %s", result.Status)
 	}
 }

@@ -20,6 +20,7 @@ func TestGetProductForQuote(t *testing.T) {
 		product: Product{
 			SKU:       "sku-001",
 			Name:      "Desk",
+			Category:  "Standard",
 			Active:    true,
 			UnitPrice: 15000,
 		},

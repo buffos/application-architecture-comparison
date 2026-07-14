@@ -14,7 +14,8 @@ var ErrQuoteNotSubmittable = errors.New("quote is not submittable")
 var ErrQuoteCannotBeSubmittedWithoutLines = errors.New("quote cannot be submitted without lines")
 
 const QuoteStatusDraft = "Draft"
-const QuoteStatusSubmitted = "Submitted"
+const QuoteStatusPendingApproval = "PendingApproval"
+const QuoteStatusApproved = "Approved"
 
 var quoteSequence uint64
 
@@ -26,10 +27,11 @@ type Quote struct {
 }
 
 type QuoteLine struct {
-	ProductSKU  string
-	ProductName string
-	Quantity    int
-	UnitPrice   int
+	ProductSKU      string
+	ProductName     string
+	ProductCategory string
+	Quantity        int
+	UnitPrice       int
 }
 
 func NewDraftQuote(customerID string) (Quote, error) {
@@ -56,10 +58,11 @@ func (q *Quote) AddLine(product kernelProductInput, quantity int) error {
 	}
 
 	q.Lines = append(q.Lines, QuoteLine{
-		ProductSKU:  product.SKU,
-		ProductName: product.Name,
-		Quantity:    quantity,
-		UnitPrice:   product.UnitPrice,
+		ProductSKU:      product.SKU,
+		ProductName:     product.Name,
+		ProductCategory: product.Category,
+		Quantity:        quantity,
+		UnitPrice:       product.UnitPrice,
 	})
 
 	return nil
@@ -74,7 +77,7 @@ func (q Quote) TotalQuantity() int {
 	return total
 }
 
-func (q *Quote) Submit() error {
+func (q *Quote) Submit(requiresApproval bool) error {
 	if q.Status != QuoteStatusDraft {
 		return ErrQuoteNotSubmittable
 	}
@@ -83,12 +86,18 @@ func (q *Quote) Submit() error {
 		return ErrQuoteCannotBeSubmittedWithoutLines
 	}
 
-	q.Status = QuoteStatusSubmitted
+	if requiresApproval {
+		q.Status = QuoteStatusPendingApproval
+		return nil
+	}
+
+	q.Status = QuoteStatusApproved
 	return nil
 }
 
 type kernelProductInput struct {
 	SKU       string
 	Name      string
+	Category  string
 	UnitPrice int
 }
