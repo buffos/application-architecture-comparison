@@ -13,6 +13,7 @@ import (
 	"microkernel-architecture/internal/plugins/payments"
 	"microkernel-architecture/internal/plugins/products"
 	"microkernel-architecture/internal/plugins/quotes"
+	"microkernel-architecture/internal/plugins/shipments"
 )
 
 func main() {
@@ -23,6 +24,7 @@ func main() {
 	orderRepository := memory.NewOrderRepository()
 	productRepository := memory.NewProductRepository()
 	quoteRepository := memory.NewQuoteRepository()
+	shipmentRepository := memory.NewShipmentRepository()
 
 	if err := customerRepository.Save(customers.Customer{
 		ID:     "customer-001",
@@ -86,6 +88,10 @@ func main() {
 	}
 
 	if err := host.RegisterPlugin(payments.NewPlugin()); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := host.RegisterPlugin(shipments.NewPlugin(shipmentRepository)); err != nil {
 		log.Fatal(err)
 	}
 
@@ -197,4 +203,13 @@ func main() {
 	}
 
 	fmt.Printf("captured payment: order=%s quote=%s customer=%s status=%s lines=%d\n", paidResult.OrderID, paidResult.QuoteID, paidResult.CustomerID, paidResult.Status, paidResult.LineCount)
+
+	shipmentResult, err := orderService.CreateShipment(kernel.CreateShipmentCommand{
+		OrderID: orderResult.OrderID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("created shipment: shipment=%s order=%s customer=%s status=%s lines=%d\n", shipmentResult.ShipmentID, shipmentResult.OrderID, shipmentResult.CustomerID, shipmentResult.Status, shipmentResult.LineCount)
 }

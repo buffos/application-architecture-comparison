@@ -10,6 +10,7 @@ type Host struct {
 	approvedQuotes    ApprovedQuoteProvider
 	inventory         InventoryReservation
 	payments          PaymentCapture
+	shipments         ShipmentCreation
 	orderService      OrderService
 }
 
@@ -54,6 +55,10 @@ func (h *Host) ExposeInventoryReservation(reservation InventoryReservation) {
 
 func (h *Host) ExposePaymentCapture(payments PaymentCapture) {
 	h.payments = payments
+}
+
+func (h *Host) ExposeShipmentCreation(shipments ShipmentCreation) {
+	h.shipments = shipments
 }
 
 func (h *Host) ExposeProductCatalog(catalog ProductCatalog) {
@@ -126,6 +131,14 @@ func (h *Host) PaymentCapture() (PaymentCapture, error) {
 	}
 
 	return h.payments, nil
+}
+
+func (h *Host) ShipmentCreation() (ShipmentCreation, error) {
+	if h.shipments == nil {
+		return nil, ErrShipmentCreationNotRegistered
+	}
+
+	return h.shipments, nil
 }
 
 func (h *Host) ExposeOrderService(service OrderService) {

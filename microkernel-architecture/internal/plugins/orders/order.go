@@ -8,9 +8,11 @@ import (
 
 var ErrOrderNotFound = errors.New("order not found")
 var ErrOrderNotPayable = errors.New("order is not payable")
+var ErrOrderNotShippable = errors.New("order is not shippable")
 
 const OrderStatusPendingPayment = "PendingPayment"
 const OrderStatusPaid = "Paid"
+const OrderStatusShipped = "Shipped"
 
 var orderSequence uint64
 
@@ -57,5 +59,14 @@ func (o *Order) MarkPaid() error {
 	}
 
 	o.Status = OrderStatusPaid
+	return nil
+}
+
+func (o *Order) MarkShipped() error {
+	if o.Status != OrderStatusPaid {
+		return ErrOrderNotShippable
+	}
+
+	o.Status = OrderStatusShipped
 	return nil
 }

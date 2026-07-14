@@ -11,6 +11,7 @@ var ErrQuoteReaderNotRegistered = errors.New("quote reader capability not regist
 var ErrApprovedQuoteProviderNotRegistered = errors.New("approved quote provider capability not registered")
 var ErrInventoryReservationNotRegistered = errors.New("inventory reservation capability not registered")
 var ErrPaymentCaptureNotRegistered = errors.New("payment capture capability not registered")
+var ErrShipmentCreationNotRegistered = errors.New("shipment creation capability not registered")
 var ErrOrderServiceNotRegistered = errors.New("order service capability not registered")
 
 type Plugin interface {
@@ -144,6 +145,28 @@ type PaymentCapture interface {
 	Capture(orderID string, amount int) error
 }
 
+type ShipmentLine struct {
+	ProductSKU string
+	Quantity   int
+}
+
+type CreateShipmentRecord struct {
+	OrderID    string
+	CustomerID string
+	Lines      []ShipmentLine
+}
+
+type ShipmentCreationResult struct {
+	ShipmentID string
+	OrderID    string
+	CustomerID string
+	LineCount  int
+}
+
+type ShipmentCreation interface {
+	CreateShipment(record CreateShipmentRecord) (ShipmentCreationResult, error)
+}
+
 type ConvertQuoteToOrderCommand struct {
 	QuoteID string
 }
@@ -168,7 +191,20 @@ type CapturePaymentResult struct {
 	LineCount  int
 }
 
+type CreateShipmentCommand struct {
+	OrderID string
+}
+
+type CreateShipmentResult struct {
+	ShipmentID string
+	OrderID    string
+	CustomerID string
+	Status     string
+	LineCount  int
+}
+
 type OrderService interface {
 	ConvertQuoteToOrder(command ConvertQuoteToOrderCommand) (ConvertQuoteToOrderResult, error)
 	CapturePayment(command CapturePaymentCommand) (CapturePaymentResult, error)
+	CreateShipment(command CreateShipmentCommand) (CreateShipmentResult, error)
 }

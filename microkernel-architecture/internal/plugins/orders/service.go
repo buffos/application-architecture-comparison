@@ -7,14 +7,16 @@ type Service struct {
 	quotes kernel.ApprovedQuoteProvider
 	stock  kernel.InventoryReservation
 	pay    kernel.PaymentCapture
+	ship   kernel.ShipmentCreation
 }
 
-func NewService(orders Repository, quotes kernel.ApprovedQuoteProvider, stock kernel.InventoryReservation, pay kernel.PaymentCapture) Service {
+func NewService(orders Repository, quotes kernel.ApprovedQuoteProvider, stock kernel.InventoryReservation, pay kernel.PaymentCapture, ship kernel.ShipmentCreation) Service {
 	return Service{
 		orders: orders,
 		quotes: quotes,
 		stock:  stock,
 		pay:    pay,
+		ship:   ship,
 	}
 }
 
@@ -79,6 +81,46 @@ func (s Service) CapturePayment(command kernel.CapturePaymentCommand) (kernel.Ca
 	return kernel.CapturePaymentResult{
 		OrderID:    order.ID,
 		QuoteID:    order.QuoteID,
+		CustomerID: order.CustomerID,
+		Status:     order.Status,
+		LineCount:  len(order.Lines),
+	}, nil
+}
+
+func (s Service) CreateShipment(command kernel.CreateShipmentCommand) (kernel.CreateShipmentResult, error) {
+	order, err := s.orders.FindByID(command.OrderID)
+	if err != nil {
+		return kernel.CreateShipmentResult{}, err
+	}
+
+	lines := make([]kernel.ShipmentLine, 0, len(order.Lines))
+	for _, line := range order.Lines {
+		lines = append(lines, kernel.ShipmentLine{
+			ProductSKU: line.ProductSKU,
+			Quantity:   line.Quantity,
+		})
+	}
+
+	shipment, err := s.ship.CreateShipment(kernel.CreateShipmentRecord{
+		OrderID:    order.ID,
+		CustomerID: order.CustomerID,
+		Lines:      lines,
+	})
+	if err != nil {
+		return kernel.CreateShipmentResult{}, err
+	}
+
+	if err := order.MarkShipped(); err != nil {
+		return kernel.CreateShipmentResult{}, err
+	}
+
+	if err := s.orders.Save(order); err != nil {
+		return kernel.CreateShipmentResult{}, err
+	}
+
+	return kernel.CreateShipmentResult{
+		ShipmentID: shipment.ShipmentID,
+		OrderID:    order.ID,
 		CustomerID: order.CustomerID,
 		Status:     order.Status,
 		LineCount:  len(order.Lines),

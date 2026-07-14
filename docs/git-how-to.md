@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(microkernel): complete lesson 009 payment gateway and order capture
+feat(microkernel): complete lesson 010 shipment creation after payment
 
 # Add tag
 
-git tag -a microkernel-009 -m "Microkernel Lesson 009" && git push origin --tags
-git push origin microkernel-009
+git tag -a microkernel-010 -m "Microkernel Lesson 010" && git push origin --tags
+git push origin microkernel-010
 
 or
 

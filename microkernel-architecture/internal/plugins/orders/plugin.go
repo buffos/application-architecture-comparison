@@ -32,6 +32,11 @@ func (p Plugin) Register(host *kernel.Host) error {
 		return err
 	}
 
-	host.ExposeOrderService(NewService(p.orders, quotes, stock, payments))
+	shipments, err := host.ShipmentCreation()
+	if err != nil {
+		return err
+	}
+
+	host.ExposeOrderService(NewService(p.orders, quotes, stock, payments, shipments))
 	return nil
 }
