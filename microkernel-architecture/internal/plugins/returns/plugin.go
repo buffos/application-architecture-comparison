@@ -27,11 +27,16 @@ func (p Plugin) Register(host *kernel.Host) error {
 		return err
 	}
 
+	policy, err := host.ReturnEligibilityPolicy()
+	if err != nil {
+		return err
+	}
+
 	restock, err := host.InventoryRestock()
 	if err != nil {
 		return err
 	}
 
-	host.ExposeReturnService(NewService(p.requests, orders, refunds, restock))
+	host.ExposeReturnService(NewService(p.requests, orders, policy, refunds, restock))
 	return nil
 }

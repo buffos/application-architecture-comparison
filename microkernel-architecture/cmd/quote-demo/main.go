@@ -13,6 +13,7 @@ import (
 	"microkernel-architecture/internal/plugins/payments"
 	"microkernel-architecture/internal/plugins/products"
 	"microkernel-architecture/internal/plugins/quotes"
+	"microkernel-architecture/internal/plugins/returneligibility"
 	"microkernel-architecture/internal/plugins/returns"
 	"microkernel-architecture/internal/plugins/shipments"
 )
@@ -98,6 +99,10 @@ func main() {
 	}
 
 	if err := host.RegisterPlugin(orders.NewPlugin(orderRepository)); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := host.RegisterPlugin(returneligibility.NewPlugin()); err != nil {
 		log.Fatal(err)
 	}
 

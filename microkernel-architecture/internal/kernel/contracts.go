@@ -17,6 +17,7 @@ var ErrPaymentRefundNotRegistered = errors.New("payment refund capability not re
 var ErrShipmentCreationNotRegistered = errors.New("shipment creation capability not registered")
 var ErrOrderServiceNotRegistered = errors.New("order service capability not registered")
 var ErrReturnableOrderProviderNotRegistered = errors.New("returnable order provider capability not registered")
+var ErrReturnEligibilityPolicyNotRegistered = errors.New("return eligibility policy capability not registered")
 var ErrReturnServiceNotRegistered = errors.New("return service capability not registered")
 
 type Plugin interface {
@@ -160,6 +161,14 @@ type PaymentCapture interface {
 
 type PaymentRefund interface {
 	Refund(orderID string, amount int) error
+}
+
+type ReturnEligibilityReview struct {
+	Reason string
+}
+
+type ReturnEligibilityPolicy interface {
+	Allows(review ReturnEligibilityReview) bool
 }
 
 type ShipmentLine struct {

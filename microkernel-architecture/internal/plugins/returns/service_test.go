@@ -38,6 +38,14 @@ func (p stubReturnableOrderProvider) GetReturnableOrder(orderID string) (kernel.
 	return p.order, p.err
 }
 
+type stubEligibilityPolicy struct {
+	allowed bool
+}
+
+func (p stubEligibilityPolicy) Allows(review kernel.ReturnEligibilityReview) bool {
+	return p.allowed
+}
+
 type stubPaymentRefund struct {
 	orderID string
 	amount  int
@@ -80,7 +88,7 @@ func TestRequestReturnStoresRequestedReturnWithoutRefundOrRestock(t *testing.T) 
 				{ProductSKU: "sku-002", Quantity: 1, UnitPrice: 45000},
 			},
 		},
-	}, refunds, restock)
+	}, stubEligibilityPolicy{allowed: true}, refunds, restock)
 
 	result, err := service.RequestReturn(kernel.RequestReturnCommand{
 		OrderID: "order-001",
@@ -121,7 +129,7 @@ func TestAcceptReturnRefundsRestocksAndUpdatesStatus(t *testing.T) {
 	}
 	refunds := &stubPaymentRefund{}
 	restock := &stubInventoryRestock{}
-	service := NewService(repository, stubReturnableOrderProvider{}, refunds, restock)
+	service := NewService(repository, stubReturnableOrderProvider{}, stubEligibilityPolicy{allowed: true}, refunds, restock)
 
 	result, err := service.AcceptReturn(kernel.AcceptReturnCommand{
 		ReturnRequestID: "return-001",
@@ -161,7 +169,7 @@ func TestAcceptReturnStopsWhenRestockFails(t *testing.T) {
 	}
 	refunds := &stubPaymentRefund{}
 	restock := &stubInventoryRestock{err: errors.New("restock failed")}
-	service := NewService(repository, stubReturnableOrderProvider{}, refunds, restock)
+	service := NewService(repository, stubReturnableOrderProvider{}, stubEligibilityPolicy{allowed: true}, refunds, restock)
 
 	_, err := service.AcceptReturn(kernel.AcceptReturnCommand{
 		ReturnRequestID: "return-001",
@@ -189,7 +197,7 @@ func TestRejectReturnUpdatesStatusWithoutRefundOrRestock(t *testing.T) {
 	}
 	refunds := &stubPaymentRefund{}
 	restock := &stubInventoryRestock{}
-	service := NewService(repository, stubReturnableOrderProvider{}, refunds, restock)
+	service := NewService(repository, stubReturnableOrderProvider{}, stubEligibilityPolicy{allowed: true}, refunds, restock)
 
 	result, err := service.RejectReturn(kernel.RejectReturnCommand{
 		ReturnRequestID: "return-001",
@@ -212,5 +220,46 @@ func TestRejectReturnUpdatesStatusWithoutRefundOrRestock(t *testing.T) {
 
 	if len(restock.items) != 0 {
 		t.Fatalf("expected no restock during rejection, got %d items", len(restock.items))
+	}
+}
+
+func TestAcceptReturnRejectsWhenPolicyBlocks(t *testing.T) {
+	repository := &stubRepository{
+		saved: ReturnRequest{
+			ID:         "return-001",
+			OrderID:    "order-001",
+			CustomerID: "customer-001",
+			Reason:     "outside return window",
+			Status:     ReturnRequestStatusRequested,
+			Lines: []ReturnLine{
+				{ProductSKU: "sku-002", Quantity: 1, UnitPrice: 45000},
+			},
+		},
+	}
+	refunds := &stubPaymentRefund{}
+	restock := &stubInventoryRestock{}
+	service := NewService(repository, stubReturnableOrderProvider{}, stubEligibilityPolicy{allowed: false}, refunds, restock)
+
+	result, err := service.AcceptReturn(kernel.AcceptReturnCommand{
+		ReturnRequestID: "return-001",
+	})
+	if err != nil {
+		t.Fatalf("expected policy-blocked accept to succeed with rejection, got %v", err)
+	}
+
+	if result.Status != ReturnRequestStatusRejected {
+		t.Fatalf("expected rejected status, got %s", result.Status)
+	}
+
+	if repository.saved.Status != ReturnRequestStatusRejected {
+		t.Fatalf("expected saved request to be rejected, got %s", repository.saved.Status)
+	}
+
+	if refunds.orderID != "" || refunds.amount != 0 {
+		t.Fatalf("expected no refund when policy blocks, got %s %d", refunds.orderID, refunds.amount)
+	}
+
+	if len(restock.items) != 0 {
+		t.Fatalf("expected no restock when policy blocks, got %d items", len(restock.items))
 	}
 }

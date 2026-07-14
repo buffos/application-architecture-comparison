@@ -16,6 +16,7 @@ type Host struct {
 	shipments         ShipmentCreation
 	orderService      OrderService
 	returnableOrders  ReturnableOrderProvider
+	returnEligibility ReturnEligibilityPolicy
 	returnService     ReturnService
 }
 
@@ -92,6 +93,10 @@ func (h *Host) ExposeOrderService(service OrderService) {
 
 func (h *Host) ExposeReturnableOrderProvider(provider ReturnableOrderProvider) {
 	h.returnableOrders = provider
+}
+
+func (h *Host) ExposeReturnEligibilityPolicy(policy ReturnEligibilityPolicy) {
+	h.returnEligibility = policy
 }
 
 func (h *Host) ExposeReturnService(service ReturnService) {
@@ -208,6 +213,14 @@ func (h *Host) ReturnableOrderProvider() (ReturnableOrderProvider, error) {
 	}
 
 	return h.returnableOrders, nil
+}
+
+func (h *Host) ReturnEligibilityPolicy() (ReturnEligibilityPolicy, error) {
+	if h.returnEligibility == nil {
+		return nil, ErrReturnEligibilityPolicyNotRegistered
+	}
+
+	return h.returnEligibility, nil
 }
 
 func (h *Host) ReturnService() (ReturnService, error) {

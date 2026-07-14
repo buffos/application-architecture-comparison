@@ -5,14 +5,16 @@ import "microkernel-architecture/internal/kernel"
 type Service struct {
 	requests Repository
 	orders   kernel.ReturnableOrderProvider
+	policy   kernel.ReturnEligibilityPolicy
 	refunds  kernel.PaymentRefund
 	restock  kernel.InventoryRestock
 }
 
-func NewService(requests Repository, orders kernel.ReturnableOrderProvider, refunds kernel.PaymentRefund, restock kernel.InventoryRestock) Service {
+func NewService(requests Repository, orders kernel.ReturnableOrderProvider, policy kernel.ReturnEligibilityPolicy, refunds kernel.PaymentRefund, restock kernel.InventoryRestock) Service {
 	return Service{
 		requests: requests,
 		orders:   orders,
+		policy:   policy,
 		refunds:  refunds,
 		restock:  restock,
 	}
@@ -51,6 +53,26 @@ func (s Service) AcceptReturn(command kernel.AcceptReturnCommand) (kernel.Accept
 	request, err := s.requests.FindByID(command.ReturnRequestID)
 	if err != nil {
 		return kernel.AcceptReturnResult{}, err
+	}
+
+	if !s.policy.Allows(kernel.ReturnEligibilityReview{
+		Reason: request.Reason,
+	}) {
+		if err := request.Reject(); err != nil {
+			return kernel.AcceptReturnResult{}, err
+		}
+
+		if err := s.requests.Save(request); err != nil {
+			return kernel.AcceptReturnResult{}, err
+		}
+
+		return kernel.AcceptReturnResult{
+			ReturnRequestID: request.ID,
+			OrderID:         request.OrderID,
+			CustomerID:      request.CustomerID,
+			Status:          request.Status,
+			LineCount:       len(request.Lines),
+		}, nil
 	}
 
 	items := make([]kernel.InventoryReservationItem, 0, len(request.Lines))
