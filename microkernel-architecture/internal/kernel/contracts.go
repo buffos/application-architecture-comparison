@@ -1,6 +1,9 @@
 package kernel
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 var ErrPluginAlreadyRegistered = errors.New("plugin already registered")
 var ErrCustomerDirectoryNotRegistered = errors.New("customer directory capability not registered")
@@ -19,6 +22,7 @@ var ErrOrderServiceNotRegistered = errors.New("order service capability not regi
 var ErrReturnableOrderProviderNotRegistered = errors.New("returnable order provider capability not registered")
 var ErrReturnEligibilityPolicyNotRegistered = errors.New("return eligibility policy capability not registered")
 var ErrReturnServiceNotRegistered = errors.New("return service capability not registered")
+var ErrClockNotRegistered = errors.New("clock capability not registered")
 
 type Plugin interface {
 	ID() string
@@ -30,10 +34,11 @@ type CustomerDirectory interface {
 }
 
 type Product struct {
-	SKU       string
-	Name      string
-	Category  string
-	UnitPrice int
+	SKU              string
+	Name             string
+	Category         string
+	UnitPrice        int
+	ReturnWindowDays int
 }
 
 type ProductCatalog interface {
@@ -127,11 +132,12 @@ type ApprovedQuote struct {
 }
 
 type ApprovedQuoteLine struct {
-	ProductSKU      string
-	ProductName     string
-	ProductCategory string
-	Quantity        int
-	UnitPrice       int
+	ProductSKU       string
+	ProductName      string
+	ProductCategory  string
+	Quantity         int
+	UnitPrice        int
+	ReturnWindowDays int
 }
 
 type ApprovedQuoteProvider interface {
@@ -163,8 +169,19 @@ type PaymentRefund interface {
 	Refund(orderID string, amount int) error
 }
 
+type Clock interface {
+	Now() time.Time
+}
+
 type ReturnEligibilityReview struct {
-	Reason string
+	Reason      string
+	ShippedAt   time.Time
+	RequestedAt time.Time
+	Lines       []ReturnEligibilityLine
+}
+
+type ReturnEligibilityLine struct {
+	ReturnWindowDays int
 }
 
 type ReturnEligibilityPolicy interface {
@@ -244,13 +261,15 @@ type CancelOrderResult struct {
 type ReturnableOrder struct {
 	OrderID    string
 	CustomerID string
+	ShippedAt  time.Time
 	Lines      []ReturnableOrderLine
 }
 
 type ReturnableOrderLine struct {
-	ProductSKU string
-	Quantity   int
-	UnitPrice  int
+	ProductSKU       string
+	Quantity         int
+	UnitPrice        int
+	ReturnWindowDays int
 }
 
 type ReturnableOrderProvider interface {

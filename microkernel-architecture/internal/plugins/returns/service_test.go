@@ -3,6 +3,7 @@ package returns
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"microkernel-architecture/internal/kernel"
 )
@@ -76,6 +77,14 @@ func (s *stubInventoryRestock) Restock(items []kernel.InventoryReservationItem) 
 	return nil
 }
 
+type stubClock struct {
+	now time.Time
+}
+
+func (c stubClock) Now() time.Time {
+	return c.now
+}
+
 func TestRequestReturnStoresRequestedReturnWithoutRefundOrRestock(t *testing.T) {
 	repository := &stubRepository{}
 	refunds := &stubPaymentRefund{}
@@ -84,11 +93,12 @@ func TestRequestReturnStoresRequestedReturnWithoutRefundOrRestock(t *testing.T) 
 		order: kernel.ReturnableOrder{
 			OrderID:    "order-001",
 			CustomerID: "customer-001",
+			ShippedAt:  time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC),
 			Lines: []kernel.ReturnableOrderLine{
-				{ProductSKU: "sku-002", Quantity: 1, UnitPrice: 45000},
+				{ProductSKU: "sku-002", Quantity: 1, UnitPrice: 45000, ReturnWindowDays: 30},
 			},
 		},
-	}, stubEligibilityPolicy{allowed: true}, refunds, restock)
+	}, stubClock{now: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)}, stubEligibilityPolicy{allowed: true}, refunds, restock)
 
 	result, err := service.RequestReturn(kernel.RequestReturnCommand{
 		OrderID: "order-001",
@@ -106,6 +116,10 @@ func TestRequestReturnStoresRequestedReturnWithoutRefundOrRestock(t *testing.T) 
 		t.Fatalf("expected saved request to be requested, got %s", repository.saved.Status)
 	}
 
+	if repository.saved.RequestedAt.IsZero() {
+		t.Fatalf("expected requested time to be recorded")
+	}
+
 	if refunds.orderID != "" || refunds.amount != 0 {
 		t.Fatalf("expected no refund during request, got %s %d", refunds.orderID, refunds.amount)
 	}
@@ -118,18 +132,20 @@ func TestRequestReturnStoresRequestedReturnWithoutRefundOrRestock(t *testing.T) 
 func TestAcceptReturnRefundsRestocksAndUpdatesStatus(t *testing.T) {
 	repository := &stubRepository{
 		saved: ReturnRequest{
-			ID:         "return-001",
-			OrderID:    "order-001",
-			CustomerID: "customer-001",
-			Status:     ReturnRequestStatusRequested,
+			ID:          "return-001",
+			OrderID:     "order-001",
+			CustomerID:  "customer-001",
+			ShippedAt:   time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC),
+			RequestedAt: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC),
+			Status:      ReturnRequestStatusRequested,
 			Lines: []ReturnLine{
-				{ProductSKU: "sku-002", Quantity: 1, UnitPrice: 45000},
+				{ProductSKU: "sku-002", Quantity: 1, UnitPrice: 45000, ReturnWindowDays: 30},
 			},
 		},
 	}
 	refunds := &stubPaymentRefund{}
 	restock := &stubInventoryRestock{}
-	service := NewService(repository, stubReturnableOrderProvider{}, stubEligibilityPolicy{allowed: true}, refunds, restock)
+	service := NewService(repository, stubReturnableOrderProvider{}, stubClock{}, stubEligibilityPolicy{allowed: true}, refunds, restock)
 
 	result, err := service.AcceptReturn(kernel.AcceptReturnCommand{
 		ReturnRequestID: "return-001",
@@ -158,18 +174,20 @@ func TestAcceptReturnRefundsRestocksAndUpdatesStatus(t *testing.T) {
 func TestAcceptReturnStopsWhenRestockFails(t *testing.T) {
 	repository := &stubRepository{
 		saved: ReturnRequest{
-			ID:         "return-001",
-			OrderID:    "order-001",
-			CustomerID: "customer-001",
-			Status:     ReturnRequestStatusRequested,
+			ID:          "return-001",
+			OrderID:     "order-001",
+			CustomerID:  "customer-001",
+			ShippedAt:   time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC),
+			RequestedAt: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC),
+			Status:      ReturnRequestStatusRequested,
 			Lines: []ReturnLine{
-				{ProductSKU: "sku-002", Quantity: 1, UnitPrice: 45000},
+				{ProductSKU: "sku-002", Quantity: 1, UnitPrice: 45000, ReturnWindowDays: 30},
 			},
 		},
 	}
 	refunds := &stubPaymentRefund{}
 	restock := &stubInventoryRestock{err: errors.New("restock failed")}
-	service := NewService(repository, stubReturnableOrderProvider{}, stubEligibilityPolicy{allowed: true}, refunds, restock)
+	service := NewService(repository, stubReturnableOrderProvider{}, stubClock{}, stubEligibilityPolicy{allowed: true}, refunds, restock)
 
 	_, err := service.AcceptReturn(kernel.AcceptReturnCommand{
 		ReturnRequestID: "return-001",
@@ -186,18 +204,20 @@ func TestAcceptReturnStopsWhenRestockFails(t *testing.T) {
 func TestRejectReturnUpdatesStatusWithoutRefundOrRestock(t *testing.T) {
 	repository := &stubRepository{
 		saved: ReturnRequest{
-			ID:         "return-001",
-			OrderID:    "order-001",
-			CustomerID: "customer-001",
-			Status:     ReturnRequestStatusRequested,
+			ID:          "return-001",
+			OrderID:     "order-001",
+			CustomerID:  "customer-001",
+			ShippedAt:   time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC),
+			RequestedAt: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC),
+			Status:      ReturnRequestStatusRequested,
 			Lines: []ReturnLine{
-				{ProductSKU: "sku-002", Quantity: 1, UnitPrice: 45000},
+				{ProductSKU: "sku-002", Quantity: 1, UnitPrice: 45000, ReturnWindowDays: 30},
 			},
 		},
 	}
 	refunds := &stubPaymentRefund{}
 	restock := &stubInventoryRestock{}
-	service := NewService(repository, stubReturnableOrderProvider{}, stubEligibilityPolicy{allowed: true}, refunds, restock)
+	service := NewService(repository, stubReturnableOrderProvider{}, stubClock{}, stubEligibilityPolicy{allowed: true}, refunds, restock)
 
 	result, err := service.RejectReturn(kernel.RejectReturnCommand{
 		ReturnRequestID: "return-001",
@@ -226,19 +246,21 @@ func TestRejectReturnUpdatesStatusWithoutRefundOrRestock(t *testing.T) {
 func TestAcceptReturnRejectsWhenPolicyBlocks(t *testing.T) {
 	repository := &stubRepository{
 		saved: ReturnRequest{
-			ID:         "return-001",
-			OrderID:    "order-001",
-			CustomerID: "customer-001",
-			Reason:     "outside return window",
-			Status:     ReturnRequestStatusRequested,
+			ID:          "return-001",
+			OrderID:     "order-001",
+			CustomerID:  "customer-001",
+			Reason:      "damaged item",
+			ShippedAt:   time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC),
+			RequestedAt: time.Date(2026, 8, 5, 12, 0, 0, 0, time.UTC),
+			Status:      ReturnRequestStatusRequested,
 			Lines: []ReturnLine{
-				{ProductSKU: "sku-002", Quantity: 1, UnitPrice: 45000},
+				{ProductSKU: "sku-002", Quantity: 1, UnitPrice: 45000, ReturnWindowDays: 30},
 			},
 		},
 	}
 	refunds := &stubPaymentRefund{}
 	restock := &stubInventoryRestock{}
-	service := NewService(repository, stubReturnableOrderProvider{}, stubEligibilityPolicy{allowed: false}, refunds, restock)
+	service := NewService(repository, stubReturnableOrderProvider{}, stubClock{}, stubEligibilityPolicy{allowed: false}, refunds, restock)
 
 	result, err := service.AcceptReturn(kernel.AcceptReturnCommand{
 		ReturnRequestID: "return-001",

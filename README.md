@@ -282,6 +282,7 @@ Architectures currently implemented in this repository:
 - `013` Return restocking plugin: [013-return-restocking-plugin.md](microkernel-architecture/lessons/013-return-restocking-plugin.md)
 - `014` Return review plugin: [014-return-review-plugin.md](microkernel-architecture/lessons/014-return-review-plugin.md)
 - `015` Return eligibility plugin: [015-return-eligibility-plugin.md](microkernel-architecture/lessons/015-return-eligibility-plugin.md)
+- `016` Real return window plugin: [016-real-return-window-plugin.md](microkernel-architecture/lessons/016-real-return-window-plugin.md)
 
 ## How To Maintain This File
 

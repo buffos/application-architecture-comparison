@@ -2,6 +2,7 @@ package orders
 
 import (
 	"testing"
+	"time"
 
 	"microkernel-architecture/internal/kernel"
 )
@@ -65,6 +66,14 @@ func (s stubShipmentCreation) CreateShipment(record kernel.CreateShipmentRecord)
 	return s.result, s.err
 }
 
+type stubClock struct {
+	now time.Time
+}
+
+func (c stubClock) Now() time.Time {
+	return c.now
+}
+
 func TestConvertQuoteToOrder(t *testing.T) {
 	repository := &stubRepository{}
 	service := NewService(repository, stubApprovedQuoteProvider{
@@ -73,15 +82,16 @@ func TestConvertQuoteToOrder(t *testing.T) {
 			CustomerID: "customer-001",
 			Lines: []kernel.ApprovedQuoteLine{
 				{
-					ProductSKU:      "sku-001",
-					ProductName:     "Desk",
-					ProductCategory: "Standard",
-					Quantity:        2,
-					UnitPrice:       15000,
+					ProductSKU:       "sku-001",
+					ProductName:      "Desk",
+					ProductCategory:  "Standard",
+					Quantity:         2,
+					UnitPrice:        15000,
+					ReturnWindowDays: 30,
 				},
 			},
 		},
-	}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{})
+	}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{}, stubClock{})
 
 	result, err := service.ConvertQuoteToOrder(kernel.ConvertQuoteToOrderCommand{
 		QuoteID: "quote-001",
@@ -107,17 +117,18 @@ func TestConvertQuoteToOrderRejectsReservationFailure(t *testing.T) {
 			CustomerID: "customer-001",
 			Lines: []kernel.ApprovedQuoteLine{
 				{
-					ProductSKU:      "sku-001",
-					ProductName:     "Desk",
-					ProductCategory: "Standard",
-					Quantity:        2,
-					UnitPrice:       15000,
+					ProductSKU:       "sku-001",
+					ProductName:      "Desk",
+					ProductCategory:  "Standard",
+					Quantity:         2,
+					UnitPrice:        15000,
+					ReturnWindowDays: 30,
 				},
 			},
 		},
 	}, stubInventoryReservation{
 		err: kernel.ErrPluginAlreadyRegistered,
-	}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{})
+	}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{}, stubClock{})
 
 	_, err := service.ConvertQuoteToOrder(kernel.ConvertQuoteToOrderCommand{
 		QuoteID: "quote-001",
@@ -145,7 +156,7 @@ func TestCapturePayment(t *testing.T) {
 			},
 		},
 	}
-	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{})
+	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{}, stubClock{})
 
 	result, err := service.CapturePayment(kernel.CapturePaymentCommand{
 		OrderID: "order-001",
@@ -168,7 +179,7 @@ func TestCapturePaymentRejectsNonPayableOrder(t *testing.T) {
 			Status:     OrderStatusPaid,
 		},
 	}
-	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{})
+	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{}, stubClock{})
 
 	_, err := service.CapturePayment(kernel.CapturePaymentCommand{
 		OrderID: "order-001",
@@ -203,7 +214,7 @@ func TestCreateShipment(t *testing.T) {
 			CustomerID: "customer-001",
 			LineCount:  1,
 		},
-	})
+	}, stubClock{now: time.Date(2026, 7, 14, 10, 0, 0, 0, time.UTC)})
 
 	result, err := service.CreateShipment(kernel.CreateShipmentCommand{
 		OrderID: "order-001",
@@ -214,6 +225,10 @@ func TestCreateShipment(t *testing.T) {
 
 	if result.Status != OrderStatusShipped {
 		t.Fatalf("expected shipped status, got %s", result.Status)
+	}
+
+	if repository.saved.ShippedAt.IsZero() {
+		t.Fatalf("expected shipped time to be recorded")
 	}
 }
 
@@ -233,7 +248,7 @@ func TestCreateShipmentRejectsNonShippableOrder(t *testing.T) {
 			CustomerID: "customer-001",
 			LineCount:  0,
 		},
-	})
+	}, stubClock{})
 
 	_, err := service.CreateShipment(kernel.CreateShipmentCommand{
 		OrderID: "order-001",
@@ -261,7 +276,7 @@ func TestCancelOrder(t *testing.T) {
 			},
 		},
 	}
-	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{})
+	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{}, stubClock{})
 
 	result, err := service.CancelOrder(kernel.CancelOrderCommand{
 		OrderID: "order-001",
@@ -284,7 +299,7 @@ func TestCancelOrderRejectsShippedOrder(t *testing.T) {
 			Status:     OrderStatusShipped,
 		},
 	}
-	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{})
+	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{}, stubClock{})
 
 	_, err := service.CancelOrder(kernel.CancelOrderCommand{
 		OrderID: "order-001",
@@ -301,18 +316,20 @@ func TestGetReturnableOrder(t *testing.T) {
 			QuoteID:    "quote-001",
 			CustomerID: "customer-001",
 			Status:     OrderStatusShipped,
+			ShippedAt:  time.Date(2026, 7, 10, 10, 0, 0, 0, time.UTC),
 			Lines: []OrderLine{
 				{
-					ProductSKU:      "sku-002",
-					ProductName:     "Custom Desk",
-					ProductCategory: "CustomBuild",
-					Quantity:        1,
-					UnitPrice:       45000,
+					ProductSKU:       "sku-002",
+					ProductName:      "Custom Desk",
+					ProductCategory:  "CustomBuild",
+					Quantity:         1,
+					UnitPrice:        45000,
+					ReturnWindowDays: 14,
 				},
 			},
 		},
 	}
-	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{})
+	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{}, stubClock{})
 
 	result, err := service.GetReturnableOrder("order-001")
 	if err != nil {
@@ -321,6 +338,14 @@ func TestGetReturnableOrder(t *testing.T) {
 
 	if result.OrderID != "order-001" {
 		t.Fatalf("expected order id order-001, got %s", result.OrderID)
+	}
+
+	if result.ShippedAt.IsZero() {
+		t.Fatalf("expected shipped time on returnable order")
+	}
+
+	if result.Lines[0].ReturnWindowDays != 14 {
+		t.Fatalf("expected return window snapshot 14, got %d", result.Lines[0].ReturnWindowDays)
 	}
 }
 
@@ -333,7 +358,7 @@ func TestGetReturnableOrderRejectsNonShippedOrder(t *testing.T) {
 			Status:     OrderStatusPaid,
 		},
 	}
-	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{})
+	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{}, stubClock{})
 
 	_, err := service.GetReturnableOrder("order-001")
 	if err != ErrOrderNotReturnable {

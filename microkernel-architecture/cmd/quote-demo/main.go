@@ -7,6 +7,7 @@ import (
 	"microkernel-architecture/internal/kernel"
 	"microkernel-architecture/internal/platform/memory"
 	"microkernel-architecture/internal/plugins/approvals"
+	"microkernel-architecture/internal/plugins/clock"
 	"microkernel-architecture/internal/plugins/customers"
 	"microkernel-architecture/internal/plugins/inventory"
 	"microkernel-architecture/internal/plugins/orders"
@@ -37,21 +38,23 @@ func main() {
 	}
 
 	if err := productRepository.Save(products.Product{
-		SKU:       "sku-001",
-		Name:      "Desk",
-		Category:  "Standard",
-		Active:    true,
-		UnitPrice: 15000,
+		SKU:              "sku-001",
+		Name:             "Desk",
+		Category:         "Standard",
+		Active:           true,
+		UnitPrice:        15000,
+		ReturnWindowDays: 30,
 	}); err != nil {
 		log.Fatal(err)
 	}
 
 	if err := productRepository.Save(products.Product{
-		SKU:       "sku-002",
-		Name:      "Custom Desk",
-		Category:  "CustomBuild",
-		Active:    true,
-		UnitPrice: 45000,
+		SKU:              "sku-002",
+		Name:             "Custom Desk",
+		Category:         "CustomBuild",
+		Active:           true,
+		UnitPrice:        45000,
+		ReturnWindowDays: 14,
 	}); err != nil {
 		log.Fatal(err)
 	}
@@ -79,6 +82,10 @@ func main() {
 	}
 
 	if err := host.RegisterPlugin(approvals.NewPlugin()); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := host.RegisterPlugin(clock.NewPlugin()); err != nil {
 		log.Fatal(err)
 	}
 

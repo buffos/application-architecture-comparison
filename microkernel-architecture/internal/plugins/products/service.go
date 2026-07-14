@@ -23,9 +23,10 @@ func (s Service) GetProductForQuote(sku string) (kernel.Product, error) {
 	}
 
 	return kernel.Product{
-		SKU:       product.SKU,
-		Name:      product.Name,
-		Category:  product.Category,
-		UnitPrice: product.UnitPrice,
+		SKU:              product.SKU,
+		Name:             product.Name,
+		Category:         product.Category,
+		UnitPrice:        product.UnitPrice,
+		ReturnWindowDays: product.ReturnWindowDays,
 	}, nil
 }

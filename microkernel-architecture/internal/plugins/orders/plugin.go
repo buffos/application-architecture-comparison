@@ -42,7 +42,12 @@ func (p Plugin) Register(host *kernel.Host) error {
 		return err
 	}
 
-	service := NewService(p.orders, quotes, stock, release, payments, shipments)
+	clock, err := host.Clock()
+	if err != nil {
+		return err
+	}
+
+	service := NewService(p.orders, quotes, stock, release, payments, shipments, clock)
 	host.ExposeOrderService(service)
 	host.ExposeReturnableOrderProvider(service)
 	return nil

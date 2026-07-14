@@ -9,9 +9,10 @@ type Service struct {
 	release kernel.InventoryRelease
 	pay     kernel.PaymentCapture
 	ship    kernel.ShipmentCreation
+	clock   kernel.Clock
 }
 
-func NewService(orders Repository, quotes kernel.ApprovedQuoteProvider, stock kernel.InventoryReservation, release kernel.InventoryRelease, pay kernel.PaymentCapture, ship kernel.ShipmentCreation) Service {
+func NewService(orders Repository, quotes kernel.ApprovedQuoteProvider, stock kernel.InventoryReservation, release kernel.InventoryRelease, pay kernel.PaymentCapture, ship kernel.ShipmentCreation, clock kernel.Clock) Service {
 	return Service{
 		orders:  orders,
 		quotes:  quotes,
@@ -19,6 +20,7 @@ func NewService(orders Repository, quotes kernel.ApprovedQuoteProvider, stock ke
 		release: release,
 		pay:     pay,
 		ship:    ship,
+		clock:   clock,
 	}
 }
 
@@ -32,11 +34,12 @@ func (s Service) ConvertQuoteToOrder(command kernel.ConvertQuoteToOrderCommand) 
 	reservationItems := make([]kernel.InventoryReservationItem, 0, len(quote.Lines))
 	for _, line := range quote.Lines {
 		lines = append(lines, OrderLine{
-			ProductSKU:      line.ProductSKU,
-			ProductName:     line.ProductName,
-			ProductCategory: line.ProductCategory,
-			Quantity:        line.Quantity,
-			UnitPrice:       line.UnitPrice,
+			ProductSKU:       line.ProductSKU,
+			ProductName:      line.ProductName,
+			ProductCategory:  line.ProductCategory,
+			Quantity:         line.Quantity,
+			UnitPrice:        line.UnitPrice,
+			ReturnWindowDays: line.ReturnWindowDays,
 		})
 		reservationItems = append(reservationItems, kernel.InventoryReservationItem{
 			ProductSKU: line.ProductSKU,
@@ -112,7 +115,7 @@ func (s Service) CreateShipment(command kernel.CreateShipmentCommand) (kernel.Cr
 		return kernel.CreateShipmentResult{}, err
 	}
 
-	if err := order.MarkShipped(); err != nil {
+	if err := order.MarkShipped(s.clock.Now()); err != nil {
 		return kernel.CreateShipmentResult{}, err
 	}
 
@@ -177,15 +180,17 @@ func (s Service) GetReturnableOrder(orderID string) (kernel.ReturnableOrder, err
 	lines := make([]kernel.ReturnableOrderLine, 0, len(order.Lines))
 	for _, line := range order.Lines {
 		lines = append(lines, kernel.ReturnableOrderLine{
-			ProductSKU: line.ProductSKU,
-			Quantity:   line.Quantity,
-			UnitPrice:  line.UnitPrice,
+			ProductSKU:       line.ProductSKU,
+			Quantity:         line.Quantity,
+			UnitPrice:        line.UnitPrice,
+			ReturnWindowDays: line.ReturnWindowDays,
 		})
 	}
 
 	return kernel.ReturnableOrder{
 		OrderID:    order.ID,
 		CustomerID: order.CustomerID,
+		ShippedAt:  order.ShippedAt,
 		Lines:      lines,
 	}, nil
 }

@@ -2,22 +2,37 @@ package returneligibility
 
 import (
 	"testing"
+	"time"
 
 	"microkernel-architecture/internal/kernel"
 )
 
-func TestAllowsEligibleReason(t *testing.T) {
+func TestAllowsInWindowReturn(t *testing.T) {
 	service := NewService()
 
-	if !service.Allows(kernel.ReturnEligibilityReview{Reason: "damaged item"}) {
-		t.Fatalf("expected damaged item return to be allowed")
+	shippedAt := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
+	requestedAt := shippedAt.AddDate(0, 0, 10)
+	if !service.Allows(kernel.ReturnEligibilityReview{
+		Reason:      "damaged item",
+		ShippedAt:   shippedAt,
+		RequestedAt: requestedAt,
+		Lines:       []kernel.ReturnEligibilityLine{{ReturnWindowDays: 30}},
+	}) {
+		t.Fatalf("expected in-window return to be allowed")
 	}
 }
 
-func TestRejectsOutsideReturnWindowReason(t *testing.T) {
+func TestRejectsOutOfWindowReturn(t *testing.T) {
 	service := NewService()
 
-	if service.Allows(kernel.ReturnEligibilityReview{Reason: "outside return window"}) {
-		t.Fatalf("expected outside return window to be rejected")
+	shippedAt := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
+	requestedAt := shippedAt.AddDate(0, 0, 31)
+	if service.Allows(kernel.ReturnEligibilityReview{
+		Reason:      "damaged item",
+		ShippedAt:   shippedAt,
+		RequestedAt: requestedAt,
+		Lines:       []kernel.ReturnEligibilityLine{{ReturnWindowDays: 30}},
+	}) {
+		t.Fatalf("expected out-of-window return to be rejected")
 	}
 }

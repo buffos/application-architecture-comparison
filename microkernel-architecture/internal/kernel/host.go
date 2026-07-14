@@ -18,6 +18,7 @@ type Host struct {
 	returnableOrders  ReturnableOrderProvider
 	returnEligibility ReturnEligibilityPolicy
 	returnService     ReturnService
+	clock             Clock
 }
 
 func NewHost() *Host {
@@ -101,6 +102,10 @@ func (h *Host) ExposeReturnEligibilityPolicy(policy ReturnEligibilityPolicy) {
 
 func (h *Host) ExposeReturnService(service ReturnService) {
 	h.returnService = service
+}
+
+func (h *Host) ExposeClock(clock Clock) {
+	h.clock = clock
 }
 
 func (h *Host) CustomerDirectory() (CustomerDirectory, error) {
@@ -229,4 +234,12 @@ func (h *Host) ReturnService() (ReturnService, error) {
 	}
 
 	return h.returnService, nil
+}
+
+func (h *Host) Clock() (Clock, error) {
+	if h.clock == nil {
+		return nil, ErrClockNotRegistered
+	}
+
+	return h.clock, nil
 }

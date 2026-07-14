@@ -18,11 +18,12 @@ func (r stubRepository) Save(product Product) error {
 func TestGetProductForQuote(t *testing.T) {
 	service := NewService(stubRepository{
 		product: Product{
-			SKU:       "sku-001",
-			Name:      "Desk",
-			Category:  "Standard",
-			Active:    true,
-			UnitPrice: 15000,
+			SKU:              "sku-001",
+			Name:             "Desk",
+			Category:         "Standard",
+			Active:           true,
+			UnitPrice:        15000,
+			ReturnWindowDays: 30,
 		},
 	})
 
@@ -33,5 +34,9 @@ func TestGetProductForQuote(t *testing.T) {
 
 	if product.SKU != "sku-001" {
 		t.Fatalf("expected sku sku-001, got %s", product.SKU)
+	}
+
+	if product.ReturnWindowDays != 30 {
+		t.Fatalf("expected return window 30, got %d", product.ReturnWindowDays)
 	}
 }

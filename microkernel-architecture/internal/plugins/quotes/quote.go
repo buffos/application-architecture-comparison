@@ -29,11 +29,12 @@ type Quote struct {
 }
 
 type QuoteLine struct {
-	ProductSKU      string
-	ProductName     string
-	ProductCategory string
-	Quantity        int
-	UnitPrice       int
+	ProductSKU       string
+	ProductName      string
+	ProductCategory  string
+	Quantity         int
+	UnitPrice        int
+	ReturnWindowDays int
 }
 
 func NewDraftQuote(customerID string) (Quote, error) {
@@ -60,11 +61,12 @@ func (q *Quote) AddLine(product kernelProductInput, quantity int) error {
 	}
 
 	q.Lines = append(q.Lines, QuoteLine{
-		ProductSKU:      product.SKU,
-		ProductName:     product.Name,
-		ProductCategory: product.Category,
-		Quantity:        quantity,
-		UnitPrice:       product.UnitPrice,
+		ProductSKU:       product.SKU,
+		ProductName:      product.Name,
+		ProductCategory:  product.Category,
+		Quantity:         quantity,
+		UnitPrice:        product.UnitPrice,
+		ReturnWindowDays: product.ReturnWindowDays,
 	})
 
 	return nil
@@ -115,8 +117,9 @@ func (q Quote) EnsureConvertible() error {
 }
 
 type kernelProductInput struct {
-	SKU       string
-	Name      string
-	Category  string
-	UnitPrice int
+	SKU              string
+	Name             string
+	Category         string
+	UnitPrice        int
+	ReturnWindowDays int
 }

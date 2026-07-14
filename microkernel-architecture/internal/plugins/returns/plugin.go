@@ -22,6 +22,11 @@ func (p Plugin) Register(host *kernel.Host) error {
 		return err
 	}
 
+	clock, err := host.Clock()
+	if err != nil {
+		return err
+	}
+
 	refunds, err := host.PaymentRefund()
 	if err != nil {
 		return err
@@ -37,6 +42,6 @@ func (p Plugin) Register(host *kernel.Host) error {
 		return err
 	}
 
-	host.ExposeReturnService(NewService(p.requests, orders, policy, refunds, restock))
+	host.ExposeReturnService(NewService(p.requests, orders, clock, policy, refunds, restock))
 	return nil
 }

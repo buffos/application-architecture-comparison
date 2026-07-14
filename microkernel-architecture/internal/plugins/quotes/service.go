@@ -66,10 +66,11 @@ func (s Service) AddQuoteLine(command kernel.AddQuoteLineCommand) (kernel.AddQuo
 	}
 
 	if err := quote.AddLine(kernelProductInput{
-		SKU:       product.SKU,
-		Name:      product.Name,
-		Category:  product.Category,
-		UnitPrice: product.UnitPrice,
+		SKU:              product.SKU,
+		Name:             product.Name,
+		Category:         product.Category,
+		UnitPrice:        product.UnitPrice,
+		ReturnWindowDays: product.ReturnWindowDays,
 	}, command.Quantity); err != nil {
 		return kernel.AddQuoteLineResult{}, err
 	}
@@ -152,11 +153,12 @@ func (s Service) GetApprovedQuoteForOrder(quoteID string) (kernel.ApprovedQuote,
 	lines := make([]kernel.ApprovedQuoteLine, 0, len(quote.Lines))
 	for _, line := range quote.Lines {
 		lines = append(lines, kernel.ApprovedQuoteLine{
-			ProductSKU:      line.ProductSKU,
-			ProductName:     line.ProductName,
-			ProductCategory: line.ProductCategory,
-			Quantity:        line.Quantity,
-			UnitPrice:       line.UnitPrice,
+			ProductSKU:       line.ProductSKU,
+			ProductName:      line.ProductName,
+			ProductCategory:  line.ProductCategory,
+			Quantity:         line.Quantity,
+			UnitPrice:        line.UnitPrice,
+			ReturnWindowDays: line.ReturnWindowDays,
 		})
 	}
 

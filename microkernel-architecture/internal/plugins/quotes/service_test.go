@@ -100,10 +100,11 @@ func TestAddQuoteLine(t *testing.T) {
 	}
 	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{
 		product: kernel.Product{
-			SKU:       "sku-001",
-			Name:      "Desk",
-			Category:  "Standard",
-			UnitPrice: 15000,
+			SKU:              "sku-001",
+			Name:             "Desk",
+			Category:         "Standard",
+			UnitPrice:        15000,
+			ReturnWindowDays: 30,
 		},
 	}, stubApprovalPolicy{})
 
@@ -184,10 +185,11 @@ func TestAddQuoteLineRejectsSubmittedQuote(t *testing.T) {
 	}
 	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{
 		product: kernel.Product{
-			SKU:       "sku-001",
-			Name:      "Desk",
-			Category:  "Standard",
-			UnitPrice: 15000,
+			SKU:              "sku-001",
+			Name:             "Desk",
+			Category:         "Standard",
+			UnitPrice:        15000,
+			ReturnWindowDays: 30,
 		},
 	}, stubApprovalPolicy{})
 

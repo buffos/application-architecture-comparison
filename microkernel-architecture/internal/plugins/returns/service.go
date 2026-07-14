@@ -5,15 +5,17 @@ import "microkernel-architecture/internal/kernel"
 type Service struct {
 	requests Repository
 	orders   kernel.ReturnableOrderProvider
+	clock    kernel.Clock
 	policy   kernel.ReturnEligibilityPolicy
 	refunds  kernel.PaymentRefund
 	restock  kernel.InventoryRestock
 }
 
-func NewService(requests Repository, orders kernel.ReturnableOrderProvider, policy kernel.ReturnEligibilityPolicy, refunds kernel.PaymentRefund, restock kernel.InventoryRestock) Service {
+func NewService(requests Repository, orders kernel.ReturnableOrderProvider, clock kernel.Clock, policy kernel.ReturnEligibilityPolicy, refunds kernel.PaymentRefund, restock kernel.InventoryRestock) Service {
 	return Service{
 		requests: requests,
 		orders:   orders,
+		clock:    clock,
 		policy:   policy,
 		refunds:  refunds,
 		restock:  restock,
@@ -29,13 +31,14 @@ func (s Service) RequestReturn(command kernel.RequestReturnCommand) (kernel.Requ
 	lines := make([]ReturnLine, 0, len(order.Lines))
 	for _, line := range order.Lines {
 		lines = append(lines, ReturnLine{
-			ProductSKU: line.ProductSKU,
-			Quantity:   line.Quantity,
-			UnitPrice:  line.UnitPrice,
+			ProductSKU:       line.ProductSKU,
+			Quantity:         line.Quantity,
+			UnitPrice:        line.UnitPrice,
+			ReturnWindowDays: line.ReturnWindowDays,
 		})
 	}
 
-	request := NewReturnRequest(order.OrderID, order.CustomerID, command.Reason, lines)
+	request := NewReturnRequest(order.OrderID, order.CustomerID, command.Reason, order.ShippedAt, s.clock.Now(), lines)
 	if err := s.requests.Save(request); err != nil {
 		return kernel.RequestReturnResult{}, err
 	}
@@ -56,7 +59,18 @@ func (s Service) AcceptReturn(command kernel.AcceptReturnCommand) (kernel.Accept
 	}
 
 	if !s.policy.Allows(kernel.ReturnEligibilityReview{
-		Reason: request.Reason,
+		Reason:      request.Reason,
+		ShippedAt:   request.ShippedAt,
+		RequestedAt: request.RequestedAt,
+		Lines: func() []kernel.ReturnEligibilityLine {
+			lines := make([]kernel.ReturnEligibilityLine, 0, len(request.Lines))
+			for _, line := range request.Lines {
+				lines = append(lines, kernel.ReturnEligibilityLine{
+					ReturnWindowDays: line.ReturnWindowDays,
+				})
+			}
+			return lines
+		}(),
 	}) {
 		if err := request.Reject(); err != nil {
 			return kernel.AcceptReturnResult{}, err
