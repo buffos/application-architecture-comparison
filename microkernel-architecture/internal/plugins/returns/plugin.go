@@ -47,6 +47,8 @@ func (p Plugin) Register(host *kernel.Host) error {
 		return err
 	}
 
-	host.ExposeReturnService(NewService(p.requests, orders, clock, policy, idempotency, refunds, restock))
+	service := NewService(p.requests, orders, clock, policy, idempotency, refunds, restock)
+	host.ExposeReturnService(service)
+	host.ExposeReturnReader(service)
 	return nil
 }

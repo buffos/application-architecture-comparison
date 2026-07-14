@@ -285,6 +285,7 @@ Architectures currently implemented in this repository:
 - `016` Real return window plugin: [016-real-return-window-plugin.md](microkernel-architecture/lessons/016-real-return-window-plugin.md)
 - `017` Return actor metadata plugin: [017-return-actor-metadata-plugin.md](microkernel-architecture/lessons/017-return-actor-metadata-plugin.md)
 - `018` Return command idempotency plugin: [018-return-command-idempotency-plugin.md](microkernel-architecture/lessons/018-return-command-idempotency-plugin.md)
+- `019` Return query surface plugin: [019-return-query-surface-plugin.md](microkernel-architecture/lessons/019-return-query-surface-plugin.md)
 
 ## How To Maintain This File
 

@@ -208,3 +208,43 @@ func (s Service) RejectReturn(command kernel.RejectReturnCommand) (kernel.Reject
 	}
 	return result, nil
 }
+
+func (s Service) GetReturnRequest(query kernel.GetReturnRequestQuery) (kernel.ReturnRequestDetails, error) {
+	request, err := s.requests.FindByID(query.ReturnRequestID)
+	if err != nil {
+		return kernel.ReturnRequestDetails{}, err
+	}
+
+	return kernel.ReturnRequestDetails{
+		ReturnRequestID: request.ID,
+		OrderID:         request.OrderID,
+		CustomerID:      request.CustomerID,
+		Status:          request.Status,
+		Reason:          request.Reason,
+		LineCount:       len(request.Lines),
+		RequestedBy:     request.RequestedBy,
+		ReviewedBy:      request.ReviewedBy,
+		ProcessedBy:     request.ProcessedBy,
+		ReviewNote:      request.ReviewNote,
+	}, nil
+}
+
+func (s Service) ListReturnRequests(query kernel.ListReturnRequestsQuery) ([]kernel.ReturnRequestSummary, error) {
+	requests, err := s.requests.ListByStatus(query.Status)
+	if err != nil {
+		return nil, err
+	}
+
+	summaries := make([]kernel.ReturnRequestSummary, 0, len(requests))
+	for _, request := range requests {
+		summaries = append(summaries, kernel.ReturnRequestSummary{
+			ReturnRequestID: request.ID,
+			OrderID:         request.OrderID,
+			CustomerID:      request.CustomerID,
+			Status:          request.Status,
+			LineCount:       len(request.Lines),
+		})
+	}
+
+	return summaries, nil
+}

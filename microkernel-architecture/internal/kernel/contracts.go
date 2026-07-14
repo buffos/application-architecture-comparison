@@ -22,6 +22,7 @@ var ErrOrderServiceNotRegistered = errors.New("order service capability not regi
 var ErrReturnableOrderProviderNotRegistered = errors.New("returnable order provider capability not registered")
 var ErrReturnEligibilityPolicyNotRegistered = errors.New("return eligibility policy capability not registered")
 var ErrReturnServiceNotRegistered = errors.New("return service capability not registered")
+var ErrReturnReaderNotRegistered = errors.New("return reader capability not registered")
 var ErrClockNotRegistered = errors.New("clock capability not registered")
 var ErrIdempotencyStoreNotRegistered = errors.New("idempotency store capability not registered")
 var ErrIdempotencyKeyRequired = errors.New("idempotency key is required")
@@ -336,6 +337,35 @@ type RejectReturnResult struct {
 	LineCount       int
 }
 
+type GetReturnRequestQuery struct {
+	ReturnRequestID string
+}
+
+type ReturnRequestDetails struct {
+	ReturnRequestID string
+	OrderID         string
+	CustomerID      string
+	Status          string
+	Reason          string
+	LineCount       int
+	RequestedBy     string
+	ReviewedBy      string
+	ProcessedBy     string
+	ReviewNote      string
+}
+
+type ListReturnRequestsQuery struct {
+	Status string
+}
+
+type ReturnRequestSummary struct {
+	ReturnRequestID string
+	OrderID         string
+	CustomerID      string
+	Status          string
+	LineCount       int
+}
+
 type OrderService interface {
 	ConvertQuoteToOrder(command ConvertQuoteToOrderCommand) (ConvertQuoteToOrderResult, error)
 	CapturePayment(command CapturePaymentCommand) (CapturePaymentResult, error)
@@ -347,4 +377,9 @@ type ReturnService interface {
 	RequestReturn(command RequestReturnCommand) (RequestReturnResult, error)
 	AcceptReturn(command AcceptReturnCommand) (AcceptReturnResult, error)
 	RejectReturn(command RejectReturnCommand) (RejectReturnResult, error)
+}
+
+type ReturnReader interface {
+	GetReturnRequest(query GetReturnRequestQuery) (ReturnRequestDetails, error)
+	ListReturnRequests(query ListReturnRequestsQuery) ([]ReturnRequestSummary, error)
 }

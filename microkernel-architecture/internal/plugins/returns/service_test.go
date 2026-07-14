@@ -21,6 +21,18 @@ func (r *stubRepository) FindByID(id string) (ReturnRequest, error) {
 	return ReturnRequest{}, ErrReturnRequestNotFound
 }
 
+func (r *stubRepository) ListByStatus(status string) ([]ReturnRequest, error) {
+	if r.saved.ID == "" {
+		return []ReturnRequest{}, nil
+	}
+
+	if status == "" || r.saved.Status == status {
+		return []ReturnRequest{r.saved}, nil
+	}
+
+	return []ReturnRequest{}, nil
+}
+
 func (r *stubRepository) Save(request ReturnRequest) error {
 	if r.saveErr != nil {
 		return r.saveErr
@@ -526,5 +538,61 @@ func TestRejectReturnRejectsMissingIdempotencyKey(t *testing.T) {
 	})
 	if err != kernel.ErrIdempotencyKeyRequired {
 		t.Fatalf("expected missing idempotency key error, got %v", err)
+	}
+}
+
+func TestGetReturnRequest(t *testing.T) {
+	repository := &stubRepository{
+		saved: ReturnRequest{
+			ID:          "return-001",
+			OrderID:     "order-001",
+			CustomerID:  "customer-001",
+			Reason:      "damaged item",
+			RequestedBy: "customer-001",
+			ReviewedBy:  "agent-001",
+			ProcessedBy: "ops-001",
+			ReviewNote:  "approved after inspection",
+			Status:      ReturnRequestStatusRefunded,
+			Lines: []ReturnLine{
+				{ProductSKU: "sku-002", Quantity: 1, UnitPrice: 45000, ReturnWindowDays: 30},
+			},
+		},
+	}
+	service := NewService(repository, stubReturnableOrderProvider{}, stubClock{}, stubEligibilityPolicy{allowed: true}, &stubIdempotencyStore{results: map[string]kernel.IdempotencyResult{}}, &stubPaymentRefund{}, &stubInventoryRestock{})
+
+	result, err := service.GetReturnRequest(kernel.GetReturnRequestQuery{
+		ReturnRequestID: "return-001",
+	})
+	if err != nil {
+		t.Fatalf("expected get return request to succeed, got %v", err)
+	}
+
+	if result.ReturnRequestID != "return-001" || result.RequestedBy != "customer-001" {
+		t.Fatalf("unexpected return details %+v", result)
+	}
+}
+
+func TestListReturnRequestsByStatus(t *testing.T) {
+	repository := &stubRepository{
+		saved: ReturnRequest{
+			ID:      "return-001",
+			OrderID: "order-001",
+			Status:  ReturnRequestStatusRequested,
+			Lines: []ReturnLine{
+				{ProductSKU: "sku-002", Quantity: 1, UnitPrice: 45000, ReturnWindowDays: 30},
+			},
+		},
+	}
+	service := NewService(repository, stubReturnableOrderProvider{}, stubClock{}, stubEligibilityPolicy{allowed: true}, &stubIdempotencyStore{results: map[string]kernel.IdempotencyResult{}}, &stubPaymentRefund{}, &stubInventoryRestock{})
+
+	result, err := service.ListReturnRequests(kernel.ListReturnRequestsQuery{
+		Status: ReturnRequestStatusRequested,
+	})
+	if err != nil {
+		t.Fatalf("expected list return requests to succeed, got %v", err)
+	}
+
+	if len(result) != 1 || result[0].ReturnRequestID != "return-001" {
+		t.Fatalf("unexpected list result %+v", result)
 	}
 }

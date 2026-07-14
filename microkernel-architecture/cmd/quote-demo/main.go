@@ -143,6 +143,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	returnReader, err := host.ReturnReader()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	result, err := quoteService.CreateDraftQuote(kernel.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
 	})
@@ -265,6 +270,24 @@ func main() {
 	}
 
 	fmt.Printf("accepted return: return=%s order=%s customer=%s status=%s lines=%d\n", acceptedReturn.ReturnRequestID, acceptedReturn.OrderID, acceptedReturn.CustomerID, acceptedReturn.Status, acceptedReturn.LineCount)
+
+	returnDetails, err := returnReader.GetReturnRequest(kernel.GetReturnRequestQuery{
+		ReturnRequestID: returnResult.ReturnRequestID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("loaded return: return=%s order=%s status=%s requester=%s reviewer=%s\n", returnDetails.ReturnRequestID, returnDetails.OrderID, returnDetails.Status, returnDetails.RequestedBy, returnDetails.ReviewedBy)
+
+	returnList, err := returnReader.ListReturnRequests(kernel.ListReturnRequestsQuery{
+		Status: returns.ReturnRequestStatusRefunded,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("listed returns: status=%s count=%d\n", returns.ReturnRequestStatusRefunded, len(returnList))
 
 	restockedItem, err := inventoryRepository.FindBySKU("sku-002")
 	if err != nil {

@@ -18,6 +18,7 @@ type Host struct {
 	returnableOrders  ReturnableOrderProvider
 	returnEligibility ReturnEligibilityPolicy
 	returnService     ReturnService
+	returnReader      ReturnReader
 	clock             Clock
 	idempotency       IdempotencyStore
 }
@@ -103,6 +104,10 @@ func (h *Host) ExposeReturnEligibilityPolicy(policy ReturnEligibilityPolicy) {
 
 func (h *Host) ExposeReturnService(service ReturnService) {
 	h.returnService = service
+}
+
+func (h *Host) ExposeReturnReader(reader ReturnReader) {
+	h.returnReader = reader
 }
 
 func (h *Host) ExposeClock(clock Clock) {
@@ -239,6 +244,14 @@ func (h *Host) ReturnService() (ReturnService, error) {
 	}
 
 	return h.returnService, nil
+}
+
+func (h *Host) ReturnReader() (ReturnReader, error) {
+	if h.returnReader == nil {
+		return nil, ErrReturnReaderNotRegistered
+	}
+
+	return h.returnReader, nil
 }
 
 func (h *Host) Clock() (Clock, error) {
