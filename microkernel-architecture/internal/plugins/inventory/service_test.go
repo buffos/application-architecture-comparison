@@ -74,3 +74,23 @@ func TestRelease(t *testing.T) {
 		t.Fatalf("expected available stock 10, got %d", repository.stock["sku-001"].Available)
 	}
 }
+
+func TestRestock(t *testing.T) {
+	repository := &stubRepository{
+		stock: map[string]StockRecord{
+			"sku-001": {ProductSKU: "sku-001", Available: 8},
+		},
+	}
+	service := NewService(repository)
+
+	err := service.Restock([]kernel.InventoryReservationItem{
+		{ProductSKU: "sku-001", Quantity: 2},
+	})
+	if err != nil {
+		t.Fatalf("expected restock to succeed, got %v", err)
+	}
+
+	if repository.stock["sku-001"].Available != 10 {
+		t.Fatalf("expected available stock 10, got %d", repository.stock["sku-001"].Available)
+	}
+}

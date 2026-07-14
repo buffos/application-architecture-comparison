@@ -39,6 +39,14 @@ func (s Service) Reserve(items []kernel.InventoryReservationItem) error {
 }
 
 func (s Service) Release(items []kernel.InventoryReservationItem) error {
+	return s.addStock(items)
+}
+
+func (s Service) Restock(items []kernel.InventoryReservationItem) error {
+	return s.addStock(items)
+}
+
+func (s Service) addStock(items []kernel.InventoryReservationItem) error {
 	updated := make([]StockRecord, 0, len(items))
 
 	for _, item := range items {

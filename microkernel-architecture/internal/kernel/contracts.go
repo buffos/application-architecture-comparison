@@ -11,6 +11,7 @@ var ErrQuoteReaderNotRegistered = errors.New("quote reader capability not regist
 var ErrApprovedQuoteProviderNotRegistered = errors.New("approved quote provider capability not registered")
 var ErrInventoryReservationNotRegistered = errors.New("inventory reservation capability not registered")
 var ErrInventoryReleaseNotRegistered = errors.New("inventory release capability not registered")
+var ErrInventoryRestockNotRegistered = errors.New("inventory restock capability not registered")
 var ErrPaymentCaptureNotRegistered = errors.New("payment capture capability not registered")
 var ErrPaymentRefundNotRegistered = errors.New("payment refund capability not registered")
 var ErrShipmentCreationNotRegistered = errors.New("shipment creation capability not registered")
@@ -147,6 +148,10 @@ type InventoryReservation interface {
 
 type InventoryRelease interface {
 	Release(items []InventoryReservationItem) error
+}
+
+type InventoryRestock interface {
+	Restock(items []InventoryReservationItem) error
 }
 
 type PaymentCapture interface {

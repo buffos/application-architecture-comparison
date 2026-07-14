@@ -20,5 +20,6 @@ func (p Plugin) Register(host *kernel.Host) error {
 	service := NewService(p.stock)
 	host.ExposeInventoryReservation(service)
 	host.ExposeInventoryRelease(service)
+	host.ExposeInventoryRestock(service)
 	return nil
 }

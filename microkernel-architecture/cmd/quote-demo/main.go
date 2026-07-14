@@ -233,4 +233,11 @@ func main() {
 	}
 
 	fmt.Printf("requested return: return=%s order=%s customer=%s status=%s lines=%d\n", returnResult.ReturnRequestID, returnResult.OrderID, returnResult.CustomerID, returnResult.Status, returnResult.LineCount)
+
+	restockedItem, err := inventoryRepository.FindBySKU("sku-002")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("restocked inventory: sku=%s available=%d\n", restockedItem.ProductSKU, restockedItem.Available)
 }

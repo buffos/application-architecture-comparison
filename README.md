@@ -279,6 +279,7 @@ Architectures currently implemented in this repository:
 - `010` Shipment creation after payment: [010-shipment-creation-after-payment.md](microkernel-architecture/lessons/010-shipment-creation-after-payment.md)
 - `011` Order cancellation and release: [011-order-cancellation-and-release.md](microkernel-architecture/lessons/011-order-cancellation-and-release.md)
 - `012` Return request and refund plugin: [012-return-request-and-refund-plugin.md](microkernel-architecture/lessons/012-return-request-and-refund-plugin.md)
+- `013` Return restocking plugin: [013-return-restocking-plugin.md](microkernel-architecture/lessons/013-return-restocking-plugin.md)
 
 ## How To Maintain This File
 
