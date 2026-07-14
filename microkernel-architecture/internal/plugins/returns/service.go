@@ -38,7 +38,11 @@ func (s Service) RequestReturn(command kernel.RequestReturnCommand) (kernel.Requ
 		})
 	}
 
-	request := NewReturnRequest(order.OrderID, order.CustomerID, command.Reason, order.ShippedAt, s.clock.Now(), lines)
+	request, err := NewReturnRequest(order.OrderID, order.CustomerID, command.Reason, order.ShippedAt, s.clock.Now(), command.RequestedBy, lines)
+	if err != nil {
+		return kernel.RequestReturnResult{}, err
+	}
+
 	if err := s.requests.Save(request); err != nil {
 		return kernel.RequestReturnResult{}, err
 	}
@@ -72,7 +76,7 @@ func (s Service) AcceptReturn(command kernel.AcceptReturnCommand) (kernel.Accept
 			return lines
 		}(),
 	}) {
-		if err := request.Reject(); err != nil {
+		if err := request.Reject(command.ReviewedBy, command.ReviewNote); err != nil {
 			return kernel.AcceptReturnResult{}, err
 		}
 
@@ -105,7 +109,7 @@ func (s Service) AcceptReturn(command kernel.AcceptReturnCommand) (kernel.Accept
 		return kernel.AcceptReturnResult{}, err
 	}
 
-	if err := request.Accept(); err != nil {
+	if err := request.Accept(command.ReviewedBy, command.ProcessedBy, command.ReviewNote); err != nil {
 		return kernel.AcceptReturnResult{}, err
 	}
 
@@ -128,7 +132,7 @@ func (s Service) RejectReturn(command kernel.RejectReturnCommand) (kernel.Reject
 		return kernel.RejectReturnResult{}, err
 	}
 
-	if err := request.Reject(); err != nil {
+	if err := request.Reject(command.ReviewedBy, command.ReviewNote); err != nil {
 		return kernel.RejectReturnResult{}, err
 	}
 

@@ -277,8 +277,9 @@ type ReturnableOrderProvider interface {
 }
 
 type RequestReturnCommand struct {
-	OrderID string
-	Reason  string
+	OrderID     string
+	Reason      string
+	RequestedBy string
 }
 
 type RequestReturnResult struct {
@@ -291,6 +292,9 @@ type RequestReturnResult struct {
 
 type AcceptReturnCommand struct {
 	ReturnRequestID string
+	ReviewedBy      string
+	ProcessedBy     string
+	ReviewNote      string
 }
 
 type AcceptReturnResult struct {
@@ -303,6 +307,8 @@ type AcceptReturnResult struct {
 
 type RejectReturnCommand struct {
 	ReturnRequestID string
+	ReviewedBy      string
+	ReviewNote      string
 }
 
 type RejectReturnResult struct {

@@ -237,8 +237,9 @@ func main() {
 	fmt.Printf("created shipment: shipment=%s order=%s customer=%s status=%s lines=%d\n", shipmentResult.ShipmentID, shipmentResult.OrderID, shipmentResult.CustomerID, shipmentResult.Status, shipmentResult.LineCount)
 
 	returnResult, err := returnService.RequestReturn(kernel.RequestReturnCommand{
-		OrderID: orderResult.OrderID,
-		Reason:  "damaged item",
+		OrderID:     orderResult.OrderID,
+		Reason:      "damaged item",
+		RequestedBy: "customer-001",
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -248,6 +249,9 @@ func main() {
 
 	acceptedReturn, err := returnService.AcceptReturn(kernel.AcceptReturnCommand{
 		ReturnRequestID: returnResult.ReturnRequestID,
+		ReviewedBy:      "agent-001",
+		ProcessedBy:     "ops-001",
+		ReviewNote:      "approved after inspection",
 	})
 	if err != nil {
 		log.Fatal(err)

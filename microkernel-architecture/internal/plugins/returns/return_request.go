@@ -9,6 +9,7 @@ import (
 
 var ErrReturnRequestNotFound = errors.New("return request not found")
 var ErrReturnRequestNotReviewable = errors.New("return request is not reviewable")
+var ErrActorRequired = errors.New("actor is required")
 
 const ReturnRequestStatusRequested = "Requested"
 const ReturnRequestStatusRefunded = "Refunded"
@@ -23,6 +24,10 @@ type ReturnRequest struct {
 	Reason      string
 	ShippedAt   time.Time
 	RequestedAt time.Time
+	RequestedBy string
+	ReviewedBy  string
+	ProcessedBy string
+	ReviewNote  string
 	Status      string
 	Lines       []ReturnLine
 }
@@ -34,7 +39,11 @@ type ReturnLine struct {
 	ReturnWindowDays int
 }
 
-func NewReturnRequest(orderID string, customerID string, reason string, shippedAt time.Time, requestedAt time.Time, lines []ReturnLine) ReturnRequest {
+func NewReturnRequest(orderID string, customerID string, reason string, shippedAt time.Time, requestedAt time.Time, requestedBy string, lines []ReturnLine) (ReturnRequest, error) {
+	if requestedBy == "" {
+		return ReturnRequest{}, ErrActorRequired
+	}
+
 	id := atomic.AddUint64(&returnSequence, 1)
 
 	return ReturnRequest{
@@ -44,9 +53,10 @@ func NewReturnRequest(orderID string, customerID string, reason string, shippedA
 		Reason:      reason,
 		ShippedAt:   shippedAt,
 		RequestedAt: requestedAt,
+		RequestedBy: requestedBy,
 		Status:      ReturnRequestStatusRequested,
 		Lines:       lines,
-	}
+	}, nil
 }
 
 func (r ReturnRequest) TotalAmount() int {
@@ -58,20 +68,33 @@ func (r ReturnRequest) TotalAmount() int {
 	return total
 }
 
-func (r *ReturnRequest) Accept() error {
+func (r *ReturnRequest) Accept(reviewedBy string, processedBy string, reviewNote string) error {
 	if r.Status != ReturnRequestStatusRequested {
 		return ErrReturnRequestNotReviewable
 	}
 
+	if reviewedBy == "" || processedBy == "" {
+		return ErrActorRequired
+	}
+
+	r.ReviewedBy = reviewedBy
+	r.ProcessedBy = processedBy
+	r.ReviewNote = reviewNote
 	r.Status = ReturnRequestStatusRefunded
 	return nil
 }
 
-func (r *ReturnRequest) Reject() error {
+func (r *ReturnRequest) Reject(reviewedBy string, reviewNote string) error {
 	if r.Status != ReturnRequestStatusRequested {
 		return ErrReturnRequestNotReviewable
 	}
 
+	if reviewedBy == "" {
+		return ErrActorRequired
+	}
+
+	r.ReviewedBy = reviewedBy
+	r.ReviewNote = reviewNote
 	r.Status = ReturnRequestStatusRejected
 	return nil
 }
