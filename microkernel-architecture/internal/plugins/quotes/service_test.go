@@ -233,3 +233,52 @@ func TestSubmitQuoteCanRequireApproval(t *testing.T) {
 		t.Fatalf("expected pending approval status, got %s", result.Status)
 	}
 }
+
+func TestApproveQuote(t *testing.T) {
+	repository := &stubRepository{
+		saved: Quote{
+			ID:         "quote-001",
+			CustomerID: "customer-001",
+			Status:     QuoteStatusPendingApproval,
+			Lines: []QuoteLine{
+				{
+					ProductSKU:      "sku-002",
+					ProductName:     "Custom Desk",
+					ProductCategory: "CustomBuild",
+					Quantity:        1,
+					UnitPrice:       45000,
+				},
+			},
+		},
+	}
+	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{})
+
+	result, err := service.ApproveQuote(kernel.ApproveQuoteCommand{
+		QuoteID: "quote-001",
+	})
+	if err != nil {
+		t.Fatalf("expected approve quote to succeed, got %v", err)
+	}
+
+	if result.Status != QuoteStatusApproved {
+		t.Fatalf("expected approved status, got %s", result.Status)
+	}
+}
+
+func TestApproveQuoteRejectsNonPendingQuote(t *testing.T) {
+	repository := &stubRepository{
+		saved: Quote{
+			ID:         "quote-001",
+			CustomerID: "customer-001",
+			Status:     QuoteStatusApproved,
+		},
+	}
+	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{})
+
+	_, err := service.ApproveQuote(kernel.ApproveQuoteCommand{
+		QuoteID: "quote-001",
+	})
+	if err != ErrQuoteNotApprovable {
+		t.Fatalf("expected not approvable error, got %v", err)
+	}
+}

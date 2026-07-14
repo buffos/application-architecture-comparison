@@ -116,3 +116,25 @@ func (s Service) SubmitQuote(command kernel.SubmitQuoteCommand) (kernel.SubmitQu
 		Status:     quote.Status,
 	}, nil
 }
+
+func (s Service) ApproveQuote(command kernel.ApproveQuoteCommand) (kernel.ApproveQuoteResult, error) {
+	quote, err := s.quotes.FindByID(command.QuoteID)
+	if err != nil {
+		return kernel.ApproveQuoteResult{}, err
+	}
+
+	if err := quote.Approve(); err != nil {
+		return kernel.ApproveQuoteResult{}, err
+	}
+
+	if err := s.quotes.Save(quote); err != nil {
+		return kernel.ApproveQuoteResult{}, err
+	}
+
+	return kernel.ApproveQuoteResult{
+		QuoteID:    quote.ID,
+		LineCount:  len(quote.Lines),
+		TotalItems: quote.TotalQuantity(),
+		Status:     quote.Status,
+	}, nil
+}

@@ -272,6 +272,7 @@ Architectures currently implemented in this repository:
 - `003` Add quote line with product plugin: [003-add-quote-line-with-product-plugin.md](microkernel-architecture/lessons/003-add-quote-line-with-product-plugin.md)
 - `004` Submit quote state transition: [004-submit-quote-state-transition.md](microkernel-architecture/lessons/004-submit-quote-state-transition.md)
 - `005` Approval policy plugin: [005-approval-policy-plugin.md](microkernel-architecture/lessons/005-approval-policy-plugin.md)
+- `006` Approve pending quote: [006-approve-pending-quote.md](microkernel-architecture/lessons/006-approve-pending-quote.md)
 
 ## How To Maintain This File
 

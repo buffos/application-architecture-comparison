@@ -134,4 +134,13 @@ func main() {
 	}
 
 	fmt.Printf("submitted custom quote: id=%s status=%s\n", pendingSubmit.QuoteID, pendingSubmit.Status)
+
+	approvedPending, err := quoteService.ApproveQuote(kernel.ApproveQuoteCommand{
+		QuoteID: pendingResult.QuoteID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("approved pending quote: id=%s status=%s\n", approvedPending.QuoteID, approvedPending.Status)
 }
