@@ -138,6 +138,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	orderReader, err := host.OrderReader()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	returnService, err := host.ReturnService()
 	if err != nil {
 		log.Fatal(err)
@@ -229,6 +234,15 @@ func main() {
 
 	fmt.Printf("converted quote to order: order=%s quote=%s customer=%s status=%s lines=%d\n", orderResult.OrderID, orderResult.QuoteID, orderResult.CustomerID, orderResult.Status, orderResult.LineCount)
 
+	orderDetails, err := orderReader.GetOrder(kernel.GetOrderQuery{
+		OrderID: orderResult.OrderID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("loaded order: order=%s quote=%s customer=%s status=%s lines=%d\n", orderDetails.OrderID, orderDetails.QuoteID, orderDetails.CustomerID, orderDetails.Status, orderDetails.LineCount)
+
 	paidResult, err := orderService.CapturePayment(kernel.CapturePaymentCommand{
 		OrderID: orderResult.OrderID,
 	})
@@ -237,6 +251,15 @@ func main() {
 	}
 
 	fmt.Printf("captured payment: order=%s quote=%s customer=%s status=%s lines=%d\n", paidResult.OrderID, paidResult.QuoteID, paidResult.CustomerID, paidResult.Status, paidResult.LineCount)
+
+	paidOrders, err := orderReader.ListOrders(kernel.ListOrdersQuery{
+		Status: orders.OrderStatusPaid,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("listed orders: status=%s count=%d\n", orders.OrderStatusPaid, len(paidOrders))
 
 	shipmentResult, err := orderService.CreateShipment(kernel.CreateShipmentCommand{
 		OrderID: orderResult.OrderID,

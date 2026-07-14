@@ -194,3 +194,38 @@ func (s Service) GetReturnableOrder(orderID string) (kernel.ReturnableOrder, err
 		Lines:      lines,
 	}, nil
 }
+
+func (s Service) GetOrder(query kernel.GetOrderQuery) (kernel.OrderDetails, error) {
+	order, err := s.orders.FindByID(query.OrderID)
+	if err != nil {
+		return kernel.OrderDetails{}, err
+	}
+
+	return kernel.OrderDetails{
+		OrderID:    order.ID,
+		QuoteID:    order.QuoteID,
+		CustomerID: order.CustomerID,
+		Status:     order.Status,
+		LineCount:  len(order.Lines),
+	}, nil
+}
+
+func (s Service) ListOrders(query kernel.ListOrdersQuery) ([]kernel.OrderSummary, error) {
+	orders, err := s.orders.ListByStatus(query.Status)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]kernel.OrderSummary, 0, len(orders))
+	for _, order := range orders {
+		results = append(results, kernel.OrderSummary{
+			OrderID:    order.ID,
+			QuoteID:    order.QuoteID,
+			CustomerID: order.CustomerID,
+			Status:     order.Status,
+			LineCount:  len(order.Lines),
+		})
+	}
+
+	return results, nil
+}

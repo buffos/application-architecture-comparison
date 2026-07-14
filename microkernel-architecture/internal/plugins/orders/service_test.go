@@ -19,6 +19,18 @@ func (r *stubRepository) FindByID(id string) (Order, error) {
 	return Order{}, ErrOrderNotFound
 }
 
+func (r *stubRepository) ListByStatus(status string) ([]Order, error) {
+	if r.saved.ID == "" {
+		return []Order{}, nil
+	}
+
+	if status == "" || r.saved.Status == status {
+		return []Order{r.saved}, nil
+	}
+
+	return []Order{}, nil
+}
+
 func (r *stubRepository) Save(order Order) error {
 	r.saved = order
 	return nil
@@ -363,5 +375,57 @@ func TestGetReturnableOrderRejectsNonShippedOrder(t *testing.T) {
 	_, err := service.GetReturnableOrder("order-001")
 	if err != ErrOrderNotReturnable {
 		t.Fatalf("expected not returnable error, got %v", err)
+	}
+}
+
+func TestGetOrder(t *testing.T) {
+	repository := &stubRepository{
+		saved: Order{
+			ID:         "order-001",
+			QuoteID:    "quote-001",
+			CustomerID: "customer-001",
+			Status:     OrderStatusPaid,
+			Lines: []OrderLine{
+				{ProductSKU: "sku-001", Quantity: 2, UnitPrice: 15000},
+			},
+		},
+	}
+	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{}, stubClock{})
+
+	result, err := service.GetOrder(kernel.GetOrderQuery{
+		OrderID: "order-001",
+	})
+	if err != nil {
+		t.Fatalf("expected get order to succeed, got %v", err)
+	}
+
+	if result.OrderID != "order-001" || result.Status != OrderStatusPaid {
+		t.Fatalf("unexpected order details %+v", result)
+	}
+}
+
+func TestListOrdersByStatus(t *testing.T) {
+	repository := &stubRepository{
+		saved: Order{
+			ID:         "order-001",
+			QuoteID:    "quote-001",
+			CustomerID: "customer-001",
+			Status:     OrderStatusPaid,
+			Lines: []OrderLine{
+				{ProductSKU: "sku-001", Quantity: 2, UnitPrice: 15000},
+			},
+		},
+	}
+	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, stubShipmentCreation{}, stubClock{})
+
+	result, err := service.ListOrders(kernel.ListOrdersQuery{
+		Status: OrderStatusPaid,
+	})
+	if err != nil {
+		t.Fatalf("expected list orders to succeed, got %v", err)
+	}
+
+	if len(result) != 1 || result[0].OrderID != "order-001" {
+		t.Fatalf("unexpected order list %+v", result)
 	}
 }

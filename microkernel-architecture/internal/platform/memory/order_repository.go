@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"slices"
 	"sync"
 
 	"microkernel-architecture/internal/plugins/orders"
@@ -35,4 +36,28 @@ func (r *OrderRepository) FindByID(id string) (orders.Order, error) {
 	}
 
 	return order, nil
+}
+
+func (r *OrderRepository) ListByStatus(status string) ([]orders.Order, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	results := make([]orders.Order, 0)
+	for _, order := range r.orders {
+		if status == "" || order.Status == status {
+			results = append(results, order)
+		}
+	}
+
+	slices.SortFunc(results, func(a orders.Order, b orders.Order) int {
+		if a.ID < b.ID {
+			return -1
+		}
+		if a.ID > b.ID {
+			return 1
+		}
+		return 0
+	})
+
+	return results, nil
 }

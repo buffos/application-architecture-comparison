@@ -19,6 +19,7 @@ var ErrPaymentCaptureNotRegistered = errors.New("payment capture capability not 
 var ErrPaymentRefundNotRegistered = errors.New("payment refund capability not registered")
 var ErrShipmentCreationNotRegistered = errors.New("shipment creation capability not registered")
 var ErrOrderServiceNotRegistered = errors.New("order service capability not registered")
+var ErrOrderReaderNotRegistered = errors.New("order reader capability not registered")
 var ErrReturnableOrderProviderNotRegistered = errors.New("returnable order provider capability not registered")
 var ErrReturnEligibilityPolicyNotRegistered = errors.New("return eligibility policy capability not registered")
 var ErrReturnServiceNotRegistered = errors.New("return service capability not registered")
@@ -274,6 +275,30 @@ type CancelOrderResult struct {
 	LineCount  int
 }
 
+type GetOrderQuery struct {
+	OrderID string
+}
+
+type OrderDetails struct {
+	OrderID    string
+	QuoteID    string
+	CustomerID string
+	Status     string
+	LineCount  int
+}
+
+type ListOrdersQuery struct {
+	Status string
+}
+
+type OrderSummary struct {
+	OrderID    string
+	QuoteID    string
+	CustomerID string
+	Status     string
+	LineCount  int
+}
+
 type ReturnableOrder struct {
 	OrderID    string
 	CustomerID string
@@ -371,6 +396,11 @@ type OrderService interface {
 	CapturePayment(command CapturePaymentCommand) (CapturePaymentResult, error)
 	CreateShipment(command CreateShipmentCommand) (CreateShipmentResult, error)
 	CancelOrder(command CancelOrderCommand) (CancelOrderResult, error)
+}
+
+type OrderReader interface {
+	GetOrder(query GetOrderQuery) (OrderDetails, error)
+	ListOrders(query ListOrdersQuery) ([]OrderSummary, error)
 }
 
 type ReturnService interface {
