@@ -7,8 +7,11 @@ import (
 )
 
 var ErrReturnRequestNotFound = errors.New("return request not found")
+var ErrReturnRequestNotReviewable = errors.New("return request is not reviewable")
 
 const ReturnRequestStatusRequested = "Requested"
+const ReturnRequestStatusRefunded = "Refunded"
+const ReturnRequestStatusRejected = "Rejected"
 
 var returnSequence uint64
 
@@ -47,4 +50,22 @@ func (r ReturnRequest) TotalAmount() int {
 	}
 
 	return total
+}
+
+func (r *ReturnRequest) Accept() error {
+	if r.Status != ReturnRequestStatusRequested {
+		return ErrReturnRequestNotReviewable
+	}
+
+	r.Status = ReturnRequestStatusRefunded
+	return nil
+}
+
+func (r *ReturnRequest) Reject() error {
+	if r.Status != ReturnRequestStatusRequested {
+		return ErrReturnRequestNotReviewable
+	}
+
+	r.Status = ReturnRequestStatusRejected
+	return nil
 }

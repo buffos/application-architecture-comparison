@@ -68,7 +68,7 @@ func (s *stubInventoryRestock) Restock(items []kernel.InventoryReservationItem) 
 	return nil
 }
 
-func TestRequestReturn(t *testing.T) {
+func TestRequestReturnStoresRequestedReturnWithoutRefundOrRestock(t *testing.T) {
 	repository := &stubRepository{}
 	refunds := &stubPaymentRefund{}
 	restock := &stubInventoryRestock{}
@@ -94,6 +94,46 @@ func TestRequestReturn(t *testing.T) {
 		t.Fatalf("expected requested status, got %s", result.Status)
 	}
 
+	if repository.saved.Status != ReturnRequestStatusRequested {
+		t.Fatalf("expected saved request to be requested, got %s", repository.saved.Status)
+	}
+
+	if refunds.orderID != "" || refunds.amount != 0 {
+		t.Fatalf("expected no refund during request, got %s %d", refunds.orderID, refunds.amount)
+	}
+
+	if len(restock.items) != 0 {
+		t.Fatalf("expected no restock during request, got %d items", len(restock.items))
+	}
+}
+
+func TestAcceptReturnRefundsRestocksAndUpdatesStatus(t *testing.T) {
+	repository := &stubRepository{
+		saved: ReturnRequest{
+			ID:         "return-001",
+			OrderID:    "order-001",
+			CustomerID: "customer-001",
+			Status:     ReturnRequestStatusRequested,
+			Lines: []ReturnLine{
+				{ProductSKU: "sku-002", Quantity: 1, UnitPrice: 45000},
+			},
+		},
+	}
+	refunds := &stubPaymentRefund{}
+	restock := &stubInventoryRestock{}
+	service := NewService(repository, stubReturnableOrderProvider{}, refunds, restock)
+
+	result, err := service.AcceptReturn(kernel.AcceptReturnCommand{
+		ReturnRequestID: "return-001",
+	})
+	if err != nil {
+		t.Fatalf("expected accept return to succeed, got %v", err)
+	}
+
+	if result.Status != ReturnRequestStatusRefunded {
+		t.Fatalf("expected refunded status, got %s", result.Status)
+	}
+
 	if refunds.orderID != "order-001" || refunds.amount != 45000 {
 		t.Fatalf("expected refund for order-001 amount 45000, got %s %d", refunds.orderID, refunds.amount)
 	}
@@ -102,38 +142,75 @@ func TestRequestReturn(t *testing.T) {
 		t.Fatalf("expected 1 restock item, got %d", len(restock.items))
 	}
 
-	if restock.items[0].ProductSKU != "sku-002" || restock.items[0].Quantity != 1 {
-		t.Fatalf("unexpected restock item %+v", restock.items[0])
+	if repository.saved.Status != ReturnRequestStatusRefunded {
+		t.Fatalf("expected saved request to be refunded, got %s", repository.saved.Status)
 	}
 }
 
-func TestRequestReturnStopsWhenRestockFails(t *testing.T) {
-	repository := &stubRepository{}
-	refunds := &stubPaymentRefund{}
-	restock := &stubInventoryRestock{err: errors.New("restock failed")}
-	service := NewService(repository, stubReturnableOrderProvider{
-		order: kernel.ReturnableOrder{
+func TestAcceptReturnStopsWhenRestockFails(t *testing.T) {
+	repository := &stubRepository{
+		saved: ReturnRequest{
+			ID:         "return-001",
 			OrderID:    "order-001",
 			CustomerID: "customer-001",
-			Lines: []kernel.ReturnableOrderLine{
+			Status:     ReturnRequestStatusRequested,
+			Lines: []ReturnLine{
 				{ProductSKU: "sku-002", Quantity: 1, UnitPrice: 45000},
 			},
 		},
-	}, refunds, restock)
+	}
+	refunds := &stubPaymentRefund{}
+	restock := &stubInventoryRestock{err: errors.New("restock failed")}
+	service := NewService(repository, stubReturnableOrderProvider{}, refunds, restock)
 
-	_, err := service.RequestReturn(kernel.RequestReturnCommand{
-		OrderID: "order-001",
-		Reason:  "damaged item",
+	_, err := service.AcceptReturn(kernel.AcceptReturnCommand{
+		ReturnRequestID: "return-001",
 	})
 	if err == nil || err.Error() != "restock failed" {
 		t.Fatalf("expected restock failure, got %v", err)
 	}
 
-	if repository.saved.ID != "" {
-		t.Fatalf("expected return request not to be saved when restock fails")
+	if repository.saved.Status != ReturnRequestStatusRequested {
+		t.Fatalf("expected request to remain requested, got %s", repository.saved.Status)
+	}
+}
+
+func TestRejectReturnUpdatesStatusWithoutRefundOrRestock(t *testing.T) {
+	repository := &stubRepository{
+		saved: ReturnRequest{
+			ID:         "return-001",
+			OrderID:    "order-001",
+			CustomerID: "customer-001",
+			Status:     ReturnRequestStatusRequested,
+			Lines: []ReturnLine{
+				{ProductSKU: "sku-002", Quantity: 1, UnitPrice: 45000},
+			},
+		},
+	}
+	refunds := &stubPaymentRefund{}
+	restock := &stubInventoryRestock{}
+	service := NewService(repository, stubReturnableOrderProvider{}, refunds, restock)
+
+	result, err := service.RejectReturn(kernel.RejectReturnCommand{
+		ReturnRequestID: "return-001",
+	})
+	if err != nil {
+		t.Fatalf("expected reject return to succeed, got %v", err)
 	}
 
-	if refunds.orderID != "order-001" {
-		t.Fatalf("expected refund to be attempted before restock failure, got %s", refunds.orderID)
+	if result.Status != ReturnRequestStatusRejected {
+		t.Fatalf("expected rejected status, got %s", result.Status)
+	}
+
+	if repository.saved.Status != ReturnRequestStatusRejected {
+		t.Fatalf("expected saved request to be rejected, got %s", repository.saved.Status)
+	}
+
+	if refunds.orderID != "" || refunds.amount != 0 {
+		t.Fatalf("expected no refund during rejection, got %s %d", refunds.orderID, refunds.amount)
+	}
+
+	if len(restock.items) != 0 {
+		t.Fatalf("expected no restock during rejection, got %d items", len(restock.items))
 	}
 }

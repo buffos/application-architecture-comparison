@@ -261,6 +261,30 @@ type RequestReturnResult struct {
 	LineCount       int
 }
 
+type AcceptReturnCommand struct {
+	ReturnRequestID string
+}
+
+type AcceptReturnResult struct {
+	ReturnRequestID string
+	OrderID         string
+	CustomerID      string
+	Status          string
+	LineCount       int
+}
+
+type RejectReturnCommand struct {
+	ReturnRequestID string
+}
+
+type RejectReturnResult struct {
+	ReturnRequestID string
+	OrderID         string
+	CustomerID      string
+	Status          string
+	LineCount       int
+}
+
 type OrderService interface {
 	ConvertQuoteToOrder(command ConvertQuoteToOrderCommand) (ConvertQuoteToOrderResult, error)
 	CapturePayment(command CapturePaymentCommand) (CapturePaymentResult, error)
@@ -270,4 +294,6 @@ type OrderService interface {
 
 type ReturnService interface {
 	RequestReturn(command RequestReturnCommand) (RequestReturnResult, error)
+	AcceptReturn(command AcceptReturnCommand) (AcceptReturnResult, error)
+	RejectReturn(command RejectReturnCommand) (RejectReturnResult, error)
 }

@@ -280,6 +280,7 @@ Architectures currently implemented in this repository:
 - `011` Order cancellation and release: [011-order-cancellation-and-release.md](microkernel-architecture/lessons/011-order-cancellation-and-release.md)
 - `012` Return request and refund plugin: [012-return-request-and-refund-plugin.md](microkernel-architecture/lessons/012-return-request-and-refund-plugin.md)
 - `013` Return restocking plugin: [013-return-restocking-plugin.md](microkernel-architecture/lessons/013-return-restocking-plugin.md)
+- `014` Return review plugin: [014-return-review-plugin.md](microkernel-architecture/lessons/014-return-review-plugin.md)
 
 ## How To Maintain This File
 
