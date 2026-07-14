@@ -8,6 +8,8 @@ var ErrProductCatalogNotRegistered = errors.New("product catalog capability not 
 var ErrApprovalPolicyNotRegistered = errors.New("approval policy capability not registered")
 var ErrQuoteServiceNotRegistered = errors.New("quote service capability not registered")
 var ErrQuoteReaderNotRegistered = errors.New("quote reader capability not registered")
+var ErrApprovedQuoteProviderNotRegistered = errors.New("approved quote provider capability not registered")
+var ErrOrderServiceNotRegistered = errors.New("order service capability not registered")
 
 type Plugin interface {
 	ID() string
@@ -107,4 +109,38 @@ type QuoteDetails struct {
 
 type QuoteReader interface {
 	GetQuote(query GetQuoteQuery) (QuoteDetails, error)
+}
+
+type ApprovedQuote struct {
+	QuoteID    string
+	CustomerID string
+	Lines      []ApprovedQuoteLine
+}
+
+type ApprovedQuoteLine struct {
+	ProductSKU      string
+	ProductName     string
+	ProductCategory string
+	Quantity        int
+	UnitPrice       int
+}
+
+type ApprovedQuoteProvider interface {
+	GetApprovedQuoteForOrder(quoteID string) (ApprovedQuote, error)
+}
+
+type ConvertQuoteToOrderCommand struct {
+	QuoteID string
+}
+
+type ConvertQuoteToOrderResult struct {
+	OrderID    string
+	QuoteID    string
+	CustomerID string
+	Status     string
+	LineCount  int
+}
+
+type OrderService interface {
+	ConvertQuoteToOrder(command ConvertQuoteToOrderCommand) (ConvertQuoteToOrderResult, error)
 }

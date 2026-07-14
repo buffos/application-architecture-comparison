@@ -282,3 +282,48 @@ func TestApproveQuoteRejectsNonPendingQuote(t *testing.T) {
 		t.Fatalf("expected not approvable error, got %v", err)
 	}
 }
+
+func TestGetApprovedQuoteForOrder(t *testing.T) {
+	repository := &stubRepository{
+		saved: Quote{
+			ID:         "quote-001",
+			CustomerID: "customer-001",
+			Status:     QuoteStatusApproved,
+			Lines: []QuoteLine{
+				{
+					ProductSKU:      "sku-001",
+					ProductName:     "Desk",
+					ProductCategory: "Standard",
+					Quantity:        2,
+					UnitPrice:       15000,
+				},
+			},
+		},
+	}
+	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{})
+
+	result, err := service.GetApprovedQuoteForOrder("quote-001")
+	if err != nil {
+		t.Fatalf("expected approved quote lookup to succeed, got %v", err)
+	}
+
+	if result.QuoteID != "quote-001" {
+		t.Fatalf("expected quote id quote-001, got %s", result.QuoteID)
+	}
+}
+
+func TestGetApprovedQuoteForOrderRejectsNonApprovedQuote(t *testing.T) {
+	repository := &stubRepository{
+		saved: Quote{
+			ID:         "quote-001",
+			CustomerID: "customer-001",
+			Status:     QuoteStatusPendingApproval,
+		},
+	}
+	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{})
+
+	_, err := service.GetApprovedQuoteForOrder("quote-001")
+	if err != ErrQuoteNotConvertible {
+		t.Fatalf("expected not convertible error, got %v", err)
+	}
+}

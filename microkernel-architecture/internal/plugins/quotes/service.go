@@ -138,3 +138,31 @@ func (s Service) ApproveQuote(command kernel.ApproveQuoteCommand) (kernel.Approv
 		Status:     quote.Status,
 	}, nil
 }
+
+func (s Service) GetApprovedQuoteForOrder(quoteID string) (kernel.ApprovedQuote, error) {
+	quote, err := s.quotes.FindByID(quoteID)
+	if err != nil {
+		return kernel.ApprovedQuote{}, err
+	}
+
+	if err := quote.EnsureConvertible(); err != nil {
+		return kernel.ApprovedQuote{}, err
+	}
+
+	lines := make([]kernel.ApprovedQuoteLine, 0, len(quote.Lines))
+	for _, line := range quote.Lines {
+		lines = append(lines, kernel.ApprovedQuoteLine{
+			ProductSKU:      line.ProductSKU,
+			ProductName:     line.ProductName,
+			ProductCategory: line.ProductCategory,
+			Quantity:        line.Quantity,
+			UnitPrice:       line.UnitPrice,
+		})
+	}
+
+	return kernel.ApprovedQuote{
+		QuoteID:    quote.ID,
+		CustomerID: quote.CustomerID,
+		Lines:      lines,
+	}, nil
+}

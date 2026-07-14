@@ -8,6 +8,7 @@ import (
 	"microkernel-architecture/internal/platform/memory"
 	"microkernel-architecture/internal/plugins/approvals"
 	"microkernel-architecture/internal/plugins/customers"
+	"microkernel-architecture/internal/plugins/orders"
 	"microkernel-architecture/internal/plugins/products"
 	"microkernel-architecture/internal/plugins/quotes"
 )
@@ -16,6 +17,7 @@ func main() {
 	host := kernel.NewHost()
 
 	customerRepository := memory.NewCustomerRepository()
+	orderRepository := memory.NewOrderRepository()
 	productRepository := memory.NewProductRepository()
 	quoteRepository := memory.NewQuoteRepository()
 
@@ -62,12 +64,21 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if err := host.RegisterPlugin(orders.NewPlugin(orderRepository)); err != nil {
+		log.Fatal(err)
+	}
+
 	quoteService, err := host.QuoteService()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	quoteReader, err := host.QuoteReader()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	orderService, err := host.OrderService()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -143,4 +154,13 @@ func main() {
 	}
 
 	fmt.Printf("approved pending quote: id=%s status=%s\n", approvedPending.QuoteID, approvedPending.Status)
+
+	orderResult, err := orderService.ConvertQuoteToOrder(kernel.ConvertQuoteToOrderCommand{
+		QuoteID: pendingResult.QuoteID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("converted quote to order: order=%s quote=%s customer=%s status=%s lines=%d\n", orderResult.OrderID, orderResult.QuoteID, orderResult.CustomerID, orderResult.Status, orderResult.LineCount)
 }
