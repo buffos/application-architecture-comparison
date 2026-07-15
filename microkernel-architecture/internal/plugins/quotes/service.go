@@ -54,6 +54,26 @@ func (s Service) GetQuote(query kernel.GetQuoteQuery) (kernel.QuoteDetails, erro
 	}, nil
 }
 
+func (s Service) ListQuotes(query kernel.ListQuotesQuery) ([]kernel.QuoteSummary, error) {
+	quotes, err := s.quotes.ListByStatus(query.Status)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]kernel.QuoteSummary, 0, len(quotes))
+	for _, quote := range quotes {
+		results = append(results, kernel.QuoteSummary{
+			QuoteID:    quote.ID,
+			CustomerID: quote.CustomerID,
+			Status:     quote.Status,
+			LineCount:  len(quote.Lines),
+			TotalItems: quote.TotalQuantity(),
+		})
+	}
+
+	return results, nil
+}
+
 func (s Service) AddQuoteLine(command kernel.AddQuoteLineCommand) (kernel.AddQuoteLineResult, error) {
 	quote, err := s.quotes.FindByID(command.QuoteID)
 	if err != nil {

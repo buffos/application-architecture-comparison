@@ -18,6 +18,18 @@ func (r *stubRepository) FindByID(id string) (Quote, error) {
 	return Quote{}, ErrQuoteNotFound
 }
 
+func (r *stubRepository) ListByStatus(status string) ([]Quote, error) {
+	if r.saved.ID == "" {
+		return []Quote{}, nil
+	}
+
+	if status == "" || r.saved.Status == status {
+		return []Quote{r.saved}, nil
+	}
+
+	return []Quote{}, nil
+}
+
 func (r *stubRepository) Save(quote Quote) error {
 	r.saved = quote
 	return nil
@@ -87,6 +99,31 @@ func TestGetQuote(t *testing.T) {
 
 	if result.QuoteID != "quote-001" {
 		t.Fatalf("expected quote id quote-001, got %s", result.QuoteID)
+	}
+}
+
+func TestListQuotesByStatus(t *testing.T) {
+	repository := &stubRepository{
+		saved: Quote{
+			ID:         "quote-001",
+			CustomerID: "customer-001",
+			Status:     QuoteStatusApproved,
+			Lines: []QuoteLine{
+				{ProductSKU: "sku-001", Quantity: 2, UnitPrice: 15000},
+			},
+		},
+	}
+	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{})
+
+	result, err := service.ListQuotes(kernel.ListQuotesQuery{
+		Status: QuoteStatusApproved,
+	})
+	if err != nil {
+		t.Fatalf("expected list quotes to succeed, got %v", err)
+	}
+
+	if len(result) != 1 || result[0].QuoteID != "quote-001" {
+		t.Fatalf("unexpected quote list %+v", result)
 	}
 }
 

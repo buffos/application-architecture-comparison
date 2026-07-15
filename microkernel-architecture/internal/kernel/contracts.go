@@ -126,8 +126,21 @@ type QuoteDetails struct {
 	TotalItems int
 }
 
+type ListQuotesQuery struct {
+	Status string
+}
+
+type QuoteSummary struct {
+	QuoteID    string
+	CustomerID string
+	Status     string
+	LineCount  int
+	TotalItems int
+}
+
 type QuoteReader interface {
 	GetQuote(query GetQuoteQuery) (QuoteDetails, error)
+	ListQuotes(query ListQuotesQuery) ([]QuoteSummary, error)
 }
 
 type ApprovedQuote struct {

@@ -196,6 +196,15 @@ func main() {
 
 	fmt.Printf("loaded quote: id=%s customer=%s status=%s lines=%d items=%d\n", details.QuoteID, details.CustomerID, details.Status, details.LineCount, details.TotalItems)
 
+	approvedQuotes, err := quoteReader.ListQuotes(kernel.ListQuotesQuery{
+		Status: quotes.QuoteStatusApproved,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("listed quotes: status=%s count=%d\n", quotes.QuoteStatusApproved, len(approvedQuotes))
+
 	pendingResult, err := quoteService.CreateDraftQuote(kernel.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
 	})
