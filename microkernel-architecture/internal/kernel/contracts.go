@@ -11,6 +11,7 @@ var ErrCustomerReaderNotRegistered = errors.New("customer reader capability not 
 var ErrProductCatalogNotRegistered = errors.New("product catalog capability not registered")
 var ErrProductReaderNotRegistered = errors.New("product reader capability not registered")
 var ErrApprovalPolicyNotRegistered = errors.New("approval policy capability not registered")
+var ErrQuotePricerNotRegistered = errors.New("quote pricer capability not registered")
 var ErrQuoteServiceNotRegistered = errors.New("quote service capability not registered")
 var ErrQuoteReaderNotRegistered = errors.New("quote reader capability not registered")
 var ErrApprovedQuoteProviderNotRegistered = errors.New("approved quote provider capability not registered")
@@ -119,6 +120,18 @@ type QuoteSubmission struct {
 
 type ApprovalPolicy interface {
 	RequiresApproval(submission QuoteSubmission) bool
+}
+
+type QuotePricingInput struct {
+	CustomerID      string
+	ProductSKU      string
+	ProductCategory string
+	Quantity        int
+	UnitPrice       int
+}
+
+type QuotePricer interface {
+	UnitPriceForQuote(input QuotePricingInput) (int, error)
 }
 
 type CreateDraftQuoteCommand struct {

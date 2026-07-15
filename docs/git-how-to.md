@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(microkernel): complete lesson 031 partial returns by line plugin
+feat(microkernel): complete lesson 032 plugin pricing extension point plugin
 
 # Add tag
 
-git tag -a microkernel-031 -m "Microkernel Lesson 031" && git push origin --tags
-git push origin microkernel-031
+git tag -a microkernel-032 -m "Microkernel Lesson 032" && git push origin --tags
+git push origin microkernel-032
 
 or
 

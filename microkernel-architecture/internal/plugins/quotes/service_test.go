@@ -60,9 +60,21 @@ func (p stubApprovalPolicy) RequiresApproval(submission kernel.QuoteSubmission) 
 	return p.requiresApproval
 }
 
+type stubQuotePricer struct {
+	unitPrice func(input kernel.QuotePricingInput) (int, error)
+}
+
+func (p stubQuotePricer) UnitPriceForQuote(input kernel.QuotePricingInput) (int, error) {
+	if p.unitPrice != nil {
+		return p.unitPrice(input)
+	}
+
+	return input.UnitPrice, nil
+}
+
 func TestCreateDraftQuote(t *testing.T) {
 	repository := &stubRepository{}
-	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{})
+	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{}, stubQuotePricer{})
 
 	result, err := service.CreateDraftQuote(kernel.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
@@ -88,7 +100,7 @@ func TestGetQuote(t *testing.T) {
 			Status:     QuoteStatusDraft,
 		},
 	}
-	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{})
+	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{}, stubQuotePricer{})
 
 	result, err := service.GetQuote(kernel.GetQuoteQuery{
 		QuoteID: "quote-001",
@@ -117,7 +129,7 @@ func TestListQuotesByStatus(t *testing.T) {
 			},
 		},
 	}
-	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{})
+	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{}, stubQuotePricer{})
 
 	result, err := service.ListQuotes(kernel.ListQuotesQuery{
 		Status: QuoteStatusApproved,
@@ -151,7 +163,7 @@ func TestAddQuoteLine(t *testing.T) {
 			UnitPrice:        15000,
 			ReturnWindowDays: 30,
 		},
-	}, stubApprovalPolicy{})
+	}, stubApprovalPolicy{}, stubQuotePricer{})
 
 	result, err := service.AddQuoteLine(kernel.AddQuoteLineCommand{
 		QuoteID:    "quote-001",
@@ -188,7 +200,7 @@ func TestSubmitQuote(t *testing.T) {
 			},
 		},
 	}
-	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{})
+	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{}, stubQuotePricer{})
 
 	result, err := service.SubmitQuote(kernel.SubmitQuoteCommand{
 		QuoteID: "quote-001",
@@ -210,7 +222,7 @@ func TestSubmitQuoteRejectsEmptyQuote(t *testing.T) {
 			Status:     QuoteStatusDraft,
 		},
 	}
-	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{})
+	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{}, stubQuotePricer{})
 
 	_, err := service.SubmitQuote(kernel.SubmitQuoteCommand{
 		QuoteID: "quote-001",
@@ -236,7 +248,7 @@ func TestAddQuoteLineRejectsSubmittedQuote(t *testing.T) {
 			UnitPrice:        15000,
 			ReturnWindowDays: 30,
 		},
-	}, stubApprovalPolicy{})
+	}, stubApprovalPolicy{}, stubQuotePricer{})
 
 	_, err := service.AddQuoteLine(kernel.AddQuoteLineCommand{
 		QuoteID:    "quote-001",
@@ -267,7 +279,7 @@ func TestSubmitQuoteCanRequireApproval(t *testing.T) {
 	}
 	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{
 		requiresApproval: true,
-	})
+	}, stubQuotePricer{})
 
 	result, err := service.SubmitQuote(kernel.SubmitQuoteCommand{
 		QuoteID: "quote-001",
@@ -298,7 +310,7 @@ func TestApproveQuote(t *testing.T) {
 			},
 		},
 	}
-	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{})
+	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{}, stubQuotePricer{})
 
 	result, err := service.ApproveQuote(kernel.ApproveQuoteCommand{
 		QuoteID: "quote-001",
@@ -320,7 +332,7 @@ func TestApproveQuoteRejectsNonPendingQuote(t *testing.T) {
 			Status:     QuoteStatusApproved,
 		},
 	}
-	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{})
+	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{}, stubQuotePricer{})
 
 	_, err := service.ApproveQuote(kernel.ApproveQuoteCommand{
 		QuoteID: "quote-001",
@@ -347,7 +359,7 @@ func TestGetApprovedQuoteForOrder(t *testing.T) {
 			},
 		},
 	}
-	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{})
+	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{}, stubQuotePricer{})
 
 	result, err := service.GetApprovedQuoteForOrder("quote-001")
 	if err != nil {
@@ -367,10 +379,46 @@ func TestGetApprovedQuoteForOrderRejectsNonApprovedQuote(t *testing.T) {
 			Status:     QuoteStatusPendingApproval,
 		},
 	}
-	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{})
+	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{}, stubApprovalPolicy{}, stubQuotePricer{})
 
 	_, err := service.GetApprovedQuoteForOrder("quote-001")
 	if err != ErrQuoteNotConvertible {
 		t.Fatalf("expected not convertible error, got %v", err)
+	}
+}
+
+func TestAddQuoteLineUsesQuotePricer(t *testing.T) {
+	repository := &stubRepository{
+		saved: Quote{
+			ID:         "quote-001",
+			CustomerID: "customer-001",
+			Status:     QuoteStatusDraft,
+		},
+	}
+	service := NewService(repository, stubCustomerDirectory{}, stubProductCatalog{
+		product: kernel.Product{
+			SKU:              "sku-002",
+			Name:             "Custom Desk",
+			Category:         "CustomBuild",
+			UnitPrice:        45000,
+			ReturnWindowDays: 30,
+		},
+	}, stubApprovalPolicy{}, stubQuotePricer{
+		unitPrice: func(input kernel.QuotePricingInput) (int, error) {
+			return 40500, nil
+		},
+	})
+
+	_, err := service.AddQuoteLine(kernel.AddQuoteLineCommand{
+		QuoteID:    "quote-001",
+		ProductSKU: "sku-002",
+		Quantity:   2,
+	})
+	if err != nil {
+		t.Fatalf("expected add quote line to succeed, got %v", err)
+	}
+
+	if repository.saved.Lines[0].UnitPrice != 40500 {
+		t.Fatalf("expected priced unit price 40500, got %d", repository.saved.Lines[0].UnitPrice)
 	}
 }

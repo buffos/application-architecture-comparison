@@ -7,14 +7,16 @@ type Service struct {
 	customers kernel.CustomerDirectory
 	products  kernel.ProductCatalog
 	approvals kernel.ApprovalPolicy
+	pricer    kernel.QuotePricer
 }
 
-func NewService(quotes Repository, customers kernel.CustomerDirectory, products kernel.ProductCatalog, approvals kernel.ApprovalPolicy) Service {
+func NewService(quotes Repository, customers kernel.CustomerDirectory, products kernel.ProductCatalog, approvals kernel.ApprovalPolicy, pricer kernel.QuotePricer) Service {
 	return Service{
 		quotes:    quotes,
 		customers: customers,
 		products:  products,
 		approvals: approvals,
+		pricer:    pricer,
 	}
 }
 
@@ -87,11 +89,22 @@ func (s Service) AddQuoteLine(command kernel.AddQuoteLineCommand) (kernel.AddQuo
 		return kernel.AddQuoteLineResult{}, err
 	}
 
+	unitPrice, err := s.pricer.UnitPriceForQuote(kernel.QuotePricingInput{
+		CustomerID:      quote.CustomerID,
+		ProductSKU:      product.SKU,
+		ProductCategory: product.Category,
+		Quantity:        command.Quantity,
+		UnitPrice:       product.UnitPrice,
+	})
+	if err != nil {
+		return kernel.AddQuoteLineResult{}, err
+	}
+
 	if err := quote.AddLine(kernelProductInput{
 		SKU:              product.SKU,
 		Name:             product.Name,
 		Category:         product.Category,
-		UnitPrice:        product.UnitPrice,
+		UnitPrice:        unitPrice,
 		ReturnWindowDays: product.ReturnWindowDays,
 	}, command.Quantity); err != nil {
 		return kernel.AddQuoteLineResult{}, err

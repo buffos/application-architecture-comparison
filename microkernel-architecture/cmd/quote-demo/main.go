@@ -13,11 +13,13 @@ import (
 	"microkernel-architecture/internal/plugins/inventory"
 	"microkernel-architecture/internal/plugins/orders"
 	"microkernel-architecture/internal/plugins/payments"
+	"microkernel-architecture/internal/plugins/pricing"
 	"microkernel-architecture/internal/plugins/products"
 	"microkernel-architecture/internal/plugins/quotes"
 	"microkernel-architecture/internal/plugins/reporting"
 	"microkernel-architecture/internal/plugins/returneligibility"
 	"microkernel-architecture/internal/plugins/returns"
+	"microkernel-architecture/internal/plugins/seasonalpricing"
 	"microkernel-architecture/internal/plugins/shipments"
 )
 
@@ -85,6 +87,14 @@ func main() {
 	}
 
 	if err := host.RegisterPlugin(approvals.NewPlugin()); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := host.RegisterPlugin(pricing.NewPlugin()); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := host.RegisterPlugin(seasonalpricing.NewPlugin(10)); err != nil {
 		log.Fatal(err)
 	}
 
@@ -243,6 +253,7 @@ func main() {
 	}
 
 	fmt.Printf("loaded product: sku=%s category=%s active=%t price=%d\n", productDetails.SKU, productDetails.Category, productDetails.Active, productDetails.UnitPrice)
+	fmt.Printf("registered pricing plugin: id=%s discount=%d%% category=%s\n", "seasonalpricing", 10, "CustomBuild")
 
 	active := true
 	productList, err := productReader.ListProducts(kernel.ListProductsQuery{
