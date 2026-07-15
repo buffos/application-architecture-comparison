@@ -1,19 +1,20 @@
 package payments
 
-import "testing"
+import (
+	"testing"
 
-func TestCapture(t *testing.T) {
-	service := NewService()
+	"microkernel-architecture/internal/kernel"
+)
 
-	if err := service.Capture("order-001", 30000); err != nil {
+func TestServiceCapturesGatewayOutcome(t *testing.T) {
+	service := NewService(NewManualReviewGateway())
+
+	result, err := service.Capture("order-001", 45000)
+	if err != nil {
 		t.Fatalf("expected capture to succeed, got %v", err)
 	}
-}
 
-func TestRefund(t *testing.T) {
-	service := NewService()
-
-	if err := service.Refund("order-001", 30000); err != nil {
-		t.Fatalf("expected refund to succeed, got %v", err)
+	if result.Outcome != kernel.PaymentCaptureOutcomeReview {
+		t.Fatalf("expected review outcome, got %s", result.Outcome)
 	}
 }

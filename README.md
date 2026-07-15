@@ -295,6 +295,7 @@ Architectures currently implemented in this repository:
 - `026` Return rate by category report plugin: [026-return-rate-by-category-report-plugin.md](microkernel-architecture/lessons/026-return-rate-by-category-report-plugin.md)
 - `027` Low stock items report plugin: [027-low-stock-items-report-plugin.md](microkernel-architecture/lessons/027-low-stock-items-report-plugin.md)
 - `028` Orders awaiting approval report plugin: [028-orders-awaiting-approval-report-plugin.md](microkernel-architecture/lessons/028-orders-awaiting-approval-report-plugin.md)
+- `029` Payment review workflow plugin: [029-payment-review-workflow-plugin.md](microkernel-architecture/lessons/029-payment-review-workflow-plugin.md)
 
 ## How To Maintain This File
 

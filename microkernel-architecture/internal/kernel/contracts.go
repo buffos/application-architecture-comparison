@@ -288,12 +288,19 @@ type InventoryReader interface {
 }
 
 type PaymentCapture interface {
-	Capture(orderID string, amount int) error
+	Capture(orderID string, amount int) (PaymentCaptureResult, error)
 }
 
 type PaymentRefund interface {
 	Refund(orderID string, amount int) error
 }
+
+type PaymentCaptureResult struct {
+	Outcome string
+}
+
+const PaymentCaptureOutcomeApproved = "Approved"
+const PaymentCaptureOutcomeReview = "Review"
 
 type Clock interface {
 	Now() time.Time
@@ -393,6 +400,18 @@ type CapturePaymentCommand struct {
 }
 
 type CapturePaymentResult struct {
+	OrderID    string
+	QuoteID    string
+	CustomerID string
+	Status     string
+	LineCount  int
+}
+
+type ApprovePaymentReviewCommand struct {
+	OrderID string
+}
+
+type ApprovePaymentReviewResult struct {
 	OrderID    string
 	QuoteID    string
 	CustomerID string
@@ -558,6 +577,7 @@ type ReturnRequestSummary struct {
 type OrderService interface {
 	ConvertQuoteToOrder(command ConvertQuoteToOrderCommand) (ConvertQuoteToOrderResult, error)
 	CapturePayment(command CapturePaymentCommand) (CapturePaymentResult, error)
+	ApprovePaymentReview(command ApprovePaymentReviewCommand) (ApprovePaymentReviewResult, error)
 	CreateShipment(command CreateShipmentCommand) (CreateShipmentResult, error)
 	CancelOrder(command CancelOrderCommand) (CancelOrderResult, error)
 }

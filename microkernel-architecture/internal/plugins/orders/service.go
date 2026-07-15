@@ -71,12 +71,20 @@ func (s Service) CapturePayment(command kernel.CapturePaymentCommand) (kernel.Ca
 		return kernel.CapturePaymentResult{}, err
 	}
 
-	if err := s.pay.Capture(order.ID, order.TotalAmount()); err != nil {
+	capture, err := s.pay.Capture(order.ID, order.TotalAmount())
+	if err != nil {
 		return kernel.CapturePaymentResult{}, err
 	}
 
-	if err := order.MarkPaid(); err != nil {
-		return kernel.CapturePaymentResult{}, err
+	switch capture.Outcome {
+	case kernel.PaymentCaptureOutcomeReview:
+		if err := order.MarkPaymentReview(); err != nil {
+			return kernel.CapturePaymentResult{}, err
+		}
+	default:
+		if err := order.MarkPaid(); err != nil {
+			return kernel.CapturePaymentResult{}, err
+		}
 	}
 
 	if err := s.orders.Save(order); err != nil {
@@ -84,6 +92,29 @@ func (s Service) CapturePayment(command kernel.CapturePaymentCommand) (kernel.Ca
 	}
 
 	return kernel.CapturePaymentResult{
+		OrderID:    order.ID,
+		QuoteID:    order.QuoteID,
+		CustomerID: order.CustomerID,
+		Status:     order.Status,
+		LineCount:  len(order.Lines),
+	}, nil
+}
+
+func (s Service) ApprovePaymentReview(command kernel.ApprovePaymentReviewCommand) (kernel.ApprovePaymentReviewResult, error) {
+	order, err := s.orders.FindByID(command.OrderID)
+	if err != nil {
+		return kernel.ApprovePaymentReviewResult{}, err
+	}
+
+	if err := order.ApprovePaymentReview(); err != nil {
+		return kernel.ApprovePaymentReviewResult{}, err
+	}
+
+	if err := s.orders.Save(order); err != nil {
+		return kernel.ApprovePaymentReviewResult{}, err
+	}
+
+	return kernel.ApprovePaymentReviewResult{
 		OrderID:    order.ID,
 		QuoteID:    order.QuoteID,
 		CustomerID: order.CustomerID,
@@ -106,16 +137,16 @@ func (s Service) CreateShipment(command kernel.CreateShipmentCommand) (kernel.Cr
 		})
 	}
 
+	if err := order.MarkShipped(s.clock.Now()); err != nil {
+		return kernel.CreateShipmentResult{}, err
+	}
+
 	shipment, err := s.ship.CreateShipment(kernel.CreateShipmentRecord{
 		OrderID:    order.ID,
 		CustomerID: order.CustomerID,
 		Lines:      lines,
 	})
 	if err != nil {
-		return kernel.CreateShipmentResult{}, err
-	}
-
-	if err := order.MarkShipped(s.clock.Now()); err != nil {
 		return kernel.CreateShipmentResult{}, err
 	}
 

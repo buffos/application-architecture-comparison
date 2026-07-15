@@ -9,11 +9,13 @@ import (
 
 var ErrOrderNotFound = errors.New("order not found")
 var ErrOrderNotPayable = errors.New("order is not payable")
+var ErrOrderNotPaymentReviewable = errors.New("order is not awaiting payment review")
 var ErrOrderNotShippable = errors.New("order is not shippable")
 var ErrOrderNotCancellable = errors.New("order is not cancellable")
 var ErrOrderNotReturnable = errors.New("order is not returnable")
 
 const OrderStatusPendingPayment = "PendingPayment"
+const OrderStatusPaymentReview = "PaymentReview"
 const OrderStatusPaid = "Paid"
 const OrderStatusShipped = "Shipped"
 const OrderStatusCancelled = "Cancelled"
@@ -62,6 +64,24 @@ func (o Order) TotalAmount() int {
 func (o *Order) MarkPaid() error {
 	if o.Status != OrderStatusPendingPayment {
 		return ErrOrderNotPayable
+	}
+
+	o.Status = OrderStatusPaid
+	return nil
+}
+
+func (o *Order) MarkPaymentReview() error {
+	if o.Status != OrderStatusPendingPayment {
+		return ErrOrderNotPayable
+	}
+
+	o.Status = OrderStatusPaymentReview
+	return nil
+}
+
+func (o *Order) ApprovePaymentReview() error {
+	if o.Status != OrderStatusPaymentReview {
+		return ErrOrderNotPaymentReviewable
 	}
 
 	o.Status = OrderStatusPaid

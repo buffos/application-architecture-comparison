@@ -100,7 +100,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := host.RegisterPlugin(payments.NewPlugin()); err != nil {
+	if err := host.RegisterPlugin(payments.NewPlugin(payments.NewManualReviewGateway())); err != nil {
 		log.Fatal(err)
 	}
 
@@ -334,14 +334,30 @@ func main() {
 
 	fmt.Printf("captured payment: order=%s quote=%s customer=%s status=%s lines=%d\n", paidResult.OrderID, paidResult.QuoteID, paidResult.CustomerID, paidResult.Status, paidResult.LineCount)
 
-	paidOrders, err := orderReader.ListOrders(kernel.ListOrdersQuery{
-		Status: orders.OrderStatusPaid,
+	reviewOrders, err := orderReader.ListOrders(kernel.ListOrdersQuery{
+		Status: orders.OrderStatusPaymentReview,
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("listed orders: status=%s count=%d\n", orders.OrderStatusPaid, len(paidOrders))
+	fmt.Printf("listed orders: status=%s count=%d\n", orders.OrderStatusPaymentReview, len(reviewOrders))
+
+	_, err = orderService.CreateShipment(kernel.CreateShipmentCommand{
+		OrderID: orderResult.OrderID,
+	})
+	if err != nil {
+		fmt.Printf("shipment blocked during payment review: order=%s error=%s\n", orderResult.OrderID, err)
+	}
+
+	reviewApproved, err := orderService.ApprovePaymentReview(kernel.ApprovePaymentReviewCommand{
+		OrderID: orderResult.OrderID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("approved payment review: order=%s quote=%s customer=%s status=%s lines=%d\n", reviewApproved.OrderID, reviewApproved.QuoteID, reviewApproved.CustomerID, reviewApproved.Status, reviewApproved.LineCount)
 
 	shipmentResult, err := orderService.CreateShipment(kernel.CreateShipmentCommand{
 		OrderID: orderResult.OrderID,
