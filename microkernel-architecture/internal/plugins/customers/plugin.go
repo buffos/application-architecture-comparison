@@ -17,6 +17,8 @@ func (p Plugin) ID() string {
 }
 
 func (p Plugin) Register(host *kernel.Host) error {
-	host.ExposeCustomerDirectory(NewService(p.customers))
+	service := NewService(p.customers)
+	host.ExposeCustomerDirectory(service)
+	host.ExposeCustomerReader(service)
 	return nil
 }

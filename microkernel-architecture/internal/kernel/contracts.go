@@ -7,6 +7,7 @@ import (
 
 var ErrPluginAlreadyRegistered = errors.New("plugin already registered")
 var ErrCustomerDirectoryNotRegistered = errors.New("customer directory capability not registered")
+var ErrCustomerReaderNotRegistered = errors.New("customer reader capability not registered")
 var ErrProductCatalogNotRegistered = errors.New("product catalog capability not registered")
 var ErrProductReaderNotRegistered = errors.New("product reader capability not registered")
 var ErrApprovalPolicyNotRegistered = errors.New("approval policy capability not registered")
@@ -37,6 +38,29 @@ type Plugin interface {
 
 type CustomerDirectory interface {
 	RequireActiveCustomer(id string) error
+}
+
+type GetCustomerQuery struct {
+	CustomerID string
+}
+
+type CustomerDetails struct {
+	CustomerID string
+	Active     bool
+}
+
+type ListCustomersQuery struct {
+	Active *bool
+}
+
+type CustomerSummary struct {
+	CustomerID string
+	Active     bool
+}
+
+type CustomerReader interface {
+	GetCustomer(query GetCustomerQuery) (CustomerDetails, error)
+	ListCustomers(query ListCustomersQuery) ([]CustomerSummary, error)
 }
 
 type Product struct {

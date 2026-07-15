@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"slices"
 	"sync"
 
 	"microkernel-architecture/internal/plugins/customers"
@@ -35,4 +36,29 @@ func (r *CustomerRepository) FindByID(id string) (customers.Customer, error) {
 	}
 
 	return customer, nil
+}
+
+func (r *CustomerRepository) List(active *bool) ([]customers.Customer, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	results := make([]customers.Customer, 0)
+	for _, customer := range r.customers {
+		if active != nil && customer.Active != *active {
+			continue
+		}
+		results = append(results, customer)
+	}
+
+	slices.SortFunc(results, func(a customers.Customer, b customers.Customer) int {
+		if a.ID < b.ID {
+			return -1
+		}
+		if a.ID > b.ID {
+			return 1
+		}
+		return 0
+	})
+
+	return results, nil
 }

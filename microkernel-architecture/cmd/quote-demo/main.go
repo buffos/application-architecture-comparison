@@ -133,6 +133,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	customerReader, err := host.CustomerReader()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	productReader, err := host.ProductReader()
 	if err != nil {
 		log.Fatal(err)
@@ -200,6 +205,25 @@ func main() {
 	}
 
 	fmt.Printf("loaded quote: id=%s customer=%s status=%s lines=%d items=%d\n", details.QuoteID, details.CustomerID, details.Status, details.LineCount, details.TotalItems)
+
+	customerDetails, err := customerReader.GetCustomer(kernel.GetCustomerQuery{
+		CustomerID: "customer-001",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("loaded customer: id=%s active=%t\n", customerDetails.CustomerID, customerDetails.Active)
+
+	customerActive := true
+	customerList, err := customerReader.ListCustomers(kernel.ListCustomersQuery{
+		Active: &customerActive,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("listed customers: active=%t count=%d\n", customerActive, len(customerList))
 
 	productDetails, err := productReader.GetProduct(kernel.GetProductQuery{
 		SKU: "sku-001",

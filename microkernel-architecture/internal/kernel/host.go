@@ -3,6 +3,7 @@ package kernel
 type Host struct {
 	plugins           map[string]struct{}
 	customerDirectory CustomerDirectory
+	customerReader    CustomerReader
 	productCatalog    ProductCatalog
 	productReader     ProductReader
 	approvalPolicy    ApprovalPolicy
@@ -47,6 +48,10 @@ func (h *Host) RegisterPlugin(plugin Plugin) error {
 
 func (h *Host) ExposeCustomerDirectory(directory CustomerDirectory) {
 	h.customerDirectory = directory
+}
+
+func (h *Host) ExposeCustomerReader(reader CustomerReader) {
+	h.customerReader = reader
 }
 
 func (h *Host) ExposeQuoteService(service QuoteService) {
@@ -139,6 +144,14 @@ func (h *Host) CustomerDirectory() (CustomerDirectory, error) {
 	}
 
 	return h.customerDirectory, nil
+}
+
+func (h *Host) CustomerReader() (CustomerReader, error) {
+	if h.customerReader == nil {
+		return nil, ErrCustomerReaderNotRegistered
+	}
+
+	return h.customerReader, nil
 }
 
 func (h *Host) ProductCatalog() (ProductCatalog, error) {
