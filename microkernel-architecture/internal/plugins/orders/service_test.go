@@ -356,6 +356,10 @@ func TestGetReturnableOrder(t *testing.T) {
 		t.Fatalf("expected shipped time on returnable order")
 	}
 
+	if result.Lines[0].ProductCategory != "CustomBuild" {
+		t.Fatalf("expected product category CustomBuild, got %s", result.Lines[0].ProductCategory)
+	}
+
 	if result.Lines[0].ReturnWindowDays != 14 {
 		t.Fatalf("expected return window snapshot 14, got %d", result.Lines[0].ReturnWindowDays)
 	}
@@ -386,7 +390,7 @@ func TestGetOrder(t *testing.T) {
 			CustomerID: "customer-001",
 			Status:     OrderStatusPaid,
 			Lines: []OrderLine{
-				{ProductSKU: "sku-001", Quantity: 2, UnitPrice: 15000},
+				{ProductSKU: "sku-001", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000},
 			},
 		},
 	}
@@ -401,6 +405,10 @@ func TestGetOrder(t *testing.T) {
 
 	if result.OrderID != "order-001" || result.Status != OrderStatusPaid {
 		t.Fatalf("unexpected order details %+v", result)
+	}
+
+	if len(result.Lines) != 1 || result.Lines[0].ProductCategory != "Standard" || result.Lines[0].Quantity != 2 {
+		t.Fatalf("expected order lines in read model, got %+v", result.Lines)
 	}
 }
 

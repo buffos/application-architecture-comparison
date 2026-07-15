@@ -34,6 +34,7 @@ type ReturnRequest struct {
 
 type ReturnLine struct {
 	ProductSKU       string
+	ProductCategory  string
 	Quantity         int
 	UnitPrice        int
 	ReturnWindowDays int

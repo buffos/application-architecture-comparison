@@ -20,14 +20,40 @@ func (r stubQuoteReader) ListQuotes(query kernel.ListQuotesQuery) ([]kernel.Quot
 
 type stubOrderReader struct {
 	list func(query kernel.ListOrdersQuery) ([]kernel.OrderSummary, error)
+	get  func(query kernel.GetOrderQuery) (kernel.OrderDetails, error)
 }
 
 func (r stubOrderReader) GetOrder(query kernel.GetOrderQuery) (kernel.OrderDetails, error) {
+	if r.get != nil {
+		return r.get(query)
+	}
+
 	return kernel.OrderDetails{}, nil
 }
 
 func (r stubOrderReader) ListOrders(query kernel.ListOrdersQuery) ([]kernel.OrderSummary, error) {
 	return r.list(query)
+}
+
+type stubReturnReader struct {
+	list func(query kernel.ListReturnRequestsQuery) ([]kernel.ReturnRequestSummary, error)
+	get  func(query kernel.GetReturnRequestQuery) (kernel.ReturnRequestDetails, error)
+}
+
+func (r stubReturnReader) GetReturnRequest(query kernel.GetReturnRequestQuery) (kernel.ReturnRequestDetails, error) {
+	if r.get != nil {
+		return r.get(query)
+	}
+
+	return kernel.ReturnRequestDetails{}, nil
+}
+
+func (r stubReturnReader) ListReturnRequests(query kernel.ListReturnRequestsQuery) ([]kernel.ReturnRequestSummary, error) {
+	if r.list != nil {
+		return r.list(query)
+	}
+
+	return nil, nil
 }
 
 func TestQuoteConversionReportCombinesQuoteAndOrderCounts(t *testing.T) {
@@ -55,6 +81,7 @@ func TestQuoteConversionReportCombinesQuoteAndOrderCounts(t *testing.T) {
 				}, nil
 			},
 		},
+		stubReturnReader{},
 	)
 
 	report, err := service.QuoteConversionReport()
@@ -76,5 +103,61 @@ func TestQuoteConversionReportCombinesQuoteAndOrderCounts(t *testing.T) {
 
 	if report.ConversionRate != 1.0/3.0 {
 		t.Fatalf("expected conversion rate 1/3, got %f", report.ConversionRate)
+	}
+}
+
+func TestReturnRateByCategoryReportGroupsShippedAndReturnedQuantities(t *testing.T) {
+	service := NewService(
+		stubQuoteReader{},
+		stubOrderReader{
+			list: func(query kernel.ListOrdersQuery) ([]kernel.OrderSummary, error) {
+				return []kernel.OrderSummary{
+					{OrderID: "order-001", Status: "Shipped"},
+				}, nil
+			},
+			get: func(query kernel.GetOrderQuery) (kernel.OrderDetails, error) {
+				return kernel.OrderDetails{
+					OrderID: "order-001",
+					Status:  "Shipped",
+					Lines: []kernel.OrderLineDetails{
+						{ProductSKU: "sku-001", ProductCategory: "Standard", Quantity: 4},
+						{ProductSKU: "sku-002", ProductCategory: "CustomBuild", Quantity: 2},
+					},
+				}, nil
+			},
+		},
+		stubReturnReader{
+			list: func(query kernel.ListReturnRequestsQuery) ([]kernel.ReturnRequestSummary, error) {
+				return []kernel.ReturnRequestSummary{
+					{ReturnRequestID: "return-001", Status: "Refunded"},
+				}, nil
+			},
+			get: func(query kernel.GetReturnRequestQuery) (kernel.ReturnRequestDetails, error) {
+				return kernel.ReturnRequestDetails{
+					ReturnRequestID: "return-001",
+					Status:          "Refunded",
+					Lines: []kernel.ReturnRequestLineDetails{
+						{ProductSKU: "sku-001", ProductCategory: "Standard", Quantity: 1},
+					},
+				}, nil
+			},
+		},
+	)
+
+	report, err := service.ReturnRateByCategoryReport()
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(report.Rows) != 2 {
+		t.Fatalf("expected two category rows, got %+v", report.Rows)
+	}
+
+	if report.Rows[0].Category != "CustomBuild" || report.Rows[0].ShippedQuantity != 2 || report.Rows[0].ReturnedQuantity != 0 || report.Rows[0].ReturnRate != 0 {
+		t.Fatalf("unexpected first row %+v", report.Rows[0])
+	}
+
+	if report.Rows[1].Category != "Standard" || report.Rows[1].ShippedQuantity != 4 || report.Rows[1].ReturnedQuantity != 1 || report.Rows[1].ReturnRate != 0.25 {
+		t.Fatalf("unexpected second row %+v", report.Rows[1])
 	}
 }

@@ -208,6 +208,17 @@ type QuoteConversionReport struct {
 	ConversionRate  float64
 }
 
+type ReturnRateByCategoryRow struct {
+	Category         string
+	ShippedQuantity  int
+	ReturnedQuantity int
+	ReturnRate       float64
+}
+
+type ReturnRateByCategoryReport struct {
+	Rows []ReturnRateByCategoryRow
+}
+
 type ApprovedQuote struct {
 	QuoteID    string
 	CustomerID string
@@ -391,6 +402,13 @@ type OrderDetails struct {
 	CustomerID string
 	Status     string
 	LineCount  int
+	Lines      []OrderLineDetails
+}
+
+type OrderLineDetails struct {
+	ProductSKU      string
+	ProductCategory string
+	Quantity        int
 }
 
 type ListOrdersQuery struct {
@@ -414,6 +432,7 @@ type ReturnableOrder struct {
 
 type ReturnableOrderLine struct {
 	ProductSKU       string
+	ProductCategory  string
 	Quantity         int
 	UnitPrice        int
 	ReturnWindowDays int
@@ -483,6 +502,13 @@ type ReturnRequestDetails struct {
 	ReviewedBy      string
 	ProcessedBy     string
 	ReviewNote      string
+	Lines           []ReturnRequestLineDetails
+}
+
+type ReturnRequestLineDetails struct {
+	ProductSKU      string
+	ProductCategory string
+	Quantity        int
 }
 
 type ListReturnRequestsQuery struct {
@@ -522,4 +548,5 @@ type ReturnReader interface {
 
 type Reporting interface {
 	QuoteConversionReport() (QuoteConversionReport, error)
+	ReturnRateByCategoryReport() (ReturnRateByCategoryReport, error)
 }

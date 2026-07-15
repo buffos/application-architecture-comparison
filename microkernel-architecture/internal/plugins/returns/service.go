@@ -34,6 +34,7 @@ func (s Service) RequestReturn(command kernel.RequestReturnCommand) (kernel.Requ
 	for _, line := range order.Lines {
 		lines = append(lines, ReturnLine{
 			ProductSKU:       line.ProductSKU,
+			ProductCategory:  line.ProductCategory,
 			Quantity:         line.Quantity,
 			UnitPrice:        line.UnitPrice,
 			ReturnWindowDays: line.ReturnWindowDays,
@@ -215,6 +216,15 @@ func (s Service) GetReturnRequest(query kernel.GetReturnRequestQuery) (kernel.Re
 		return kernel.ReturnRequestDetails{}, err
 	}
 
+	lines := make([]kernel.ReturnRequestLineDetails, 0, len(request.Lines))
+	for _, line := range request.Lines {
+		lines = append(lines, kernel.ReturnRequestLineDetails{
+			ProductSKU:      line.ProductSKU,
+			ProductCategory: line.ProductCategory,
+			Quantity:        line.Quantity,
+		})
+	}
+
 	return kernel.ReturnRequestDetails{
 		ReturnRequestID: request.ID,
 		OrderID:         request.OrderID,
@@ -226,6 +236,7 @@ func (s Service) GetReturnRequest(query kernel.GetReturnRequestQuery) (kernel.Re
 		ReviewedBy:      request.ReviewedBy,
 		ProcessedBy:     request.ProcessedBy,
 		ReviewNote:      request.ReviewNote,
+		Lines:           lines,
 	}, nil
 }
 

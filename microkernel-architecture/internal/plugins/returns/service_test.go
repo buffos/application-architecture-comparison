@@ -131,7 +131,7 @@ func TestRequestReturnStoresRequestedReturnWithoutRefundOrRestock(t *testing.T) 
 			CustomerID: "customer-001",
 			ShippedAt:  time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC),
 			Lines: []kernel.ReturnableOrderLine{
-				{ProductSKU: "sku-002", Quantity: 1, UnitPrice: 45000, ReturnWindowDays: 30},
+				{ProductSKU: "sku-002", ProductCategory: "CustomBuild", Quantity: 1, UnitPrice: 45000, ReturnWindowDays: 30},
 			},
 		},
 	}, stubClock{now: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)}, stubEligibilityPolicy{allowed: true}, idempotency, refunds, restock)
@@ -374,7 +374,7 @@ func TestRequestReturnRejectsMissingRequester(t *testing.T) {
 			CustomerID: "customer-001",
 			ShippedAt:  time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC),
 			Lines: []kernel.ReturnableOrderLine{
-				{ProductSKU: "sku-002", Quantity: 1, UnitPrice: 45000, ReturnWindowDays: 30},
+				{ProductSKU: "sku-002", ProductCategory: "CustomBuild", Quantity: 1, UnitPrice: 45000, ReturnWindowDays: 30},
 			},
 		},
 	}, stubClock{now: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)}, stubEligibilityPolicy{allowed: true}, idempotency, refunds, restock)
@@ -554,7 +554,7 @@ func TestGetReturnRequest(t *testing.T) {
 			ReviewNote:  "approved after inspection",
 			Status:      ReturnRequestStatusRefunded,
 			Lines: []ReturnLine{
-				{ProductSKU: "sku-002", Quantity: 1, UnitPrice: 45000, ReturnWindowDays: 30},
+				{ProductSKU: "sku-002", ProductCategory: "CustomBuild", Quantity: 1, UnitPrice: 45000, ReturnWindowDays: 30},
 			},
 		},
 	}
@@ -569,6 +569,10 @@ func TestGetReturnRequest(t *testing.T) {
 
 	if result.ReturnRequestID != "return-001" || result.RequestedBy != "customer-001" {
 		t.Fatalf("unexpected return details %+v", result)
+	}
+
+	if len(result.Lines) != 1 || result.Lines[0].ProductCategory != "CustomBuild" || result.Lines[0].Quantity != 1 {
+		t.Fatalf("expected return line details in read model, got %+v", result.Lines)
 	}
 }
 

@@ -181,6 +181,7 @@ func (s Service) GetReturnableOrder(orderID string) (kernel.ReturnableOrder, err
 	for _, line := range order.Lines {
 		lines = append(lines, kernel.ReturnableOrderLine{
 			ProductSKU:       line.ProductSKU,
+			ProductCategory:  line.ProductCategory,
 			Quantity:         line.Quantity,
 			UnitPrice:        line.UnitPrice,
 			ReturnWindowDays: line.ReturnWindowDays,
@@ -201,12 +202,22 @@ func (s Service) GetOrder(query kernel.GetOrderQuery) (kernel.OrderDetails, erro
 		return kernel.OrderDetails{}, err
 	}
 
+	lines := make([]kernel.OrderLineDetails, 0, len(order.Lines))
+	for _, line := range order.Lines {
+		lines = append(lines, kernel.OrderLineDetails{
+			ProductSKU:      line.ProductSKU,
+			ProductCategory: line.ProductCategory,
+			Quantity:        line.Quantity,
+		})
+	}
+
 	return kernel.OrderDetails{
 		OrderID:    order.ID,
 		QuoteID:    order.QuoteID,
 		CustomerID: order.CustomerID,
 		Status:     order.Status,
 		LineCount:  len(order.Lines),
+		Lines:      lines,
 	}, nil
 }
 

@@ -112,10 +112,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := host.RegisterPlugin(reporting.NewPlugin()); err != nil {
-		log.Fatal(err)
-	}
-
 	if err := host.RegisterPlugin(returneligibility.NewPlugin()); err != nil {
 		log.Fatal(err)
 	}
@@ -125,6 +121,10 @@ func main() {
 	}
 
 	if err := host.RegisterPlugin(returns.NewPlugin(returnRequestRepository)); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := host.RegisterPlugin(reporting.NewPlugin()); err != nil {
 		log.Fatal(err)
 	}
 
@@ -416,4 +416,13 @@ func main() {
 	}
 
 	fmt.Printf("quote conversion report: total=%d approved=%d converted=%d rate=%.2f\n", report.TotalQuotes, report.ApprovedQuotes, report.ConvertedQuotes, report.ConversionRate)
+
+	returnRateReport, err := reportingService.ReturnRateByCategoryReport()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, row := range returnRateReport.Rows {
+		fmt.Printf("return rate by category: category=%s shipped=%d returned=%d rate=%.2f\n", row.Category, row.ShippedQuantity, row.ReturnedQuantity, row.ReturnRate)
+	}
 }
