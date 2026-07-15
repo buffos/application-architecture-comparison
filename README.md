@@ -299,6 +299,7 @@ Architectures currently implemented in this repository:
 - `030` Partial shipment support plugin: [030-partial-shipment-support-plugin.md](microkernel-architecture/lessons/030-partial-shipment-support-plugin.md)
 - `031` Partial returns by line plugin: [031-partial-returns-by-line-plugin.md](microkernel-architecture/lessons/031-partial-returns-by-line-plugin.md)
 - `032` Plugin pricing extension point plugin: [032-plugin-pricing-extension-point-plugin.md](microkernel-architecture/lessons/032-plugin-pricing-extension-point-plugin.md)
+- `033` Why not stop at microkernel?: [033-why-not-stop-at-microkernel.md](microkernel-architecture/lessons/033-why-not-stop-at-microkernel.md)
 
 ## How To Maintain This File
 
