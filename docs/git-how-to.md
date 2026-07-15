@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(microkernel): complete lesson 027 low stock items report plugin
+feat(microkernel): complete lesson 028 orders awaiting approval report plugin
 
 # Add tag
 
-git tag -a microkernel-027 -m "Microkernel Lesson 027" && git push origin --tags
-git push origin microkernel-027
+git tag -a microkernel-028 -m "Microkernel Lesson 028" && git push origin --tags
+git push origin microkernel-028
 
 or
 

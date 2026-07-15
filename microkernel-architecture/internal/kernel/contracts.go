@@ -178,11 +178,12 @@ type GetQuoteQuery struct {
 }
 
 type QuoteDetails struct {
-	QuoteID    string
-	CustomerID string
-	Status     string
-	LineCount  int
-	TotalItems int
+	QuoteID     string
+	CustomerID  string
+	Status      string
+	LineCount   int
+	TotalItems  int
+	TotalAmount int
 }
 
 type ListQuotesQuery struct {
@@ -190,11 +191,12 @@ type ListQuotesQuery struct {
 }
 
 type QuoteSummary struct {
-	QuoteID    string
-	CustomerID string
-	Status     string
-	LineCount  int
-	TotalItems int
+	QuoteID     string
+	CustomerID  string
+	Status      string
+	LineCount   int
+	TotalItems  int
+	TotalAmount int
 }
 
 type QuoteReader interface {
@@ -227,6 +229,17 @@ type LowStockItemsReportRow struct {
 
 type LowStockItemsReport struct {
 	Rows []LowStockItemsReportRow
+}
+
+type OrdersAwaitingApprovalRow struct {
+	QuoteID     string
+	CustomerID  string
+	LineCount   int
+	TotalAmount int
+}
+
+type OrdersAwaitingApprovalReport struct {
+	Rows []OrdersAwaitingApprovalRow
 }
 
 type ApprovedQuote struct {
@@ -569,4 +582,5 @@ type Reporting interface {
 	QuoteConversionReport() (QuoteConversionReport, error)
 	ReturnRateByCategoryReport() (ReturnRateByCategoryReport, error)
 	LowStockItemsReport(threshold int) (LowStockItemsReport, error)
+	OrdersAwaitingApprovalReport() (OrdersAwaitingApprovalReport, error)
 }

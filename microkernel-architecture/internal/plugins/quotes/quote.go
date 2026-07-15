@@ -81,6 +81,15 @@ func (q Quote) TotalQuantity() int {
 	return total
 }
 
+func (q Quote) TotalAmount() int {
+	total := 0
+	for _, line := range q.Lines {
+		total += line.Quantity * line.UnitPrice
+	}
+
+	return total
+}
+
 func (q *Quote) Submit(requiresApproval bool) error {
 	if q.Status != QuoteStatusDraft {
 		return ErrQuoteNotSubmittable

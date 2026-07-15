@@ -289,6 +289,15 @@ func main() {
 
 	fmt.Printf("submitted custom quote: id=%s status=%s\n", pendingSubmit.QuoteID, pendingSubmit.Status)
 
+	approvalQueueReport, err := reportingService.OrdersAwaitingApprovalReport()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, row := range approvalQueueReport.Rows {
+		fmt.Printf("orders awaiting approval: quote=%s customer=%s lines=%d total=%d\n", row.QuoteID, row.CustomerID, row.LineCount, row.TotalAmount)
+	}
+
 	approvedPending, err := quoteService.ApproveQuote(kernel.ApproveQuoteCommand{
 		QuoteID: pendingResult.QuoteID,
 	})
@@ -434,4 +443,5 @@ func main() {
 	for _, row := range lowStockReport.Rows {
 		fmt.Printf("low stock item: sku=%s available=%d\n", row.ProductSKU, row.Available)
 	}
+
 }

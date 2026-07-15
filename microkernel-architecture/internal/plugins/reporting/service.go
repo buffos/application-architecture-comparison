@@ -153,3 +153,34 @@ func (s Service) LowStockItemsReport(threshold int) (kernel.LowStockItemsReport,
 
 	return report, nil
 }
+
+func (s Service) OrdersAwaitingApprovalReport() (kernel.OrdersAwaitingApprovalReport, error) {
+	pendingQuotes, err := s.quotes.ListQuotes(kernel.ListQuotesQuery{Status: "PendingApproval"})
+	if err != nil {
+		return kernel.OrdersAwaitingApprovalReport{}, err
+	}
+
+	report := kernel.OrdersAwaitingApprovalReport{
+		Rows: make([]kernel.OrdersAwaitingApprovalRow, 0, len(pendingQuotes)),
+	}
+	for _, quote := range pendingQuotes {
+		report.Rows = append(report.Rows, kernel.OrdersAwaitingApprovalRow{
+			QuoteID:     quote.QuoteID,
+			CustomerID:  quote.CustomerID,
+			LineCount:   quote.LineCount,
+			TotalAmount: quote.TotalAmount,
+		})
+	}
+
+	slices.SortFunc(report.Rows, func(a, b kernel.OrdersAwaitingApprovalRow) int {
+		if a.QuoteID < b.QuoteID {
+			return -1
+		}
+		if a.QuoteID > b.QuoteID {
+			return 1
+		}
+		return 0
+	})
+
+	return report, nil
+}

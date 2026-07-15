@@ -46,11 +46,12 @@ func (s Service) GetQuote(query kernel.GetQuoteQuery) (kernel.QuoteDetails, erro
 	}
 
 	return kernel.QuoteDetails{
-		QuoteID:    quote.ID,
-		CustomerID: quote.CustomerID,
-		Status:     quote.Status,
-		LineCount:  len(quote.Lines),
-		TotalItems: quote.TotalQuantity(),
+		QuoteID:     quote.ID,
+		CustomerID:  quote.CustomerID,
+		Status:      quote.Status,
+		LineCount:   len(quote.Lines),
+		TotalItems:  quote.TotalQuantity(),
+		TotalAmount: quote.TotalAmount(),
 	}, nil
 }
 
@@ -63,11 +64,12 @@ func (s Service) ListQuotes(query kernel.ListQuotesQuery) ([]kernel.QuoteSummary
 	results := make([]kernel.QuoteSummary, 0, len(quotes))
 	for _, quote := range quotes {
 		results = append(results, kernel.QuoteSummary{
-			QuoteID:    quote.ID,
-			CustomerID: quote.CustomerID,
-			Status:     quote.Status,
-			LineCount:  len(quote.Lines),
-			TotalItems: quote.TotalQuantity(),
+			QuoteID:     quote.ID,
+			CustomerID:  quote.CustomerID,
+			Status:      quote.Status,
+			LineCount:   len(quote.Lines),
+			TotalItems:  quote.TotalQuantity(),
+			TotalAmount: quote.TotalAmount(),
 		})
 	}
 

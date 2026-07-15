@@ -209,3 +209,36 @@ func TestLowStockItemsReportFiltersByThreshold(t *testing.T) {
 		t.Fatalf("unexpected second row %+v", report.Rows[1])
 	}
 }
+
+func TestOrdersAwaitingApprovalReportReturnsPendingApprovalQueue(t *testing.T) {
+	service := NewService(
+		stubQuoteReader{
+			list: func(query kernel.ListQuotesQuery) ([]kernel.QuoteSummary, error) {
+				if query.Status != "PendingApproval" {
+					return nil, nil
+				}
+
+				return []kernel.QuoteSummary{
+					{QuoteID: "quote-002", CustomerID: "customer-001", Status: "PendingApproval", LineCount: 2, TotalAmount: 60000},
+				}, nil
+			},
+		},
+		stubOrderReader{},
+		stubReturnReader{},
+		stubInventoryReader{},
+	)
+
+	report, err := service.OrdersAwaitingApprovalReport()
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(report.Rows) != 1 {
+		t.Fatalf("expected one pending approval row, got %+v", report.Rows)
+	}
+
+	row := report.Rows[0]
+	if row.QuoteID != "quote-002" || row.TotalAmount != 60000 || row.LineCount != 2 {
+		t.Fatalf("unexpected approval queue row %+v", row)
+	}
+}
