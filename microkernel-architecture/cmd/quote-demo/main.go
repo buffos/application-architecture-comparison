@@ -15,6 +15,7 @@ import (
 	"microkernel-architecture/internal/plugins/payments"
 	"microkernel-architecture/internal/plugins/products"
 	"microkernel-architecture/internal/plugins/quotes"
+	"microkernel-architecture/internal/plugins/reporting"
 	"microkernel-architecture/internal/plugins/returneligibility"
 	"microkernel-architecture/internal/plugins/returns"
 	"microkernel-architecture/internal/plugins/shipments"
@@ -111,6 +112,10 @@ func main() {
 		log.Fatal(err)
 	}
 
+	if err := host.RegisterPlugin(reporting.NewPlugin()); err != nil {
+		log.Fatal(err)
+	}
+
 	if err := host.RegisterPlugin(returneligibility.NewPlugin()); err != nil {
 		log.Fatal(err)
 	}
@@ -164,6 +169,11 @@ func main() {
 	}
 
 	shipmentReader, err := host.ShipmentReader()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	reportingService, err := host.Reporting()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -399,4 +409,11 @@ func main() {
 	}
 
 	fmt.Printf("restocked inventory: sku=%s available=%d\n", restockedItem.ProductSKU, restockedItem.Available)
+
+	report, err := reportingService.QuoteConversionReport()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("quote conversion report: total=%d approved=%d converted=%d rate=%.2f\n", report.TotalQuotes, report.ApprovedQuotes, report.ConvertedQuotes, report.ConversionRate)
 }

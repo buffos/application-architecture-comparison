@@ -291,6 +291,7 @@ Architectures currently implemented in this repository:
 - `022` Quote list query surface plugin: [022-quote-list-query-surface-plugin.md](microkernel-architecture/lessons/022-quote-list-query-surface-plugin.md)
 - `023` Product query surface plugin: [023-product-query-surface-plugin.md](microkernel-architecture/lessons/023-product-query-surface-plugin.md)
 - `024` Customer query surface plugin: [024-customer-query-surface-plugin.md](microkernel-architecture/lessons/024-customer-query-surface-plugin.md)
+- `025` Quote conversion report plugin: [025-quote-conversion-report-plugin.md](microkernel-architecture/lessons/025-quote-conversion-report-plugin.md)
 
 ## How To Maintain This File
 

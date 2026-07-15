@@ -27,6 +27,7 @@ var ErrReturnableOrderProviderNotRegistered = errors.New("returnable order provi
 var ErrReturnEligibilityPolicyNotRegistered = errors.New("return eligibility policy capability not registered")
 var ErrReturnServiceNotRegistered = errors.New("return service capability not registered")
 var ErrReturnReaderNotRegistered = errors.New("return reader capability not registered")
+var ErrReportingNotRegistered = errors.New("reporting capability not registered")
 var ErrClockNotRegistered = errors.New("clock capability not registered")
 var ErrIdempotencyStoreNotRegistered = errors.New("idempotency store capability not registered")
 var ErrIdempotencyKeyRequired = errors.New("idempotency key is required")
@@ -198,6 +199,13 @@ type QuoteSummary struct {
 type QuoteReader interface {
 	GetQuote(query GetQuoteQuery) (QuoteDetails, error)
 	ListQuotes(query ListQuotesQuery) ([]QuoteSummary, error)
+}
+
+type QuoteConversionReport struct {
+	TotalQuotes     int
+	ApprovedQuotes  int
+	ConvertedQuotes int
+	ConversionRate  float64
 }
 
 type ApprovedQuote struct {
@@ -510,4 +518,8 @@ type ReturnService interface {
 type ReturnReader interface {
 	GetReturnRequest(query GetReturnRequestQuery) (ReturnRequestDetails, error)
 	ListReturnRequests(query ListReturnRequestsQuery) ([]ReturnRequestSummary, error)
+}
+
+type Reporting interface {
+	QuoteConversionReport() (QuoteConversionReport, error)
 }

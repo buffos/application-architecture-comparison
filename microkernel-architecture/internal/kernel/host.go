@@ -23,6 +23,7 @@ type Host struct {
 	returnEligibility ReturnEligibilityPolicy
 	returnService     ReturnService
 	returnReader      ReturnReader
+	reporting         Reporting
 	clock             Clock
 	idempotency       IdempotencyStore
 }
@@ -128,6 +129,10 @@ func (h *Host) ExposeReturnService(service ReturnService) {
 
 func (h *Host) ExposeReturnReader(reader ReturnReader) {
 	h.returnReader = reader
+}
+
+func (h *Host) ExposeReporting(reporting Reporting) {
+	h.reporting = reporting
 }
 
 func (h *Host) ExposeClock(clock Clock) {
@@ -304,6 +309,14 @@ func (h *Host) ReturnReader() (ReturnReader, error) {
 	}
 
 	return h.returnReader, nil
+}
+
+func (h *Host) Reporting() (Reporting, error) {
+	if h.reporting == nil {
+		return nil, ErrReportingNotRegistered
+	}
+
+	return h.reporting, nil
 }
 
 func (h *Host) Clock() (Clock, error) {
