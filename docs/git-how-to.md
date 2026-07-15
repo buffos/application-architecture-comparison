@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(microkernel): complete lesson 033 why not stop at microkernel
+feat(component-based): complete lesson 001 component skeleton
 
 # Add tag
 
-git tag -a microkernel-033 -m "Microkernel Lesson 033" && git push origin --tags
-git push origin microkernel-033
+git tag -a component-based-001 -m "Component-Based Lesson 001" && git push origin --tags
+git push origin component-based-001
 
 or
 
