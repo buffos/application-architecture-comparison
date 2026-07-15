@@ -30,15 +30,47 @@ func (s Service) RequestReturn(command kernel.RequestReturnCommand) (kernel.Requ
 		return kernel.RequestReturnResult{}, err
 	}
 
-	lines := make([]ReturnLine, 0, len(order.Lines))
-	for _, line := range order.Lines {
-		lines = append(lines, ReturnLine{
-			ProductSKU:       line.ProductSKU,
-			ProductCategory:  line.ProductCategory,
-			Quantity:         line.Quantity,
-			UnitPrice:        line.UnitPrice,
-			ReturnWindowDays: line.ReturnWindowDays,
-		})
+	selections := command.Lines
+	if len(selections) == 0 {
+		selections = make([]kernel.RequestReturnLine, 0, len(order.Lines))
+		for _, line := range order.Lines {
+			selections = append(selections, kernel.RequestReturnLine{
+				ProductSKU: line.ProductSKU,
+				Quantity:   line.ShippedQuantity,
+			})
+		}
+	}
+
+	lines := make([]ReturnLine, 0, len(selections))
+	for _, selection := range selections {
+		if selection.Quantity <= 0 {
+			return kernel.RequestReturnResult{}, ErrReturnQuantityInvalid
+		}
+
+		matched := false
+		for _, line := range order.Lines {
+			if line.ProductSKU != selection.ProductSKU {
+				continue
+			}
+
+			if selection.Quantity > line.ShippedQuantity {
+				return kernel.RequestReturnResult{}, ErrReturnQuantityInvalid
+			}
+
+			lines = append(lines, ReturnLine{
+				ProductSKU:       line.ProductSKU,
+				ProductCategory:  line.ProductCategory,
+				Quantity:         selection.Quantity,
+				UnitPrice:        line.UnitPrice,
+				ReturnWindowDays: line.ReturnWindowDays,
+			})
+			matched = true
+			break
+		}
+
+		if !matched {
+			return kernel.RequestReturnResult{}, ErrReturnQuantityInvalid
+		}
 	}
 
 	request, err := NewReturnRequest(order.OrderID, order.CustomerID, command.Reason, order.ShippedAt, s.clock.Now(), command.RequestedBy, lines)

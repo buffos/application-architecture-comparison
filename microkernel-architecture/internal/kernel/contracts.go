@@ -504,6 +504,12 @@ type RequestReturnCommand struct {
 	OrderID     string
 	Reason      string
 	RequestedBy string
+	Lines       []RequestReturnLine
+}
+
+type RequestReturnLine struct {
+	ProductSKU string
+	Quantity   int
 }
 
 type RequestReturnResult struct {

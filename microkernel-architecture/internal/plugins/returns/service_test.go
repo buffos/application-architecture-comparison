@@ -131,7 +131,7 @@ func TestRequestReturnStoresRequestedReturnWithoutRefundOrRestock(t *testing.T) 
 			CustomerID: "customer-001",
 			ShippedAt:  time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC),
 			Lines: []kernel.ReturnableOrderLine{
-				{ProductSKU: "sku-002", ProductCategory: "CustomBuild", Quantity: 1, UnitPrice: 45000, ReturnWindowDays: 30},
+				{ProductSKU: "sku-002", ProductCategory: "CustomBuild", Quantity: 2, ShippedQuantity: 2, UnitPrice: 45000, ReturnWindowDays: 30},
 			},
 		},
 	}, stubClock{now: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)}, stubEligibilityPolicy{allowed: true}, idempotency, refunds, restock)
@@ -140,6 +140,9 @@ func TestRequestReturnStoresRequestedReturnWithoutRefundOrRestock(t *testing.T) 
 		OrderID:     "order-001",
 		Reason:      "damaged item",
 		RequestedBy: "customer-001",
+		Lines: []kernel.RequestReturnLine{
+			{ProductSKU: "sku-002", Quantity: 1},
+		},
 	})
 	if err != nil {
 		t.Fatalf("expected request return to succeed, got %v", err)
@@ -159,6 +162,10 @@ func TestRequestReturnStoresRequestedReturnWithoutRefundOrRestock(t *testing.T) 
 
 	if repository.saved.RequestedBy != "customer-001" {
 		t.Fatalf("expected requester to be recorded, got %s", repository.saved.RequestedBy)
+	}
+
+	if len(repository.saved.Lines) != 1 || repository.saved.Lines[0].Quantity != 1 {
+		t.Fatalf("expected partial return line quantity 1, got %+v", repository.saved.Lines)
 	}
 
 	if refunds.orderID != "" || refunds.amount != 0 {
@@ -222,6 +229,32 @@ func TestAcceptReturnRefundsRestocksAndUpdatesStatus(t *testing.T) {
 
 	if _, ok := idempotency.results["accept-001"]; !ok {
 		t.Fatalf("expected idempotent result to be stored")
+	}
+}
+
+func TestRequestReturnRejectsQuantityAboveShippedAmount(t *testing.T) {
+	repository := &stubRepository{}
+	service := NewService(repository, stubReturnableOrderProvider{
+		order: kernel.ReturnableOrder{
+			OrderID:    "order-001",
+			CustomerID: "customer-001",
+			ShippedAt:  time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC),
+			Lines: []kernel.ReturnableOrderLine{
+				{ProductSKU: "sku-002", ProductCategory: "CustomBuild", Quantity: 2, ShippedQuantity: 1, UnitPrice: 45000, ReturnWindowDays: 30},
+			},
+		},
+	}, stubClock{now: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)}, stubEligibilityPolicy{allowed: true}, &stubIdempotencyStore{results: map[string]kernel.IdempotencyResult{}}, &stubPaymentRefund{}, &stubInventoryRestock{})
+
+	_, err := service.RequestReturn(kernel.RequestReturnCommand{
+		OrderID:     "order-001",
+		Reason:      "damaged item",
+		RequestedBy: "customer-001",
+		Lines: []kernel.RequestReturnLine{
+			{ProductSKU: "sku-002", Quantity: 2},
+		},
+	})
+	if err != ErrReturnQuantityInvalid {
+		t.Fatalf("expected invalid return quantity error, got %v", err)
 	}
 }
 
@@ -374,7 +407,7 @@ func TestRequestReturnRejectsMissingRequester(t *testing.T) {
 			CustomerID: "customer-001",
 			ShippedAt:  time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC),
 			Lines: []kernel.ReturnableOrderLine{
-				{ProductSKU: "sku-002", ProductCategory: "CustomBuild", Quantity: 1, UnitPrice: 45000, ReturnWindowDays: 30},
+				{ProductSKU: "sku-002", ProductCategory: "CustomBuild", Quantity: 1, ShippedQuantity: 1, UnitPrice: 45000, ReturnWindowDays: 30},
 			},
 		},
 	}, stubClock{now: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)}, stubEligibilityPolicy{allowed: true}, idempotency, refunds, restock)

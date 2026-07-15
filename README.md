@@ -297,6 +297,7 @@ Architectures currently implemented in this repository:
 - `028` Orders awaiting approval report plugin: [028-orders-awaiting-approval-report-plugin.md](microkernel-architecture/lessons/028-orders-awaiting-approval-report-plugin.md)
 - `029` Payment review workflow plugin: [029-payment-review-workflow-plugin.md](microkernel-architecture/lessons/029-payment-review-workflow-plugin.md)
 - `030` Partial shipment support plugin: [030-partial-shipment-support-plugin.md](microkernel-architecture/lessons/030-partial-shipment-support-plugin.md)
+- `031` Partial returns by line plugin: [031-partial-returns-by-line-plugin.md](microkernel-architecture/lessons/031-partial-returns-by-line-plugin.md)
 
 ## How To Maintain This File
 

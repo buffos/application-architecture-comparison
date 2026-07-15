@@ -10,6 +10,7 @@ import (
 var ErrReturnRequestNotFound = errors.New("return request not found")
 var ErrReturnRequestNotReviewable = errors.New("return request is not reviewable")
 var ErrActorRequired = errors.New("actor is required")
+var ErrReturnQuantityInvalid = errors.New("return quantity is invalid")
 
 const ReturnRequestStatusRequested = "Requested"
 const ReturnRequestStatusRefunded = "Refunded"

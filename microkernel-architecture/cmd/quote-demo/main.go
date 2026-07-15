@@ -402,6 +402,9 @@ func main() {
 		OrderID:     orderResult.OrderID,
 		Reason:      "damaged item",
 		RequestedBy: "customer-001",
+		Lines: []kernel.RequestReturnLine{
+			{ProductSKU: "sku-002", Quantity: 1},
+		},
 	})
 	if err != nil {
 		log.Fatal(err)
