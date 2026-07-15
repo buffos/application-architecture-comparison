@@ -17,6 +17,7 @@ var ErrApprovedQuoteProviderNotRegistered = errors.New("approved quote provider 
 var ErrInventoryReservationNotRegistered = errors.New("inventory reservation capability not registered")
 var ErrInventoryReleaseNotRegistered = errors.New("inventory release capability not registered")
 var ErrInventoryRestockNotRegistered = errors.New("inventory restock capability not registered")
+var ErrInventoryReaderNotRegistered = errors.New("inventory reader capability not registered")
 var ErrPaymentCaptureNotRegistered = errors.New("payment capture capability not registered")
 var ErrPaymentRefundNotRegistered = errors.New("payment refund capability not registered")
 var ErrShipmentCreationNotRegistered = errors.New("shipment creation capability not registered")
@@ -219,6 +220,15 @@ type ReturnRateByCategoryReport struct {
 	Rows []ReturnRateByCategoryRow
 }
 
+type LowStockItemsReportRow struct {
+	ProductSKU string
+	Available  int
+}
+
+type LowStockItemsReport struct {
+	Rows []LowStockItemsReportRow
+}
+
 type ApprovedQuote struct {
 	QuoteID    string
 	CustomerID string
@@ -253,6 +263,15 @@ type InventoryRelease interface {
 
 type InventoryRestock interface {
 	Restock(items []InventoryReservationItem) error
+}
+
+type StockSnapshot struct {
+	ProductSKU string
+	Available  int
+}
+
+type InventoryReader interface {
+	ListStock() ([]StockSnapshot, error)
 }
 
 type PaymentCapture interface {
@@ -549,4 +568,5 @@ type ReturnReader interface {
 type Reporting interface {
 	QuoteConversionReport() (QuoteConversionReport, error)
 	ReturnRateByCategoryReport() (ReturnRateByCategoryReport, error)
+	LowStockItemsReport(threshold int) (LowStockItemsReport, error)
 }

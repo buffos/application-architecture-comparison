@@ -425,4 +425,13 @@ func main() {
 	for _, row := range returnRateReport.Rows {
 		fmt.Printf("return rate by category: category=%s shipped=%d returned=%d rate=%.2f\n", row.Category, row.ShippedQuantity, row.ReturnedQuantity, row.ReturnRate)
 	}
+
+	lowStockReport, err := reportingService.LowStockItemsReport(5)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, row := range lowStockReport.Rows {
+		fmt.Printf("low stock item: sku=%s available=%d\n", row.ProductSKU, row.Available)
+	}
 }

@@ -28,6 +28,11 @@ func (p Plugin) Register(host *kernel.Host) error {
 		return err
 	}
 
-	host.ExposeReporting(NewService(quotes, orders, returns))
+	inventory, err := host.InventoryReader()
+	if err != nil {
+		return err
+	}
+
+	host.ExposeReporting(NewService(quotes, orders, returns, inventory))
 	return nil
 }

@@ -21,5 +21,6 @@ func (p Plugin) Register(host *kernel.Host) error {
 	host.ExposeInventoryReservation(service)
 	host.ExposeInventoryRelease(service)
 	host.ExposeInventoryRestock(service)
+	host.ExposeInventoryReader(service)
 	return nil
 }

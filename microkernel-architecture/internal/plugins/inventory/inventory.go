@@ -11,5 +11,6 @@ type StockRecord struct {
 
 type Repository interface {
 	FindBySKU(sku string) (StockRecord, error)
+	ListStock() ([]StockRecord, error)
 	Save(stock StockRecord) error
 }

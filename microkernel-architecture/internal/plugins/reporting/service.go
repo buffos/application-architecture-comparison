@@ -9,16 +9,18 @@ import (
 )
 
 type Service struct {
-	quotes  kernel.QuoteReader
-	orders  kernel.OrderReader
-	returns kernel.ReturnReader
+	quotes    kernel.QuoteReader
+	orders    kernel.OrderReader
+	returns   kernel.ReturnReader
+	inventory kernel.InventoryReader
 }
 
-func NewService(quotes kernel.QuoteReader, orders kernel.OrderReader, returns kernel.ReturnReader) Service {
+func NewService(quotes kernel.QuoteReader, orders kernel.OrderReader, returns kernel.ReturnReader, inventory kernel.InventoryReader) Service {
 	return Service{
-		quotes:  quotes,
-		orders:  orders,
-		returns: returns,
+		quotes:    quotes,
+		orders:    orders,
+		returns:   returns,
+		inventory: inventory,
 	}
 }
 
@@ -119,4 +121,35 @@ func ensureRow(rowsByCategory map[string]*kernel.ReturnRateByCategoryRow, catego
 	}
 
 	return row
+}
+
+func (s Service) LowStockItemsReport(threshold int) (kernel.LowStockItemsReport, error) {
+	stock, err := s.inventory.ListStock()
+	if err != nil {
+		return kernel.LowStockItemsReport{}, err
+	}
+
+	report := kernel.LowStockItemsReport{
+		Rows: make([]kernel.LowStockItemsReportRow, 0),
+	}
+	for _, item := range stock {
+		if item.Available <= threshold {
+			report.Rows = append(report.Rows, kernel.LowStockItemsReportRow{
+				ProductSKU: item.ProductSKU,
+				Available:  item.Available,
+			})
+		}
+	}
+
+	slices.SortFunc(report.Rows, func(a, b kernel.LowStockItemsReportRow) int {
+		if a.ProductSKU < b.ProductSKU {
+			return -1
+		}
+		if a.ProductSKU > b.ProductSKU {
+			return 1
+		}
+		return 0
+	})
+
+	return report, nil
 }

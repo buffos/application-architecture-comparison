@@ -56,6 +56,18 @@ func (r stubReturnReader) ListReturnRequests(query kernel.ListReturnRequestsQuer
 	return nil, nil
 }
 
+type stubInventoryReader struct {
+	list func() ([]kernel.StockSnapshot, error)
+}
+
+func (r stubInventoryReader) ListStock() ([]kernel.StockSnapshot, error) {
+	if r.list != nil {
+		return r.list()
+	}
+
+	return nil, nil
+}
+
 func TestQuoteConversionReportCombinesQuoteAndOrderCounts(t *testing.T) {
 	service := NewService(
 		stubQuoteReader{
@@ -82,6 +94,7 @@ func TestQuoteConversionReportCombinesQuoteAndOrderCounts(t *testing.T) {
 			},
 		},
 		stubReturnReader{},
+		stubInventoryReader{},
 	)
 
 	report, err := service.QuoteConversionReport()
@@ -142,6 +155,7 @@ func TestReturnRateByCategoryReportGroupsShippedAndReturnedQuantities(t *testing
 				}, nil
 			},
 		},
+		stubInventoryReader{},
 	)
 
 	report, err := service.ReturnRateByCategoryReport()
@@ -158,6 +172,40 @@ func TestReturnRateByCategoryReportGroupsShippedAndReturnedQuantities(t *testing
 	}
 
 	if report.Rows[1].Category != "Standard" || report.Rows[1].ShippedQuantity != 4 || report.Rows[1].ReturnedQuantity != 1 || report.Rows[1].ReturnRate != 0.25 {
+		t.Fatalf("unexpected second row %+v", report.Rows[1])
+	}
+}
+
+func TestLowStockItemsReportFiltersByThreshold(t *testing.T) {
+	service := NewService(
+		stubQuoteReader{},
+		stubOrderReader{},
+		stubReturnReader{},
+		stubInventoryReader{
+			list: func() ([]kernel.StockSnapshot, error) {
+				return []kernel.StockSnapshot{
+					{ProductSKU: "sku-001", Available: 2},
+					{ProductSKU: "sku-002", Available: 7},
+					{ProductSKU: "sku-003", Available: 5},
+				}, nil
+			},
+		},
+	)
+
+	report, err := service.LowStockItemsReport(5)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(report.Rows) != 2 {
+		t.Fatalf("expected two low stock rows, got %+v", report.Rows)
+	}
+
+	if report.Rows[0].ProductSKU != "sku-001" || report.Rows[0].Available != 2 {
+		t.Fatalf("unexpected first row %+v", report.Rows[0])
+	}
+
+	if report.Rows[1].ProductSKU != "sku-003" || report.Rows[1].Available != 5 {
 		t.Fatalf("unexpected second row %+v", report.Rows[1])
 	}
 }

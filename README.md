@@ -293,6 +293,7 @@ Architectures currently implemented in this repository:
 - `024` Customer query surface plugin: [024-customer-query-surface-plugin.md](microkernel-architecture/lessons/024-customer-query-surface-plugin.md)
 - `025` Quote conversion report plugin: [025-quote-conversion-report-plugin.md](microkernel-architecture/lessons/025-quote-conversion-report-plugin.md)
 - `026` Return rate by category report plugin: [026-return-rate-by-category-report-plugin.md](microkernel-architecture/lessons/026-return-rate-by-category-report-plugin.md)
+- `027` Low stock items report plugin: [027-low-stock-items-report-plugin.md](microkernel-architecture/lessons/027-low-stock-items-report-plugin.md)
 
 ## How To Maintain This File
 

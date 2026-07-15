@@ -19,6 +19,14 @@ func (r *stubRepository) Save(stock StockRecord) error {
 	return nil
 }
 
+func (r *stubRepository) ListStock() ([]StockRecord, error) {
+	result := make([]StockRecord, 0, len(r.stock))
+	for _, item := range r.stock {
+		result = append(result, item)
+	}
+	return result, nil
+}
+
 func TestReserve(t *testing.T) {
 	repository := &stubRepository{
 		stock: map[string]StockRecord{
@@ -92,5 +100,24 @@ func TestRestock(t *testing.T) {
 
 	if repository.stock["sku-001"].Available != 10 {
 		t.Fatalf("expected available stock 10, got %d", repository.stock["sku-001"].Available)
+	}
+}
+
+func TestListStock(t *testing.T) {
+	repository := &stubRepository{
+		stock: map[string]StockRecord{
+			"sku-001": {ProductSKU: "sku-001", Available: 8},
+			"sku-002": {ProductSKU: "sku-002", Available: 3},
+		},
+	}
+	service := NewService(repository)
+
+	result, err := service.ListStock()
+	if err != nil {
+		t.Fatalf("expected list stock to succeed, got %v", err)
+	}
+
+	if len(result) != 2 {
+		t.Fatalf("expected two stock snapshots, got %+v", result)
 	}
 }

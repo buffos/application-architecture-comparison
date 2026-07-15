@@ -13,6 +13,7 @@ type Host struct {
 	inventory         InventoryReservation
 	inventoryRelease  InventoryRelease
 	inventoryRestock  InventoryRestock
+	inventoryReader   InventoryReader
 	payments          PaymentCapture
 	refunds           PaymentRefund
 	shipments         ShipmentCreation
@@ -77,6 +78,10 @@ func (h *Host) ExposeInventoryRelease(release InventoryRelease) {
 
 func (h *Host) ExposeInventoryRestock(restock InventoryRestock) {
 	h.inventoryRestock = restock
+}
+
+func (h *Host) ExposeInventoryReader(reader InventoryReader) {
+	h.inventoryReader = reader
 }
 
 func (h *Host) ExposePaymentCapture(payments PaymentCapture) {
@@ -229,6 +234,14 @@ func (h *Host) InventoryRestock() (InventoryRestock, error) {
 	}
 
 	return h.inventoryRestock, nil
+}
+
+func (h *Host) InventoryReader() (InventoryReader, error) {
+	if h.inventoryReader == nil {
+		return nil, ErrInventoryReaderNotRegistered
+	}
+
+	return h.inventoryReader, nil
 }
 
 func (h *Host) PaymentCapture() (PaymentCapture, error) {
