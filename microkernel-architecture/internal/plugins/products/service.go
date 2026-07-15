@@ -30,3 +30,40 @@ func (s Service) GetProductForQuote(sku string) (kernel.Product, error) {
 		ReturnWindowDays: product.ReturnWindowDays,
 	}, nil
 }
+
+func (s Service) GetProduct(query kernel.GetProductQuery) (kernel.ProductDetails, error) {
+	product, err := s.products.FindBySKU(query.SKU)
+	if err != nil {
+		return kernel.ProductDetails{}, err
+	}
+
+	return kernel.ProductDetails{
+		SKU:              product.SKU,
+		Name:             product.Name,
+		Category:         product.Category,
+		Active:           product.Active,
+		UnitPrice:        product.UnitPrice,
+		ReturnWindowDays: product.ReturnWindowDays,
+	}, nil
+}
+
+func (s Service) ListProducts(query kernel.ListProductsQuery) ([]kernel.ProductSummary, error) {
+	productsList, err := s.products.List(query.Category, query.Active)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]kernel.ProductSummary, 0, len(productsList))
+	for _, product := range productsList {
+		results = append(results, kernel.ProductSummary{
+			SKU:              product.SKU,
+			Name:             product.Name,
+			Category:         product.Category,
+			Active:           product.Active,
+			UnitPrice:        product.UnitPrice,
+			ReturnWindowDays: product.ReturnWindowDays,
+		})
+	}
+
+	return results, nil
+}

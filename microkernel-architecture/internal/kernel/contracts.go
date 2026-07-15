@@ -8,6 +8,7 @@ import (
 var ErrPluginAlreadyRegistered = errors.New("plugin already registered")
 var ErrCustomerDirectoryNotRegistered = errors.New("customer directory capability not registered")
 var ErrProductCatalogNotRegistered = errors.New("product catalog capability not registered")
+var ErrProductReaderNotRegistered = errors.New("product reader capability not registered")
 var ErrApprovalPolicyNotRegistered = errors.New("approval policy capability not registered")
 var ErrQuoteServiceNotRegistered = errors.New("quote service capability not registered")
 var ErrQuoteReaderNotRegistered = errors.New("quote reader capability not registered")
@@ -48,6 +49,38 @@ type Product struct {
 
 type ProductCatalog interface {
 	GetProductForQuote(sku string) (Product, error)
+}
+
+type GetProductQuery struct {
+	SKU string
+}
+
+type ProductDetails struct {
+	SKU              string
+	Name             string
+	Category         string
+	Active           bool
+	UnitPrice        int
+	ReturnWindowDays int
+}
+
+type ListProductsQuery struct {
+	Category string
+	Active   *bool
+}
+
+type ProductSummary struct {
+	SKU              string
+	Name             string
+	Category         string
+	Active           bool
+	UnitPrice        int
+	ReturnWindowDays int
+}
+
+type ProductReader interface {
+	GetProduct(query GetProductQuery) (ProductDetails, error)
+	ListProducts(query ListProductsQuery) ([]ProductSummary, error)
 }
 
 type QuoteSubmissionLine struct {

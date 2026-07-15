@@ -133,6 +133,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	productReader, err := host.ProductReader()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	orderService, err := host.OrderService()
 	if err != nil {
 		log.Fatal(err)
@@ -195,6 +200,26 @@ func main() {
 	}
 
 	fmt.Printf("loaded quote: id=%s customer=%s status=%s lines=%d items=%d\n", details.QuoteID, details.CustomerID, details.Status, details.LineCount, details.TotalItems)
+
+	productDetails, err := productReader.GetProduct(kernel.GetProductQuery{
+		SKU: "sku-001",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("loaded product: sku=%s category=%s active=%t price=%d\n", productDetails.SKU, productDetails.Category, productDetails.Active, productDetails.UnitPrice)
+
+	active := true
+	productList, err := productReader.ListProducts(kernel.ListProductsQuery{
+		Category: "Standard",
+		Active:   &active,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("listed products: category=%s active=%t count=%d\n", "Standard", active, len(productList))
 
 	approvedQuotes, err := quoteReader.ListQuotes(kernel.ListQuotesQuery{
 		Status: quotes.QuoteStatusApproved,

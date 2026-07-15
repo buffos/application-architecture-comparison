@@ -17,6 +17,8 @@ func (p Plugin) ID() string {
 }
 
 func (p Plugin) Register(host *kernel.Host) error {
-	host.ExposeProductCatalog(NewService(p.products))
+	service := NewService(p.products)
+	host.ExposeProductCatalog(service)
+	host.ExposeProductReader(service)
 	return nil
 }
