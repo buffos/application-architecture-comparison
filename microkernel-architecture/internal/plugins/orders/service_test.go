@@ -273,6 +273,103 @@ func TestCreateShipment(t *testing.T) {
 	}
 }
 
+func TestCreateShipmentSupportsPartialShipment(t *testing.T) {
+	repository := &stubRepository{
+		saved: Order{
+			ID:         "order-001",
+			QuoteID:    "quote-001",
+			CustomerID: "customer-001",
+			Status:     OrderStatusPaid,
+			Lines: []OrderLine{
+				{
+					ProductSKU:      "sku-001",
+					ProductName:     "Desk",
+					ProductCategory: "Standard",
+					Quantity:        3,
+					UnitPrice:       15000,
+				},
+			},
+		},
+	}
+	shipments := &stubShipmentCreation{
+		result: kernel.ShipmentCreationResult{
+			ShipmentID: "shipment-001",
+			OrderID:    "order-001",
+			CustomerID: "customer-001",
+			LineCount:  1,
+		},
+	}
+	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, shipments, stubClock{})
+
+	result, err := service.CreateShipment(kernel.CreateShipmentCommand{
+		OrderID: "order-001",
+		Lines: []kernel.CreateShipmentLine{
+			{ProductSKU: "sku-001", Quantity: 1},
+		},
+	})
+	if err != nil {
+		t.Fatalf("expected partial shipment to succeed, got %v", err)
+	}
+
+	if result.Status != OrderStatusPartiallyShipped {
+		t.Fatalf("expected partially shipped status, got %s", result.Status)
+	}
+
+	if repository.saved.Lines[0].ShippedQuantity != 1 {
+		t.Fatalf("expected shipped quantity 1, got %d", repository.saved.Lines[0].ShippedQuantity)
+	}
+}
+
+func TestCreateShipmentCanShipRemainingQuantityLater(t *testing.T) {
+	repository := &stubRepository{
+		saved: Order{
+			ID:         "order-001",
+			QuoteID:    "quote-001",
+			CustomerID: "customer-001",
+			Status:     OrderStatusPartiallyShipped,
+			Lines: []OrderLine{
+				{
+					ProductSKU:      "sku-001",
+					ProductName:     "Desk",
+					ProductCategory: "Standard",
+					Quantity:        3,
+					ShippedQuantity: 1,
+					UnitPrice:       15000,
+				},
+			},
+		},
+	}
+	shipments := &stubShipmentCreation{
+		result: kernel.ShipmentCreationResult{
+			ShipmentID: "shipment-002",
+			OrderID:    "order-001",
+			CustomerID: "customer-001",
+			LineCount:  1,
+		},
+	}
+	clock := stubClock{now: time.Date(2026, 7, 14, 10, 0, 0, 0, time.UTC)}
+	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, shipments, clock)
+
+	result, err := service.CreateShipment(kernel.CreateShipmentCommand{
+		OrderID: "order-001",
+	})
+	if err != nil {
+		t.Fatalf("expected remaining shipment to succeed, got %v", err)
+	}
+
+	if result.Status != OrderStatusShipped {
+		t.Fatalf("expected shipped status, got %s", result.Status)
+	}
+
+	if repository.saved.Lines[0].ShippedQuantity != 3 {
+		t.Fatalf("expected shipped quantity 3, got %d", repository.saved.Lines[0].ShippedQuantity)
+	}
+
+	if repository.saved.ShippedAt.IsZero() || !repository.saved.ShippedAt.Equal(clock.now) {
+		t.Fatalf("expected final shipment time to be recorded")
+	}
+}
+
 func TestCreateShipmentRejectsNonShippableOrder(t *testing.T) {
 	repository := &stubRepository{
 		saved: Order{
@@ -396,6 +493,25 @@ func TestCancelOrderRejectsShippedOrder(t *testing.T) {
 	}
 }
 
+func TestCancelOrderRejectsPartiallyShippedOrder(t *testing.T) {
+	repository := &stubRepository{
+		saved: Order{
+			ID:         "order-001",
+			QuoteID:    "quote-001",
+			CustomerID: "customer-001",
+			Status:     OrderStatusPartiallyShipped,
+		},
+	}
+	service := NewService(repository, stubApprovedQuoteProvider{}, stubInventoryReservation{}, stubInventoryRelease{}, stubPaymentCapture{}, &stubShipmentCreation{}, stubClock{})
+
+	_, err := service.CancelOrder(kernel.CancelOrderCommand{
+		OrderID: "order-001",
+	})
+	if err != ErrOrderNotCancellable {
+		t.Fatalf("expected not cancellable error, got %v", err)
+	}
+}
+
 func TestGetReturnableOrder(t *testing.T) {
 	repository := &stubRepository{
 		saved: Order{
@@ -410,6 +526,7 @@ func TestGetReturnableOrder(t *testing.T) {
 					ProductName:      "Custom Desk",
 					ProductCategory:  "CustomBuild",
 					Quantity:         1,
+					ShippedQuantity:  1,
 					UnitPrice:        45000,
 					ReturnWindowDays: 14,
 				},
@@ -433,6 +550,10 @@ func TestGetReturnableOrder(t *testing.T) {
 
 	if result.Lines[0].ProductCategory != "CustomBuild" {
 		t.Fatalf("expected product category CustomBuild, got %s", result.Lines[0].ProductCategory)
+	}
+
+	if result.Lines[0].ShippedQuantity != 1 {
+		t.Fatalf("expected shipped quantity 1, got %d", result.Lines[0].ShippedQuantity)
 	}
 
 	if result.Lines[0].ReturnWindowDays != 14 {

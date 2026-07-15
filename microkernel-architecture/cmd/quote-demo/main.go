@@ -274,7 +274,7 @@ func main() {
 	_, err = quoteService.AddQuoteLine(kernel.AddQuoteLineCommand{
 		QuoteID:    pendingResult.QuoteID,
 		ProductSKU: "sku-002",
-		Quantity:   1,
+		Quantity:   2,
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -360,6 +360,18 @@ func main() {
 	fmt.Printf("approved payment review: order=%s quote=%s customer=%s status=%s lines=%d\n", reviewApproved.OrderID, reviewApproved.QuoteID, reviewApproved.CustomerID, reviewApproved.Status, reviewApproved.LineCount)
 
 	shipmentResult, err := orderService.CreateShipment(kernel.CreateShipmentCommand{
+		OrderID: orderResult.OrderID,
+		Lines: []kernel.CreateShipmentLine{
+			{ProductSKU: "sku-002", Quantity: 1},
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("created shipment: shipment=%s order=%s customer=%s status=%s lines=%d\n", shipmentResult.ShipmentID, shipmentResult.OrderID, shipmentResult.CustomerID, shipmentResult.Status, shipmentResult.LineCount)
+
+	shipmentResult, err = orderService.CreateShipment(kernel.CreateShipmentCommand{
 		OrderID: orderResult.OrderID,
 	})
 	if err != nil {

@@ -421,6 +421,12 @@ type ApprovePaymentReviewResult struct {
 
 type CreateShipmentCommand struct {
 	OrderID string
+	Lines   []CreateShipmentLine
+}
+
+type CreateShipmentLine struct {
+	ProductSKU string
+	Quantity   int
 }
 
 type CreateShipmentResult struct {
@@ -485,6 +491,7 @@ type ReturnableOrderLine struct {
 	ProductSKU       string
 	ProductCategory  string
 	Quantity         int
+	ShippedQuantity  int
 	UnitPrice        int
 	ReturnWindowDays int
 }

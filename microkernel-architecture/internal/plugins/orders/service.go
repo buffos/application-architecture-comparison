@@ -129,15 +129,34 @@ func (s Service) CreateShipment(command kernel.CreateShipmentCommand) (kernel.Cr
 		return kernel.CreateShipmentResult{}, err
 	}
 
-	lines := make([]kernel.ShipmentLine, 0, len(order.Lines))
-	for _, line := range order.Lines {
-		lines = append(lines, kernel.ShipmentLine{
-			ProductSKU: line.ProductSKU,
-			Quantity:   line.Quantity,
-		})
+	selections := make([]ShipmentSelection, 0, len(command.Lines))
+	if len(command.Lines) == 0 {
+		selections = order.RemainingShipmentSelections()
+	} else {
+		for _, line := range command.Lines {
+			selections = append(selections, ShipmentSelection{
+				ProductSKU: line.ProductSKU,
+				Quantity:   line.Quantity,
+			})
+		}
 	}
 
-	if err := order.MarkShipped(s.clock.Now()); err != nil {
+	lines := make([]kernel.ShipmentLine, 0, len(selections))
+	for _, selection := range selections {
+		for _, line := range order.Lines {
+			if line.ProductSKU != selection.ProductSKU {
+				continue
+			}
+
+			lines = append(lines, kernel.ShipmentLine{
+				ProductSKU: line.ProductSKU,
+				Quantity:   selection.Quantity,
+			})
+			break
+		}
+	}
+
+	if err := order.ApplyShipment(selections, s.clock.Now()); err != nil {
 		return kernel.CreateShipmentResult{}, err
 	}
 
@@ -214,6 +233,7 @@ func (s Service) GetReturnableOrder(orderID string) (kernel.ReturnableOrder, err
 			ProductSKU:       line.ProductSKU,
 			ProductCategory:  line.ProductCategory,
 			Quantity:         line.Quantity,
+			ShippedQuantity:  line.ShippedQuantity,
 			UnitPrice:        line.UnitPrice,
 			ReturnWindowDays: line.ReturnWindowDays,
 		})
