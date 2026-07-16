@@ -110,4 +110,24 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("created shipment: shipment=%s order=%s status=%s\n", shipment.ShipmentID, shipment.OrderID, shipment.Status)
+
+	cancellable, err := quoteComponent.CreateDraftQuote(quotes.CreateDraftQuoteCommand{CustomerID: "customer-001"})
+	if err != nil {
+		log.Fatal(err)
+	}
+	if _, err := quoteComponent.AddQuoteLine(quotes.AddQuoteLineCommand{QuoteID: cancellable.QuoteID, ProductSKU: "sku-001", Quantity: 1}); err != nil {
+		log.Fatal(err)
+	}
+	if _, err := quoteComponent.SubmitQuote(quotes.SubmitQuoteCommand{QuoteID: cancellable.QuoteID}); err != nil {
+		log.Fatal(err)
+	}
+	cancellableOrder, err := orderComponent.ConvertQuoteToOrder(orders.ConvertQuoteToOrderCommand{QuoteID: cancellable.QuoteID})
+	if err != nil {
+		log.Fatal(err)
+	}
+	cancelled, err := orderComponent.CancelOrder(orders.CancelOrderCommand{OrderID: cancellableOrder.OrderID})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("cancelled order: order=%s status=%s\n", cancelled.OrderID, cancelled.Status)
 }

@@ -7,15 +7,17 @@ import (
 )
 
 var (
-	ErrOrderNotFound     = errors.New("order not found")
-	ErrOrderNotPayable   = errors.New("order is not payable")
-	ErrOrderNotShippable = errors.New("order is not shippable")
+	ErrOrderNotFound       = errors.New("order not found")
+	ErrOrderNotPayable     = errors.New("order is not payable")
+	ErrOrderNotShippable   = errors.New("order is not shippable")
+	ErrOrderNotCancellable = errors.New("order is not cancellable")
 )
 
 const (
 	OrderStatusPendingPayment = "PendingPayment"
 	OrderStatusPaid           = "Paid"
 	OrderStatusShipped        = "Shipped"
+	OrderStatusCancelled      = "Cancelled"
 )
 
 type Order struct {
@@ -47,6 +49,14 @@ func (o *Order) MarkShipped() error {
 		return ErrOrderNotShippable
 	}
 	o.Status = OrderStatusShipped
+	return nil
+}
+
+func (o *Order) Cancel() error {
+	if o.Status == OrderStatusShipped || o.Status == OrderStatusCancelled {
+		return ErrOrderNotCancellable
+	}
+	o.Status = OrderStatusCancelled
 	return nil
 }
 

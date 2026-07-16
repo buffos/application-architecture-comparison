@@ -12,14 +12,14 @@ import (
 // Component owns order creation and order state for this lesson.
 type Component struct {
 	quotes    quotes.ApprovedQuoteSource
-	stock     inventory.Reserver
+	stock     inventory.StockKeeper
 	payments  payments.Processor
 	shipments shipments.Creator
 	orders    map[string]Order
 	nextID    int
 }
 
-func NewComponent(quotes quotes.ApprovedQuoteSource, stock inventory.Reserver, payments payments.Processor, shipments shipments.Creator) *Component {
+func NewComponent(quotes quotes.ApprovedQuoteSource, stock inventory.StockKeeper, payments payments.Processor, shipments shipments.Creator) *Component {
 	return &Component{quotes: quotes, stock: stock, payments: payments, shipments: shipments, orders: make(map[string]Order)}
 }
 
@@ -52,6 +52,17 @@ type CreateShipmentCommand struct {
 
 type CreateShipmentResult struct {
 	ShipmentID string
+	OrderID    string
+	CustomerID string
+	Status     string
+	LineCount  int
+}
+
+type CancelOrderCommand struct {
+	OrderID string
+}
+
+type CancelOrderResult struct {
 	OrderID    string
 	CustomerID string
 	Status     string
@@ -126,4 +137,25 @@ func (c *Component) CreateShipment(command CreateShipmentCommand) (CreateShipmen
 	c.orders[order.ID] = order
 
 	return CreateShipmentResult{ShipmentID: shipment.ID, OrderID: order.ID, CustomerID: order.CustomerID, Status: order.Status, LineCount: len(order.Lines)}, nil
+}
+
+func (c *Component) CancelOrder(command CancelOrderCommand) (CancelOrderResult, error) {
+	order, ok := c.orders[command.OrderID]
+	if !ok {
+		return CancelOrderResult{}, ErrOrderNotFound
+	}
+	if err := order.Cancel(); err != nil {
+		return CancelOrderResult{}, err
+	}
+
+	releases := make([]inventory.ReleaseItem, 0, len(order.Lines))
+	for _, line := range order.Lines {
+		releases = append(releases, inventory.ReleaseItem{ProductSKU: line.ProductSKU, Quantity: line.Quantity})
+	}
+	if err := c.stock.Release(releases); err != nil {
+		return CancelOrderResult{}, err
+	}
+	c.orders[order.ID] = order
+
+	return CancelOrderResult{OrderID: order.ID, CustomerID: order.CustomerID, Status: order.Status, LineCount: len(order.Lines)}, nil
 }

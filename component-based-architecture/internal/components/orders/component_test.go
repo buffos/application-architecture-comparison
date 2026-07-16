@@ -16,13 +16,20 @@ type stubApprovedQuoteSource struct {
 }
 
 type stubReserver struct {
-	items []inventory.ReservationItem
-	err   error
+	items        []inventory.ReservationItem
+	released     []inventory.ReleaseItem
+	err          error
+	releaseError error
 }
 
 func (s *stubReserver) Reserve(items []inventory.ReservationItem) error {
 	s.items = append([]inventory.ReservationItem(nil), items...)
 	return s.err
+}
+
+func (s *stubReserver) Release(items []inventory.ReleaseItem) error {
+	s.released = append([]inventory.ReleaseItem(nil), items...)
+	return s.releaseError
 }
 
 type stubPaymentProcessor struct {
@@ -179,5 +186,48 @@ func TestCreateShipmentRejectsUnpaidOrder(t *testing.T) {
 	_, err = component.CreateShipment(CreateShipmentCommand{OrderID: converted.OrderID})
 	if !errors.Is(err, ErrOrderNotShippable) {
 		t.Fatalf("expected %v, got %v", ErrOrderNotShippable, err)
+	}
+}
+
+func TestCancelOrderReleasesReservedStock(t *testing.T) {
+	stock := &stubReserver{}
+	component := NewComponent(stubApprovedQuoteSource{quote: quotes.ApprovedQuote{
+		QuoteID: "quote-001", CustomerID: "customer-001", Lines: []quotes.ApprovedQuoteLine{{ProductSKU: "sku-001", Quantity: 2}},
+	}}, stock, &stubPaymentProcessor{}, &stubShipmentCreator{})
+	converted, err := component.ConvertQuoteToOrder(ConvertQuoteToOrderCommand{QuoteID: "quote-001"})
+	if err != nil {
+		t.Fatalf("convert quote: %v", err)
+	}
+
+	result, err := component.CancelOrder(CancelOrderCommand{OrderID: converted.OrderID})
+	if err != nil {
+		t.Fatalf("cancel order: %v", err)
+	}
+	if result.Status != OrderStatusCancelled {
+		t.Fatalf("expected %s, got %s", OrderStatusCancelled, result.Status)
+	}
+	if len(stock.released) != 1 || stock.released[0].ProductSKU != "sku-001" || stock.released[0].Quantity != 2 {
+		t.Fatalf("expected released sku-001 quantity 2, got %+v", stock.released)
+	}
+}
+
+func TestCancelOrderRejectsShippedOrder(t *testing.T) {
+	component := NewComponent(stubApprovedQuoteSource{quote: quotes.ApprovedQuote{
+		QuoteID: "quote-001", CustomerID: "customer-001", Lines: []quotes.ApprovedQuoteLine{{ProductSKU: "sku-001", Quantity: 1, UnitPrice: 15000}},
+	}}, &stubReserver{}, &stubPaymentProcessor{}, &stubShipmentCreator{})
+	converted, err := component.ConvertQuoteToOrder(ConvertQuoteToOrderCommand{QuoteID: "quote-001"})
+	if err != nil {
+		t.Fatalf("convert quote: %v", err)
+	}
+	if _, err := component.CapturePayment(CapturePaymentCommand{OrderID: converted.OrderID}); err != nil {
+		t.Fatalf("capture payment: %v", err)
+	}
+	if _, err := component.CreateShipment(CreateShipmentCommand{OrderID: converted.OrderID}); err != nil {
+		t.Fatalf("create shipment: %v", err)
+	}
+
+	_, err = component.CancelOrder(CancelOrderCommand{OrderID: converted.OrderID})
+	if !errors.Is(err, ErrOrderNotCancellable) {
+		t.Fatalf("expected %v, got %v", ErrOrderNotCancellable, err)
 	}
 }

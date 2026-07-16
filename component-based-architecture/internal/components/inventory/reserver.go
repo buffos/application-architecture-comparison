@@ -5,3 +5,14 @@ package inventory
 type Reserver interface {
 	Reserve(items []ReservationItem) error
 }
+
+// Releaser is the public contract provided by this component to workflows
+// that must restore previously reserved stock.
+type Releaser interface {
+	Release(items []ReleaseItem) error
+}
+
+type StockKeeper interface {
+	Reserver
+	Releaser
+}
