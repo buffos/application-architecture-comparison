@@ -117,6 +117,10 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("requested return: return=%s order=%s status=%s\n", returnRequest.ReturnRequestID, returnRequest.OrderID, returnRequest.Status)
+	if err := returnComponent.AcceptReturn(returns.ReviewReturnCommand{ReturnRequestID: returnRequest.ReturnRequestID}); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("accepted return: return=%s status=%s\n", returnRequest.ReturnRequestID, returns.ReturnRequestStatusRefunded)
 
 	cancellable, err := quoteComponent.CreateDraftQuote(quotes.CreateDraftQuoteCommand{CustomerID: "customer-001"})
 	if err != nil {
