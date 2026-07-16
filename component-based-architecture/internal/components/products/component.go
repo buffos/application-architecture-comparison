@@ -25,7 +25,7 @@ func (c *Component) GetProductForQuote(sku string) (ProductForQuote, error) {
 	if !product.Active {
 		return ProductForQuote{}, ErrProductInactive
 	}
-	return ProductForQuote{SKU: product.SKU, Name: product.Name, Category: product.Category, UnitPrice: product.UnitPrice}, nil
+	return ProductForQuote{SKU: product.SKU, Name: product.Name, Category: product.Category, UnitPrice: product.UnitPrice, ReturnWindowDays: product.ReturnWindowDays}, nil
 }
 
 var _ Catalog = (*Component)(nil)

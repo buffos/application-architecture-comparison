@@ -131,7 +131,7 @@ func (c *Component) CreateShipment(command CreateShipmentCommand) (CreateShipmen
 	if err != nil {
 		return CreateShipmentResult{}, err
 	}
-	if err := order.MarkShipped(); err != nil {
+	if err := order.MarkShipped(shipment.ShippedAt); err != nil {
 		return CreateShipmentResult{}, err
 	}
 	c.orders[order.ID] = order

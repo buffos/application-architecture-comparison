@@ -6,6 +6,7 @@ import (
 
 	paymentadapter "component-based-architecture/internal/adapters/payments"
 	"component-based-architecture/internal/components/approvals"
+	"component-based-architecture/internal/components/clock"
 	"component-based-architecture/internal/components/customers"
 	"component-based-architecture/internal/components/inventory"
 	"component-based-architecture/internal/components/orders"
@@ -27,12 +28,12 @@ func main() {
 	}
 	productComponent := products.NewComponent()
 	if err := productComponent.Register(products.Product{
-		SKU: "sku-001", Name: "Desk", Category: "Standard", Active: true, UnitPrice: 15000,
+		SKU: "sku-001", Name: "Desk", Category: "Standard", Active: true, UnitPrice: 15000, ReturnWindowDays: 30,
 	}); err != nil {
 		log.Fatal(err)
 	}
 	if err := productComponent.Register(products.Product{
-		SKU: "sku-002", Name: "Custom Desk", Category: "CustomBuild", Active: true, UnitPrice: 45000,
+		SKU: "sku-002", Name: "Custom Desk", Category: "CustomBuild", Active: true, UnitPrice: 45000, ReturnWindowDays: 30,
 	}); err != nil {
 		log.Fatal(err)
 	}
@@ -43,10 +44,11 @@ func main() {
 	inventoryComponent.RegisterStock(inventory.StockRecord{ProductSKU: "sku-001", Available: 10})
 	inventoryComponent.RegisterStock(inventory.StockRecord{ProductSKU: "sku-002", Available: 3})
 	paymentComponent := payments.NewComponent(paymentadapter.NewAcceptAllGateway())
-	shipmentComponent := shipments.NewComponent()
+	clockComponent := clock.NewComponent()
+	shipmentComponent := shipments.NewComponent(clockComponent)
 	orderComponent := orders.NewComponent(quoteComponent, inventoryComponent, paymentComponent, shipmentComponent)
 	returnEligibilityComponent := returneligibility.NewComponent()
-	returnComponent := returns.NewComponent(orderComponent, paymentComponent, inventoryComponent, returnEligibilityComponent)
+	returnComponent := returns.NewComponent(orderComponent, paymentComponent, inventoryComponent, returnEligibilityComponent, clockComponent)
 	result, err := quoteComponent.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
 	})

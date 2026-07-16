@@ -13,11 +13,12 @@ type ApprovedQuote struct {
 }
 
 type ApprovedQuoteLine struct {
-	ProductSKU      string
-	ProductName     string
-	ProductCategory string
-	Quantity        int
-	UnitPrice       int
+	ProductSKU       string
+	ProductName      string
+	ProductCategory  string
+	Quantity         int
+	UnitPrice        int
+	ReturnWindowDays int
 }
 
 func (q Quote) EnsureConvertible() error {
@@ -40,7 +41,7 @@ func (c *Component) GetApprovedQuoteForOrder(quoteID string) (ApprovedQuote, err
 	for _, line := range quote.Lines {
 		lines = append(lines, ApprovedQuoteLine{
 			ProductSKU: line.ProductSKU, ProductName: line.ProductName, ProductCategory: line.ProductCategory,
-			Quantity: line.Quantity, UnitPrice: line.UnitPrice,
+			Quantity: line.Quantity, UnitPrice: line.UnitPrice, ReturnWindowDays: line.ReturnWindowDays,
 		})
 	}
 	return ApprovedQuote{QuoteID: quote.ID, CustomerID: quote.CustomerID, Lines: lines}, nil

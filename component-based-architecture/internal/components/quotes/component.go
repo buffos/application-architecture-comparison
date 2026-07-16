@@ -92,7 +92,7 @@ func (c *Component) AddQuoteLine(command AddQuoteLineCommand) (AddQuoteLineResul
 	if err != nil {
 		return AddQuoteLineResult{}, err
 	}
-	if err := quote.AddLine(ProductInput{SKU: product.SKU, Name: product.Name, Category: product.Category, UnitPrice: product.UnitPrice}, command.Quantity); err != nil {
+	if err := quote.AddLine(ProductInput{SKU: product.SKU, Name: product.Name, Category: product.Category, UnitPrice: product.UnitPrice, ReturnWindowDays: product.ReturnWindowDays}, command.Quantity); err != nil {
 		return AddQuoteLineResult{}, err
 	}
 	c.quotes[quote.ID] = quote

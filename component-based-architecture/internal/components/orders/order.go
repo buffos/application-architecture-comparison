@@ -2,6 +2,7 @@ package orders
 
 import (
 	"errors"
+	"time"
 
 	"component-based-architecture/internal/components/quotes"
 )
@@ -27,14 +28,16 @@ type Order struct {
 	CustomerID string
 	Status     string
 	Lines      []OrderLine
+	ShippedAt  time.Time
 }
 
 type OrderLine struct {
-	ProductSKU      string
-	ProductName     string
-	ProductCategory string
-	Quantity        int
-	UnitPrice       int
+	ProductSKU       string
+	ProductName      string
+	ProductCategory  string
+	Quantity         int
+	UnitPrice        int
+	ReturnWindowDays int
 }
 
 func (o *Order) MarkPaid() error {
@@ -45,11 +48,12 @@ func (o *Order) MarkPaid() error {
 	return nil
 }
 
-func (o *Order) MarkShipped() error {
+func (o *Order) MarkShipped(shippedAt time.Time) error {
 	if o.Status != OrderStatusPaid {
 		return ErrOrderNotShippable
 	}
 	o.Status = OrderStatusShipped
+	o.ShippedAt = shippedAt
 	return nil
 }
 
@@ -73,7 +77,7 @@ func newOrderFromApprovedQuote(id string, quote quotes.ApprovedQuote) Order {
 	for _, line := range quote.Lines {
 		lines = append(lines, OrderLine{
 			ProductSKU: line.ProductSKU, ProductName: line.ProductName, ProductCategory: line.ProductCategory,
-			Quantity: line.Quantity, UnitPrice: line.UnitPrice,
+			Quantity: line.Quantity, UnitPrice: line.UnitPrice, ReturnWindowDays: line.ReturnWindowDays,
 		})
 	}
 	return Order{

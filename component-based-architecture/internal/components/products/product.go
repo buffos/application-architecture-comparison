@@ -9,18 +9,20 @@ var (
 )
 
 type Product struct {
-	SKU       string
-	Name      string
-	Category  string
-	Active    bool
-	UnitPrice int
+	SKU              string
+	Name             string
+	Category         string
+	Active           bool
+	UnitPrice        int
+	ReturnWindowDays int
 }
 
 // ProductForQuote is the product snapshot that crosses the component
 // boundary. It contains only the data Quotes needs for this workflow.
 type ProductForQuote struct {
-	SKU       string
-	Name      string
-	Category  string
-	UnitPrice int
+	SKU              string
+	Name             string
+	Category         string
+	UnitPrice        int
+	ReturnWindowDays int
 }

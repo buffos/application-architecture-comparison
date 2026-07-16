@@ -27,18 +27,20 @@ type Quote struct {
 }
 
 type QuoteLine struct {
-	ProductSKU      string
-	ProductName     string
-	ProductCategory string
-	Quantity        int
-	UnitPrice       int
+	ProductSKU       string
+	ProductName      string
+	ProductCategory  string
+	Quantity         int
+	UnitPrice        int
+	ReturnWindowDays int
 }
 
 type ProductInput struct {
-	SKU       string
-	Name      string
-	Category  string
-	UnitPrice int
+	SKU              string
+	Name             string
+	Category         string
+	UnitPrice        int
+	ReturnWindowDays int
 }
 
 type CreateDraftQuoteCommand struct {
@@ -59,7 +61,7 @@ func (q *Quote) AddLine(product ProductInput, quantity int) error {
 		return ErrQuantityMustBePositive
 	}
 	q.Lines = append(q.Lines, QuoteLine{
-		ProductSKU: product.SKU, ProductName: product.Name, ProductCategory: product.Category, Quantity: quantity, UnitPrice: product.UnitPrice,
+		ProductSKU: product.SKU, ProductName: product.Name, ProductCategory: product.Category, Quantity: quantity, UnitPrice: product.UnitPrice, ReturnWindowDays: product.ReturnWindowDays,
 	})
 	return nil
 }

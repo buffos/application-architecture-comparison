@@ -1,11 +1,13 @@
 package returns
 
 import (
+	"component-based-architecture/internal/components/clock"
 	"component-based-architecture/internal/components/inventory"
 	"component-based-architecture/internal/components/orders"
 	"component-based-architecture/internal/components/payments"
 	"component-based-architecture/internal/components/returneligibility"
 	"fmt"
+	"time"
 )
 
 const (
@@ -19,18 +21,21 @@ type ReturnRequest struct {
 	LineCount                               int
 	amount                                  int
 	restock                                 []inventory.RestockItem
+	shippedAt, requestedAt                  time.Time
+	returnWindows                           []returneligibility.ReviewLine
 }
 type Component struct {
 	orders      orders.ReturnableOrderSource
 	payments    payments.Refunder
 	inventory   inventory.Restocker
 	eligibility returneligibility.Evaluator
+	clock       clock.Reader
 	requests    map[string]ReturnRequest
 	nextID      int
 }
 
-func NewComponent(orders orders.ReturnableOrderSource, payments payments.Refunder, inventory inventory.Restocker, eligibility returneligibility.Evaluator) *Component {
-	return &Component{orders: orders, payments: payments, inventory: inventory, eligibility: eligibility, requests: map[string]ReturnRequest{}}
+func NewComponent(orders orders.ReturnableOrderSource, payments payments.Refunder, inventory inventory.Restocker, eligibility returneligibility.Evaluator, clock clock.Reader) *Component {
+	return &Component{orders: orders, payments: payments, inventory: inventory, eligibility: eligibility, clock: clock, requests: map[string]ReturnRequest{}}
 }
 
 type RequestReturnCommand struct{ OrderID, Reason string }
@@ -52,7 +57,7 @@ func (c *Component) RequestReturn(command RequestReturnCommand) (RequestReturnRe
 		amount += line.Quantity * line.UnitPrice
 		restock = append(restock, inventory.RestockItem{ProductSKU: line.ProductSKU, Quantity: line.Quantity})
 	}
-	request := ReturnRequest{ID: fmt.Sprintf("return-%03d", c.nextID), OrderID: order.OrderID, CustomerID: order.CustomerID, Reason: command.Reason, Status: ReturnRequestStatusRequested, LineCount: len(order.Lines), amount: amount, restock: restock}
+	request := ReturnRequest{ID: fmt.Sprintf("return-%03d", c.nextID), OrderID: order.OrderID, CustomerID: order.CustomerID, Reason: command.Reason, Status: ReturnRequestStatusRequested, LineCount: len(order.Lines), amount: amount, restock: restock, shippedAt: order.ShippedAt, requestedAt: c.clock.Now(), returnWindows: returnWindows(order.Lines)}
 	c.requests[request.ID] = request
 	return RequestReturnResult{ReturnRequestID: request.ID, OrderID: request.OrderID, CustomerID: request.CustomerID, Status: request.Status, LineCount: request.LineCount}, nil
 }
@@ -61,7 +66,7 @@ func (c *Component) AcceptReturn(command ReviewReturnCommand) error {
 	if !ok || r.Status != ReturnRequestStatusRequested {
 		return fmt.Errorf("return request is not reviewable")
 	}
-	if !c.eligibility.Allows(returneligibility.Review{Reason: r.Reason}) {
+	if !c.eligibility.Allows(returneligibility.Review{ShippedAt: r.shippedAt, RequestedAt: r.requestedAt, Lines: r.returnWindows}) {
 		r.Status = ReturnRequestStatusRejected
 		c.requests[r.ID] = r
 		return nil
@@ -75,6 +80,14 @@ func (c *Component) AcceptReturn(command ReviewReturnCommand) error {
 	r.Status = ReturnRequestStatusRefunded
 	c.requests[r.ID] = r
 	return nil
+}
+
+func returnWindows(lines []orders.ReturnableOrderLine) []returneligibility.ReviewLine {
+	windows := make([]returneligibility.ReviewLine, 0, len(lines))
+	for _, line := range lines {
+		windows = append(windows, returneligibility.ReviewLine{ReturnWindowDays: line.ReturnWindowDays})
+	}
+	return windows
 }
 func (c *Component) RejectReturn(command ReviewReturnCommand) error {
 	r, ok := c.requests[command.ReturnRequestID]
