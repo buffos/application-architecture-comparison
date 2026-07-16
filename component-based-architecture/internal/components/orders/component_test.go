@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"component-based-architecture/internal/components/inventory"
+	"component-based-architecture/internal/components/payments"
 	"component-based-architecture/internal/components/quotes"
 )
 
@@ -23,6 +24,16 @@ func (s *stubReserver) Reserve(items []inventory.ReservationItem) error {
 	return s.err
 }
 
+type stubPaymentProcessor struct {
+	request payments.PaymentRequest
+	err     error
+}
+
+func (s *stubPaymentProcessor) Capture(request payments.PaymentRequest) (payments.CaptureResult, error) {
+	s.request = request
+	return payments.CaptureResult{}, s.err
+}
+
 func (s stubApprovedQuoteSource) GetApprovedQuoteForOrder(quoteID string) (quotes.ApprovedQuote, error) {
 	if s.err != nil {
 		return quotes.ApprovedQuote{}, s.err
@@ -35,7 +46,7 @@ func TestConvertQuoteToOrderReservesStockAndCreatesOrderSnapshot(t *testing.T) {
 	component := NewComponent(stubApprovedQuoteSource{quote: quotes.ApprovedQuote{
 		QuoteID: "quote-001", CustomerID: "customer-001",
 		Lines: []quotes.ApprovedQuoteLine{{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000}},
-	}}, reserver)
+	}}, reserver, &stubPaymentProcessor{})
 
 	result, err := component.ConvertQuoteToOrder(ConvertQuoteToOrderCommand{QuoteID: "quote-001"})
 	if err != nil {
@@ -56,7 +67,7 @@ func TestConvertQuoteToOrderReservesStockAndCreatesOrderSnapshot(t *testing.T) {
 }
 
 func TestConvertQuoteToOrderPropagatesNonApprovedQuoteError(t *testing.T) {
-	component := NewComponent(stubApprovedQuoteSource{err: quotes.ErrQuoteNotConvertible}, &stubReserver{})
+	component := NewComponent(stubApprovedQuoteSource{err: quotes.ErrQuoteNotConvertible}, &stubReserver{}, &stubPaymentProcessor{})
 
 	_, err := component.ConvertQuoteToOrder(ConvertQuoteToOrderCommand{QuoteID: "quote-001"})
 	if !errors.Is(err, quotes.ErrQuoteNotConvertible) {
@@ -68,10 +79,51 @@ func TestConvertQuoteToOrderStopsWhenReservationFails(t *testing.T) {
 	component := NewComponent(stubApprovedQuoteSource{quote: quotes.ApprovedQuote{
 		QuoteID: "quote-001", CustomerID: "customer-001",
 		Lines: []quotes.ApprovedQuoteLine{{ProductSKU: "sku-001", Quantity: 1}},
-	}}, &stubReserver{err: inventory.ErrInsufficientStock})
+	}}, &stubReserver{err: inventory.ErrInsufficientStock}, &stubPaymentProcessor{})
 
 	_, err := component.ConvertQuoteToOrder(ConvertQuoteToOrderCommand{QuoteID: "quote-001"})
 	if !errors.Is(err, inventory.ErrInsufficientStock) {
 		t.Fatalf("expected %v, got %v", inventory.ErrInsufficientStock, err)
+	}
+}
+
+func TestCapturePaymentPaysPendingOrder(t *testing.T) {
+	processor := &stubPaymentProcessor{}
+	component := NewComponent(stubApprovedQuoteSource{quote: quotes.ApprovedQuote{
+		QuoteID: "quote-001", CustomerID: "customer-001",
+		Lines: []quotes.ApprovedQuoteLine{{ProductSKU: "sku-001", Quantity: 2, UnitPrice: 15000}},
+	}}, &stubReserver{}, processor)
+	converted, err := component.ConvertQuoteToOrder(ConvertQuoteToOrderCommand{QuoteID: "quote-001"})
+	if err != nil {
+		t.Fatalf("convert quote: %v", err)
+	}
+
+	result, err := component.CapturePayment(CapturePaymentCommand{OrderID: converted.OrderID})
+	if err != nil {
+		t.Fatalf("capture payment: %v", err)
+	}
+	if result.Status != OrderStatusPaid {
+		t.Fatalf("expected %s, got %s", OrderStatusPaid, result.Status)
+	}
+	if processor.request.Amount != 30000 {
+		t.Fatalf("expected capture amount 30000, got %d", processor.request.Amount)
+	}
+}
+
+func TestCapturePaymentRejectsAlreadyPaidOrder(t *testing.T) {
+	component := NewComponent(stubApprovedQuoteSource{quote: quotes.ApprovedQuote{
+		QuoteID: "quote-001", CustomerID: "customer-001", Lines: []quotes.ApprovedQuoteLine{{ProductSKU: "sku-001", Quantity: 1, UnitPrice: 15000}},
+	}}, &stubReserver{}, &stubPaymentProcessor{})
+	converted, err := component.ConvertQuoteToOrder(ConvertQuoteToOrderCommand{QuoteID: "quote-001"})
+	if err != nil {
+		t.Fatalf("convert quote: %v", err)
+	}
+	if _, err := component.CapturePayment(CapturePaymentCommand{OrderID: converted.OrderID}); err != nil {
+		t.Fatalf("capture payment: %v", err)
+	}
+
+	_, err = component.CapturePayment(CapturePaymentCommand{OrderID: converted.OrderID})
+	if !errors.Is(err, ErrOrderNotPayable) {
+		t.Fatalf("expected %v, got %v", ErrOrderNotPayable, err)
 	}
 }

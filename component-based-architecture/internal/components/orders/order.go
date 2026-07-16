@@ -1,8 +1,20 @@
 package orders
 
-import "component-based-architecture/internal/components/quotes"
+import (
+	"errors"
 
-const OrderStatusPendingPayment = "PendingPayment"
+	"component-based-architecture/internal/components/quotes"
+)
+
+var (
+	ErrOrderNotFound   = errors.New("order not found")
+	ErrOrderNotPayable = errors.New("order is not payable")
+)
+
+const (
+	OrderStatusPendingPayment = "PendingPayment"
+	OrderStatusPaid           = "Paid"
+)
 
 type Order struct {
 	ID         string
@@ -18,6 +30,14 @@ type OrderLine struct {
 	ProductCategory string
 	Quantity        int
 	UnitPrice       int
+}
+
+func (o *Order) MarkPaid() error {
+	if o.Status != OrderStatusPendingPayment {
+		return ErrOrderNotPayable
+	}
+	o.Status = OrderStatusPaid
+	return nil
 }
 
 func newOrderFromApprovedQuote(id string, quote quotes.ApprovedQuote) Order {

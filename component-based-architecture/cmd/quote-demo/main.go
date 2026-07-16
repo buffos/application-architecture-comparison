@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"log"
 
+	paymentadapter "component-based-architecture/internal/adapters/payments"
 	"component-based-architecture/internal/components/approvals"
 	"component-based-architecture/internal/components/customers"
 	"component-based-architecture/internal/components/inventory"
 	"component-based-architecture/internal/components/orders"
+	"component-based-architecture/internal/components/payments"
 	"component-based-architecture/internal/components/products"
 	"component-based-architecture/internal/components/quotes"
 )
@@ -37,7 +39,8 @@ func main() {
 	inventoryComponent := inventory.NewComponent()
 	inventoryComponent.RegisterStock(inventory.StockRecord{ProductSKU: "sku-001", Available: 10})
 	inventoryComponent.RegisterStock(inventory.StockRecord{ProductSKU: "sku-002", Available: 3})
-	orderComponent := orders.NewComponent(quoteComponent, inventoryComponent)
+	paymentComponent := payments.NewComponent(paymentadapter.NewAcceptAllGateway())
+	orderComponent := orders.NewComponent(quoteComponent, inventoryComponent, paymentComponent)
 	result, err := quoteComponent.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
 	})
@@ -93,4 +96,10 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("converted quote to order: order=%s quote=%s status=%s lines=%d\n", order.OrderID, order.QuoteID, order.Status, order.LineCount)
+
+	paid, err := orderComponent.CapturePayment(orders.CapturePaymentCommand{OrderID: order.OrderID})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("captured payment: order=%s status=%s\n", paid.OrderID, paid.Status)
 }
