@@ -69,6 +69,8 @@ type CancelOrderResult struct {
 	LineCount  int
 }
 
+var _ Reader = (*Component)(nil)
+
 func (c *Component) ConvertQuoteToOrder(command ConvertQuoteToOrderCommand) (ConvertQuoteToOrderResult, error) {
 	quote, err := c.quotes.GetApprovedQuoteForOrder(command.QuoteID)
 	if err != nil {

@@ -106,12 +106,20 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("converted quote to order: order=%s quote=%s status=%s lines=%d\n", order.OrderID, order.QuoteID, order.Status, order.LineCount)
+	var orderReader orders.Reader = orderComponent
+	orderDetails, err := orderReader.GetOrder(orders.GetOrderQuery{OrderID: order.OrderID})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("loaded order: order=%s status=%s lines=%d\n", orderDetails.OrderID, orderDetails.Status, orderDetails.LineCount)
 
 	paid, err := orderComponent.CapturePayment(orders.CapturePaymentCommand{OrderID: order.OrderID})
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("captured payment: order=%s status=%s\n", paid.OrderID, paid.Status)
+	pendingOrders := orderReader.ListOrders(orders.ListOrdersQuery{Status: orders.OrderStatusPaid})
+	fmt.Printf("listed paid orders: count=%d\n", len(pendingOrders))
 
 	shipment, err := orderComponent.CreateShipment(orders.CreateShipmentCommand{OrderID: order.OrderID})
 	if err != nil {

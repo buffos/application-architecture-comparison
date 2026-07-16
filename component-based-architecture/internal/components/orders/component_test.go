@@ -231,3 +231,33 @@ func TestCancelOrderRejectsShippedOrder(t *testing.T) {
 		t.Fatalf("expected %v, got %v", ErrOrderNotCancellable, err)
 	}
 }
+
+func TestOrderReaderLoadsAndListsOrders(t *testing.T) {
+	component := NewComponent(stubApprovedQuoteSource{quote: quotes.ApprovedQuote{
+		QuoteID: "quote-001", CustomerID: "customer-001", Lines: []quotes.ApprovedQuoteLine{{ProductSKU: "sku-001", ProductName: "Desk", Quantity: 2, UnitPrice: 15000}},
+	}}, &stubReserver{}, &stubPaymentProcessor{}, &stubShipmentCreator{})
+	created, err := component.ConvertQuoteToOrder(ConvertQuoteToOrderCommand{QuoteID: "quote-001"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var reader Reader = component
+	details, err := reader.GetOrder(GetOrderQuery{OrderID: created.OrderID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if details.QuoteID != "quote-001" || details.LineCount != 1 || details.Lines[0].ProductSKU != "sku-001" {
+		t.Fatalf("unexpected details %+v", details)
+	}
+	listed := reader.ListOrders(ListOrdersQuery{Status: OrderStatusPendingPayment})
+	if len(listed) != 1 || listed[0].OrderID != created.OrderID {
+		t.Fatalf("unexpected list %+v", listed)
+	}
+}
+
+func TestOrderReaderRejectsUnknownOrder(t *testing.T) {
+	component := NewComponent(stubApprovedQuoteSource{}, &stubReserver{}, &stubPaymentProcessor{}, &stubShipmentCreator{})
+	_, err := component.GetOrder(GetOrderQuery{OrderID: "order-999"})
+	if !errors.Is(err, ErrOrderNotFound) {
+		t.Fatalf("got %v", err)
+	}
+}
