@@ -48,6 +48,16 @@ type SubmitQuoteResult struct {
 	Status    string
 }
 
+type ApproveQuoteCommand struct {
+	QuoteID string
+}
+
+type ApproveQuoteResult struct {
+	QuoteID   string
+	LineCount int
+	Status    string
+}
+
 func (c *Component) CreateDraftQuote(command CreateDraftQuoteCommand) (CreateDraftQuoteResult, error) {
 	if command.CustomerID == "" {
 		return CreateDraftQuoteResult{}, ErrCustomerIDRequired
@@ -105,4 +115,17 @@ func (c *Component) SubmitQuote(command SubmitQuoteCommand) (SubmitQuoteResult, 
 	c.quotes[quote.ID] = quote
 
 	return SubmitQuoteResult{QuoteID: quote.ID, LineCount: len(quote.Lines), Status: quote.Status}, nil
+}
+
+func (c *Component) ApproveQuote(command ApproveQuoteCommand) (ApproveQuoteResult, error) {
+	quote, ok := c.quotes[command.QuoteID]
+	if !ok {
+		return ApproveQuoteResult{}, ErrQuoteNotFound
+	}
+	if err := quote.Approve(); err != nil {
+		return ApproveQuoteResult{}, err
+	}
+	c.quotes[quote.ID] = quote
+
+	return ApproveQuoteResult{QuoteID: quote.ID, LineCount: len(quote.Lines), Status: quote.Status}, nil
 }

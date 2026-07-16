@@ -24,6 +24,11 @@ func main() {
 	}); err != nil {
 		log.Fatal(err)
 	}
+	if err := productComponent.Register(products.Product{
+		SKU: "sku-002", Name: "Custom Desk", Category: "CustomBuild", Active: true, UnitPrice: 45000,
+	}); err != nil {
+		log.Fatal(err)
+	}
 
 	approvalComponent := approvals.NewComponent()
 	quoteComponent := quotes.NewComponent(customerComponent, productComponent, approvalComponent)
@@ -57,4 +62,23 @@ func main() {
 	}
 
 	fmt.Printf("loaded quote: id=%s customer=%s status=%s lines=%d\n", details.QuoteID, details.CustomerID, details.Status, details.LineCount)
+
+	pending, err := quoteComponent.CreateDraftQuote(quotes.CreateDraftQuoteCommand{CustomerID: "customer-001"})
+	if err != nil {
+		log.Fatal(err)
+	}
+	if _, err := quoteComponent.AddQuoteLine(quotes.AddQuoteLineCommand{QuoteID: pending.QuoteID, ProductSKU: "sku-002", Quantity: 1}); err != nil {
+		log.Fatal(err)
+	}
+	pendingSubmission, err := quoteComponent.SubmitQuote(quotes.SubmitQuoteCommand{QuoteID: pending.QuoteID})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("submitted custom quote: id=%s status=%s\n", pendingSubmission.QuoteID, pendingSubmission.Status)
+
+	approval, err := quoteComponent.ApproveQuote(quotes.ApproveQuoteCommand{QuoteID: pending.QuoteID})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("approved custom quote: id=%s status=%s\n", approval.QuoteID, approval.Status)
 }

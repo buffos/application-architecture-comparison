@@ -180,3 +180,47 @@ func TestSubmitQuoteSendsCustomBuildToPendingApproval(t *testing.T) {
 		t.Fatalf("expected %s, got %s", QuoteStatusPendingApproval, result.Status)
 	}
 }
+
+func TestApproveQuoteApprovesPendingQuote(t *testing.T) {
+	quoteComponent := newQuoteComponent(t)
+	created, err := quoteComponent.CreateDraftQuote(CreateDraftQuoteCommand{CustomerID: "customer-001"})
+	if err != nil {
+		t.Fatalf("create draft quote: %v", err)
+	}
+	if _, err := quoteComponent.AddQuoteLine(AddQuoteLineCommand{QuoteID: created.QuoteID, ProductSKU: "sku-002", Quantity: 1}); err != nil {
+		t.Fatalf("add custom quote line: %v", err)
+	}
+	if _, err := quoteComponent.SubmitQuote(SubmitQuoteCommand{QuoteID: created.QuoteID}); err != nil {
+		t.Fatalf("submit quote: %v", err)
+	}
+
+	result, err := quoteComponent.ApproveQuote(ApproveQuoteCommand{QuoteID: created.QuoteID})
+	if err != nil {
+		t.Fatalf("approve quote: %v", err)
+	}
+	if result.Status != QuoteStatusApproved {
+		t.Fatalf("expected %s, got %s", QuoteStatusApproved, result.Status)
+	}
+}
+
+func TestApproveQuoteRejectsAlreadyApprovedQuote(t *testing.T) {
+	quoteComponent := newQuoteComponent(t)
+	created, err := quoteComponent.CreateDraftQuote(CreateDraftQuoteCommand{CustomerID: "customer-001"})
+	if err != nil {
+		t.Fatalf("create draft quote: %v", err)
+	}
+	if _, err := quoteComponent.AddQuoteLine(AddQuoteLineCommand{QuoteID: created.QuoteID, ProductSKU: "sku-002", Quantity: 1}); err != nil {
+		t.Fatalf("add custom quote line: %v", err)
+	}
+	if _, err := quoteComponent.SubmitQuote(SubmitQuoteCommand{QuoteID: created.QuoteID}); err != nil {
+		t.Fatalf("submit quote: %v", err)
+	}
+	if _, err := quoteComponent.ApproveQuote(ApproveQuoteCommand{QuoteID: created.QuoteID}); err != nil {
+		t.Fatalf("approve quote: %v", err)
+	}
+
+	_, err = quoteComponent.ApproveQuote(ApproveQuoteCommand{QuoteID: created.QuoteID})
+	if err != ErrQuoteNotApprovable {
+		t.Fatalf("expected %v, got %v", ErrQuoteNotApprovable, err)
+	}
+}
