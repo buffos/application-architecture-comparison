@@ -106,3 +106,54 @@ func TestAddQuoteLineAddsActiveProductToDraftQuote(t *testing.T) {
 		t.Fatalf("expected one line in details, got %d", details.LineCount)
 	}
 }
+
+func TestSubmitQuoteApprovesDraftWithLines(t *testing.T) {
+	quoteComponent := newQuoteComponent(t)
+	created, err := quoteComponent.CreateDraftQuote(CreateDraftQuoteCommand{CustomerID: "customer-001"})
+	if err != nil {
+		t.Fatalf("create draft quote: %v", err)
+	}
+	if _, err := quoteComponent.AddQuoteLine(AddQuoteLineCommand{QuoteID: created.QuoteID, ProductSKU: "sku-001", Quantity: 1}); err != nil {
+		t.Fatalf("add quote line: %v", err)
+	}
+
+	result, err := quoteComponent.SubmitQuote(SubmitQuoteCommand{QuoteID: created.QuoteID})
+	if err != nil {
+		t.Fatalf("submit quote: %v", err)
+	}
+	if result.Status != QuoteStatusApproved {
+		t.Fatalf("expected %s, got %s", QuoteStatusApproved, result.Status)
+	}
+}
+
+func TestSubmitQuoteRejectsEmptyDraft(t *testing.T) {
+	quoteComponent := newQuoteComponent(t)
+	created, err := quoteComponent.CreateDraftQuote(CreateDraftQuoteCommand{CustomerID: "customer-001"})
+	if err != nil {
+		t.Fatalf("create draft quote: %v", err)
+	}
+
+	_, err = quoteComponent.SubmitQuote(SubmitQuoteCommand{QuoteID: created.QuoteID})
+	if err != ErrQuoteCannotBeSubmittedWithoutLines {
+		t.Fatalf("expected %v, got %v", ErrQuoteCannotBeSubmittedWithoutLines, err)
+	}
+}
+
+func TestAddQuoteLineRejectsApprovedQuote(t *testing.T) {
+	quoteComponent := newQuoteComponent(t)
+	created, err := quoteComponent.CreateDraftQuote(CreateDraftQuoteCommand{CustomerID: "customer-001"})
+	if err != nil {
+		t.Fatalf("create draft quote: %v", err)
+	}
+	if _, err := quoteComponent.AddQuoteLine(AddQuoteLineCommand{QuoteID: created.QuoteID, ProductSKU: "sku-001", Quantity: 1}); err != nil {
+		t.Fatalf("add quote line: %v", err)
+	}
+	if _, err := quoteComponent.SubmitQuote(SubmitQuoteCommand{QuoteID: created.QuoteID}); err != nil {
+		t.Fatalf("submit quote: %v", err)
+	}
+
+	_, err = quoteComponent.AddQuoteLine(AddQuoteLineCommand{QuoteID: created.QuoteID, ProductSKU: "sku-001", Quantity: 1})
+	if err != ErrQuoteNotEditable {
+		t.Fatalf("expected %v, got %v", ErrQuoteNotEditable, err)
+	}
+}

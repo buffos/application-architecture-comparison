@@ -3,13 +3,18 @@ package quotes
 import "errors"
 
 var (
-	ErrCustomerIDRequired     = errors.New("customer id is required")
-	ErrQuoteNotFound          = errors.New("quote not found")
-	ErrQuantityMustBePositive = errors.New("quantity must be positive")
-	ErrQuoteNotEditable       = errors.New("quote is not editable")
+	ErrCustomerIDRequired                 = errors.New("customer id is required")
+	ErrQuoteNotFound                      = errors.New("quote not found")
+	ErrQuantityMustBePositive             = errors.New("quantity must be positive")
+	ErrQuoteNotEditable                   = errors.New("quote is not editable")
+	ErrQuoteNotSubmittable                = errors.New("quote is not submittable")
+	ErrQuoteCannotBeSubmittedWithoutLines = errors.New("quote cannot be submitted without lines")
 )
 
-const QuoteStatusDraft = "Draft"
+const (
+	QuoteStatusDraft    = "Draft"
+	QuoteStatusApproved = "Approved"
+)
 
 type Quote struct {
 	ID         string
@@ -51,5 +56,16 @@ func (q *Quote) AddLine(product ProductInput, quantity int) error {
 	q.Lines = append(q.Lines, QuoteLine{
 		ProductSKU: product.SKU, ProductName: product.Name, Quantity: quantity, UnitPrice: product.UnitPrice,
 	})
+	return nil
+}
+
+func (q *Quote) Submit() error {
+	if q.Status != QuoteStatusDraft {
+		return ErrQuoteNotSubmittable
+	}
+	if len(q.Lines) == 0 {
+		return ErrQuoteCannotBeSubmittedWithoutLines
+	}
+	q.Status = QuoteStatusApproved
 	return nil
 }

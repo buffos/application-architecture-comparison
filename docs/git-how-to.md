@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(component-based): complete lesson 003 add quote line with product contract
+feat(component-based): complete lesson 004 submit quote state transition
 
 # Add tag
 
-git tag -a component-based-003 -m "Component-Based Lesson 003" && git push origin --tags
-git push origin component-based-003
+git tag -a component-based-004 -m "Component-Based Lesson 004" && git push origin --tags
+git push origin component-based-004
 
 or
 

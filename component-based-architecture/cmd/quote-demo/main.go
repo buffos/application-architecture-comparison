@@ -42,6 +42,12 @@ func main() {
 	}
 	fmt.Printf("added quote line: id=%s lines=%d status=%s\n", lineResult.QuoteID, lineResult.LineCount, lineResult.Status)
 
+	submission, err := quoteComponent.SubmitQuote(quotes.SubmitQuoteCommand{QuoteID: result.QuoteID})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("submitted quote: id=%s lines=%d status=%s\n", submission.QuoteID, submission.LineCount, submission.Status)
+
 	var quoteLookup quotes.QuoteLookup = quoteComponent
 	details, err := quoteLookup.GetQuote(quotes.GetQuoteQuery{QuoteID: result.QuoteID})
 	if err != nil {
