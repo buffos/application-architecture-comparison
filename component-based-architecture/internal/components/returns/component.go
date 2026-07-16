@@ -4,6 +4,7 @@ import (
 	"component-based-architecture/internal/components/inventory"
 	"component-based-architecture/internal/components/orders"
 	"component-based-architecture/internal/components/payments"
+	"component-based-architecture/internal/components/returneligibility"
 	"fmt"
 )
 
@@ -20,15 +21,16 @@ type ReturnRequest struct {
 	restock                                 []inventory.RestockItem
 }
 type Component struct {
-	orders    orders.ReturnableOrderSource
-	payments  payments.Refunder
-	inventory inventory.Restocker
-	requests  map[string]ReturnRequest
-	nextID    int
+	orders      orders.ReturnableOrderSource
+	payments    payments.Refunder
+	inventory   inventory.Restocker
+	eligibility returneligibility.Evaluator
+	requests    map[string]ReturnRequest
+	nextID      int
 }
 
-func NewComponent(orders orders.ReturnableOrderSource, payments payments.Refunder, inventory inventory.Restocker) *Component {
-	return &Component{orders: orders, payments: payments, inventory: inventory, requests: map[string]ReturnRequest{}}
+func NewComponent(orders orders.ReturnableOrderSource, payments payments.Refunder, inventory inventory.Restocker, eligibility returneligibility.Evaluator) *Component {
+	return &Component{orders: orders, payments: payments, inventory: inventory, eligibility: eligibility, requests: map[string]ReturnRequest{}}
 }
 
 type RequestReturnCommand struct{ OrderID, Reason string }
@@ -58,6 +60,11 @@ func (c *Component) AcceptReturn(command ReviewReturnCommand) error {
 	r, ok := c.requests[command.ReturnRequestID]
 	if !ok || r.Status != ReturnRequestStatusRequested {
 		return fmt.Errorf("return request is not reviewable")
+	}
+	if !c.eligibility.Allows(returneligibility.Review{Reason: r.Reason}) {
+		r.Status = ReturnRequestStatusRejected
+		c.requests[r.ID] = r
+		return nil
 	}
 	if err := c.payments.Refund(payments.RefundRequest{OrderID: r.OrderID, CustomerID: r.CustomerID, Amount: r.amount, Reason: r.Reason}); err != nil {
 		return err

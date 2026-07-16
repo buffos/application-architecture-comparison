@@ -4,6 +4,7 @@ import (
 	"component-based-architecture/internal/components/inventory"
 	"component-based-architecture/internal/components/orders"
 	"component-based-architecture/internal/components/payments"
+	"component-based-architecture/internal/components/returneligibility"
 	"errors"
 	"testing"
 )
@@ -27,7 +28,7 @@ func (s *paymentsStub) Refund(request payments.RefundRequest) error { s.request 
 func TestRequestReturnStoresRequestedReturnWithoutSideEffects(t *testing.T) {
 	p := &paymentsStub{}
 	i := &inventoryStub{}
-	c := NewComponent(ordersStub{order: orders.ReturnableOrder{OrderID: "order-001", CustomerID: "customer-001", Lines: []orders.ReturnableOrderLine{{ProductSKU: "sku-001", Quantity: 2, UnitPrice: 15000}}}}, p, i)
+	c := NewComponent(ordersStub{order: orders.ReturnableOrder{OrderID: "order-001", CustomerID: "customer-001", Lines: []orders.ReturnableOrderLine{{ProductSKU: "sku-001", Quantity: 2, UnitPrice: 15000}}}}, p, i, returneligibility.NewComponent())
 	r, e := c.RequestReturn(RequestReturnCommand{OrderID: "order-001", Reason: "damaged"})
 	if e != nil {
 		t.Fatal(e)
@@ -43,9 +44,28 @@ func TestRequestReturnStoresRequestedReturnWithoutSideEffects(t *testing.T) {
 	}
 }
 func TestRequestReturnPropagatesNonShippedError(t *testing.T) {
-	c := NewComponent(ordersStub{err: orders.ErrOrderNotReturnable}, &paymentsStub{}, &inventoryStub{})
+	c := NewComponent(ordersStub{err: orders.ErrOrderNotReturnable}, &paymentsStub{}, &inventoryStub{}, returneligibility.NewComponent())
 	_, e := c.RequestReturn(RequestReturnCommand{OrderID: "order-001"})
 	if !errors.Is(e, orders.ErrOrderNotReturnable) {
 		t.Fatalf("got %v", e)
+	}
+}
+
+func TestAcceptReturnRejectsPolicyBlockedRequestWithoutSideEffects(t *testing.T) {
+	p := &paymentsStub{}
+	i := &inventoryStub{}
+	c := NewComponent(ordersStub{order: orders.ReturnableOrder{OrderID: "order-001", CustomerID: "customer-001", Lines: []orders.ReturnableOrderLine{{ProductSKU: "sku-001", Quantity: 2, UnitPrice: 15000}}}}, p, i, returneligibility.NewComponent())
+	r, err := c.RequestReturn(RequestReturnCommand{OrderID: "order-001", Reason: "outside return window"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.AcceptReturn(ReviewReturnCommand{ReturnRequestID: r.ReturnRequestID}); err != nil {
+		t.Fatal(err)
+	}
+	if request := c.requests[r.ReturnRequestID]; request.Status != ReturnRequestStatusRejected {
+		t.Fatalf("status = %s, want %s", request.Status, ReturnRequestStatusRejected)
+	}
+	if p.request.Amount != 0 || len(i.items) != 0 {
+		t.Fatalf("blocked return had side effects: refund %+v restock %+v", p.request, i.items)
 	}
 }

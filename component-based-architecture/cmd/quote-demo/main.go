@@ -12,6 +12,7 @@ import (
 	"component-based-architecture/internal/components/payments"
 	"component-based-architecture/internal/components/products"
 	"component-based-architecture/internal/components/quotes"
+	"component-based-architecture/internal/components/returneligibility"
 	"component-based-architecture/internal/components/returns"
 	"component-based-architecture/internal/components/shipments"
 )
@@ -44,7 +45,8 @@ func main() {
 	paymentComponent := payments.NewComponent(paymentadapter.NewAcceptAllGateway())
 	shipmentComponent := shipments.NewComponent()
 	orderComponent := orders.NewComponent(quoteComponent, inventoryComponent, paymentComponent, shipmentComponent)
-	returnComponent := returns.NewComponent(orderComponent, paymentComponent, inventoryComponent)
+	returnEligibilityComponent := returneligibility.NewComponent()
+	returnComponent := returns.NewComponent(orderComponent, paymentComponent, inventoryComponent, returnEligibilityComponent)
 	result, err := quoteComponent.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
 	})
