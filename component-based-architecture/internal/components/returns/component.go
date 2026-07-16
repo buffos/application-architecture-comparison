@@ -1,6 +1,7 @@
 package returns
 
 import (
+	"component-based-architecture/internal/components/inventory"
 	"component-based-architecture/internal/components/orders"
 	"component-based-architecture/internal/components/payments"
 	"fmt"
@@ -13,14 +14,15 @@ type ReturnRequest struct {
 	LineCount                               int
 }
 type Component struct {
-	orders   orders.ReturnableOrderSource
-	payments payments.Refunder
-	requests map[string]ReturnRequest
-	nextID   int
+	orders    orders.ReturnableOrderSource
+	payments  payments.Refunder
+	inventory inventory.Restocker
+	requests  map[string]ReturnRequest
+	nextID    int
 }
 
-func NewComponent(orders orders.ReturnableOrderSource, payments payments.Refunder) *Component {
-	return &Component{orders: orders, payments: payments, requests: map[string]ReturnRequest{}}
+func NewComponent(orders orders.ReturnableOrderSource, payments payments.Refunder, inventory inventory.Restocker) *Component {
+	return &Component{orders: orders, payments: payments, inventory: inventory, requests: map[string]ReturnRequest{}}
 }
 
 type RequestReturnCommand struct{ OrderID, Reason string }
@@ -39,6 +41,13 @@ func (c *Component) RequestReturn(command RequestReturnCommand) (RequestReturnRe
 		amount += line.Quantity * line.UnitPrice
 	}
 	if err := c.payments.Refund(payments.RefundRequest{OrderID: order.OrderID, CustomerID: order.CustomerID, Amount: amount, Reason: command.Reason}); err != nil {
+		return RequestReturnResult{}, err
+	}
+	restock := make([]inventory.RestockItem, 0, len(order.Lines))
+	for _, line := range order.Lines {
+		restock = append(restock, inventory.RestockItem{ProductSKU: line.ProductSKU, Quantity: line.Quantity})
+	}
+	if err := c.inventory.Restock(restock); err != nil {
 		return RequestReturnResult{}, err
 	}
 	c.nextID++

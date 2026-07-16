@@ -16,3 +16,6 @@ type StockKeeper interface {
 	Reserver
 	Releaser
 }
+type Restocker interface {
+	Restock(items []RestockItem) error
+}

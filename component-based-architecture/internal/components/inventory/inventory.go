@@ -22,3 +22,7 @@ type ReleaseItem struct {
 	ProductSKU string
 	Quantity   int
 }
+type RestockItem struct {
+	ProductSKU string
+	Quantity   int
+}

@@ -44,7 +44,7 @@ func main() {
 	paymentComponent := payments.NewComponent(paymentadapter.NewAcceptAllGateway())
 	shipmentComponent := shipments.NewComponent()
 	orderComponent := orders.NewComponent(quoteComponent, inventoryComponent, paymentComponent, shipmentComponent)
-	returnComponent := returns.NewComponent(orderComponent, paymentComponent)
+	returnComponent := returns.NewComponent(orderComponent, paymentComponent, inventoryComponent)
 	result, err := quoteComponent.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
 	})

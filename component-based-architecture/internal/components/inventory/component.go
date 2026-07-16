@@ -52,5 +52,19 @@ func (c *Component) Release(items []ReleaseItem) error {
 	}
 	return nil
 }
+func (c *Component) Restock(items []RestockItem) error {
+	for _, item := range items {
+		if item.Quantity <= 0 {
+			return ErrReservationQuantityMustBePositive
+		}
+		if _, ok := c.stock[item.ProductSKU]; !ok {
+			return ErrStockNotFound
+		}
+	}
+	for _, item := range items {
+		c.stock[item.ProductSKU] += item.Quantity
+	}
+	return nil
+}
 
 var _ StockKeeper = (*Component)(nil)
