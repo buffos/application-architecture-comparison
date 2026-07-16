@@ -6,6 +6,7 @@ import (
 
 	"component-based-architecture/internal/components/approvals"
 	"component-based-architecture/internal/components/customers"
+	"component-based-architecture/internal/components/inventory"
 	"component-based-architecture/internal/components/orders"
 	"component-based-architecture/internal/components/products"
 	"component-based-architecture/internal/components/quotes"
@@ -33,7 +34,10 @@ func main() {
 
 	approvalComponent := approvals.NewComponent()
 	quoteComponent := quotes.NewComponent(customerComponent, productComponent, approvalComponent)
-	orderComponent := orders.NewComponent(quoteComponent)
+	inventoryComponent := inventory.NewComponent()
+	inventoryComponent.RegisterStock(inventory.StockRecord{ProductSKU: "sku-001", Available: 10})
+	inventoryComponent.RegisterStock(inventory.StockRecord{ProductSKU: "sku-002", Available: 3})
+	orderComponent := orders.NewComponent(quoteComponent, inventoryComponent)
 	result, err := quoteComponent.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
 	})

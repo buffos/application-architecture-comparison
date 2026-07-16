@@ -3,18 +3,20 @@ package orders
 import (
 	"fmt"
 
+	"component-based-architecture/internal/components/inventory"
 	"component-based-architecture/internal/components/quotes"
 )
 
 // Component owns order creation and order state for this lesson.
 type Component struct {
 	quotes quotes.ApprovedQuoteSource
+	stock  inventory.Reserver
 	orders map[string]Order
 	nextID int
 }
 
-func NewComponent(quotes quotes.ApprovedQuoteSource) *Component {
-	return &Component{quotes: quotes, orders: make(map[string]Order)}
+func NewComponent(quotes quotes.ApprovedQuoteSource, stock inventory.Reserver) *Component {
+	return &Component{quotes: quotes, stock: stock, orders: make(map[string]Order)}
 }
 
 type ConvertQuoteToOrderCommand struct {
@@ -32,6 +34,14 @@ type ConvertQuoteToOrderResult struct {
 func (c *Component) ConvertQuoteToOrder(command ConvertQuoteToOrderCommand) (ConvertQuoteToOrderResult, error) {
 	quote, err := c.quotes.GetApprovedQuoteForOrder(command.QuoteID)
 	if err != nil {
+		return ConvertQuoteToOrderResult{}, err
+	}
+
+	reservations := make([]inventory.ReservationItem, 0, len(quote.Lines))
+	for _, line := range quote.Lines {
+		reservations = append(reservations, inventory.ReservationItem{ProductSKU: line.ProductSKU, Quantity: line.Quantity})
+	}
+	if err := c.stock.Reserve(reservations); err != nil {
 		return ConvertQuoteToOrderResult{}, err
 	}
 
