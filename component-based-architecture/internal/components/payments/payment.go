@@ -7,3 +7,10 @@ type PaymentRequest struct {
 }
 
 type CaptureResult struct{}
+
+type RefundRequest struct {
+	OrderID    string
+	CustomerID string
+	Amount     int
+	Reason     string
+}

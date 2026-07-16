@@ -13,4 +13,6 @@ func (g AcceptAllGateway) Capture(request payments.PaymentRequest) (payments.Cap
 	return payments.CaptureResult{}, nil
 }
 
+func (g AcceptAllGateway) Refund(request payments.RefundRequest) error { return nil }
+
 var _ payments.Gateway = AcceptAllGateway{}

@@ -11,6 +11,7 @@ var (
 	ErrOrderNotPayable     = errors.New("order is not payable")
 	ErrOrderNotShippable   = errors.New("order is not shippable")
 	ErrOrderNotCancellable = errors.New("order is not cancellable")
+	ErrOrderNotReturnable  = errors.New("order is not returnable")
 )
 
 const (
@@ -57,6 +58,13 @@ func (o *Order) Cancel() error {
 		return ErrOrderNotCancellable
 	}
 	o.Status = OrderStatusCancelled
+	return nil
+}
+
+func (o Order) EnsureReturnable() error {
+	if o.Status != OrderStatusShipped {
+		return ErrOrderNotReturnable
+	}
 	return nil
 }
 

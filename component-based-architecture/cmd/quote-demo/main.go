@@ -12,6 +12,7 @@ import (
 	"component-based-architecture/internal/components/payments"
 	"component-based-architecture/internal/components/products"
 	"component-based-architecture/internal/components/quotes"
+	"component-based-architecture/internal/components/returns"
 	"component-based-architecture/internal/components/shipments"
 )
 
@@ -43,6 +44,7 @@ func main() {
 	paymentComponent := payments.NewComponent(paymentadapter.NewAcceptAllGateway())
 	shipmentComponent := shipments.NewComponent()
 	orderComponent := orders.NewComponent(quoteComponent, inventoryComponent, paymentComponent, shipmentComponent)
+	returnComponent := returns.NewComponent(orderComponent, paymentComponent)
 	result, err := quoteComponent.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
 	})
@@ -110,6 +112,11 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("created shipment: shipment=%s order=%s status=%s\n", shipment.ShipmentID, shipment.OrderID, shipment.Status)
+	returnRequest, err := returnComponent.RequestReturn(returns.RequestReturnCommand{OrderID: order.OrderID, Reason: "damaged"})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("requested return: return=%s order=%s status=%s\n", returnRequest.ReturnRequestID, returnRequest.OrderID, returnRequest.Status)
 
 	cancellable, err := quoteComponent.CreateDraftQuote(quotes.CreateDraftQuoteCommand{CustomerID: "customer-001"})
 	if err != nil {
