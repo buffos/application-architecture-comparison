@@ -12,8 +12,9 @@ var (
 )
 
 const (
-	QuoteStatusDraft    = "Draft"
-	QuoteStatusApproved = "Approved"
+	QuoteStatusDraft           = "Draft"
+	QuoteStatusPendingApproval = "PendingApproval"
+	QuoteStatusApproved        = "Approved"
 )
 
 type Quote struct {
@@ -24,15 +25,17 @@ type Quote struct {
 }
 
 type QuoteLine struct {
-	ProductSKU  string
-	ProductName string
-	Quantity    int
-	UnitPrice   int
+	ProductSKU      string
+	ProductName     string
+	ProductCategory string
+	Quantity        int
+	UnitPrice       int
 }
 
 type ProductInput struct {
 	SKU       string
 	Name      string
+	Category  string
 	UnitPrice int
 }
 
@@ -54,17 +57,21 @@ func (q *Quote) AddLine(product ProductInput, quantity int) error {
 		return ErrQuantityMustBePositive
 	}
 	q.Lines = append(q.Lines, QuoteLine{
-		ProductSKU: product.SKU, ProductName: product.Name, Quantity: quantity, UnitPrice: product.UnitPrice,
+		ProductSKU: product.SKU, ProductName: product.Name, ProductCategory: product.Category, Quantity: quantity, UnitPrice: product.UnitPrice,
 	})
 	return nil
 }
 
-func (q *Quote) Submit() error {
+func (q *Quote) Submit(requiresApproval bool) error {
 	if q.Status != QuoteStatusDraft {
 		return ErrQuoteNotSubmittable
 	}
 	if len(q.Lines) == 0 {
 		return ErrQuoteCannotBeSubmittedWithoutLines
+	}
+	if requiresApproval {
+		q.Status = QuoteStatusPendingApproval
+		return nil
 	}
 	q.Status = QuoteStatusApproved
 	return nil

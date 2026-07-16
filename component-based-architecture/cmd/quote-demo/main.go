@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"component-based-architecture/internal/components/approvals"
 	"component-based-architecture/internal/components/customers"
 	"component-based-architecture/internal/components/products"
 	"component-based-architecture/internal/components/quotes"
@@ -19,12 +20,13 @@ func main() {
 	}
 	productComponent := products.NewComponent()
 	if err := productComponent.Register(products.Product{
-		SKU: "sku-001", Name: "Desk", Active: true, UnitPrice: 15000,
+		SKU: "sku-001", Name: "Desk", Category: "Standard", Active: true, UnitPrice: 15000,
 	}); err != nil {
 		log.Fatal(err)
 	}
 
-	quoteComponent := quotes.NewComponent(customerComponent, productComponent)
+	approvalComponent := approvals.NewComponent()
+	quoteComponent := quotes.NewComponent(customerComponent, productComponent, approvalComponent)
 	result, err := quoteComponent.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
 	})

@@ -3,6 +3,7 @@ package quotes
 import (
 	"fmt"
 
+	"component-based-architecture/internal/components/approvals"
 	"component-based-architecture/internal/components/customers"
 	"component-based-architecture/internal/components/products"
 )
@@ -10,14 +11,16 @@ import (
 // Component owns quote behavior and its in-memory state for this lesson.
 type Component struct {
 	customers customers.CustomerDirectory
+	approvals approvals.Evaluator
 	products  products.Catalog
 	quotes    map[string]Quote
 	nextID    int
 }
 
-func NewComponent(customers customers.CustomerDirectory, products products.Catalog) *Component {
+func NewComponent(customers customers.CustomerDirectory, products products.Catalog, approvals approvals.Evaluator) *Component {
 	return &Component{
 		customers: customers,
+		approvals: approvals,
 		products:  products,
 		quotes:    make(map[string]Quote),
 	}
@@ -79,7 +82,7 @@ func (c *Component) AddQuoteLine(command AddQuoteLineCommand) (AddQuoteLineResul
 	if err != nil {
 		return AddQuoteLineResult{}, err
 	}
-	if err := quote.AddLine(ProductInput{SKU: product.SKU, Name: product.Name, UnitPrice: product.UnitPrice}, command.Quantity); err != nil {
+	if err := quote.AddLine(ProductInput{SKU: product.SKU, Name: product.Name, Category: product.Category, UnitPrice: product.UnitPrice}, command.Quantity); err != nil {
 		return AddQuoteLineResult{}, err
 	}
 	c.quotes[quote.ID] = quote
@@ -92,7 +95,11 @@ func (c *Component) SubmitQuote(command SubmitQuoteCommand) (SubmitQuoteResult, 
 	if !ok {
 		return SubmitQuoteResult{}, ErrQuoteNotFound
 	}
-	if err := quote.Submit(); err != nil {
+	submission := approvals.QuoteSubmission{Lines: make([]approvals.QuoteSubmissionLine, 0, len(quote.Lines))}
+	for _, line := range quote.Lines {
+		submission.Lines = append(submission.Lines, approvals.QuoteSubmissionLine{ProductCategory: line.ProductCategory})
+	}
+	if err := quote.Submit(c.approvals.RequiresApproval(submission)); err != nil {
 		return SubmitQuoteResult{}, err
 	}
 	c.quotes[quote.ID] = quote

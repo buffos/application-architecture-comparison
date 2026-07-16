@@ -11,6 +11,7 @@ var (
 type Product struct {
 	SKU       string
 	Name      string
+	Category  string
 	Active    bool
 	UnitPrice int
 }
@@ -20,5 +21,6 @@ type Product struct {
 type ProductForQuote struct {
 	SKU       string
 	Name      string
+	Category  string
 	UnitPrice int
 }
