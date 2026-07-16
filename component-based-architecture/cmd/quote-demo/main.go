@@ -116,12 +116,12 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("created shipment: shipment=%s order=%s status=%s\n", shipment.ShipmentID, shipment.OrderID, shipment.Status)
-	returnRequest, err := returnComponent.RequestReturn(returns.RequestReturnCommand{OrderID: order.OrderID, Reason: "damaged"})
+	returnRequest, err := returnComponent.RequestReturn(returns.RequestReturnCommand{OrderID: order.OrderID, Reason: "damaged", RequestedBy: "agent-001"})
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("requested return: return=%s order=%s status=%s\n", returnRequest.ReturnRequestID, returnRequest.OrderID, returnRequest.Status)
-	if err := returnComponent.AcceptReturn(returns.ReviewReturnCommand{ReturnRequestID: returnRequest.ReturnRequestID}); err != nil {
+	if err := returnComponent.AcceptReturn(returns.ReviewReturnCommand{ReturnRequestID: returnRequest.ReturnRequestID, ReviewedBy: "reviewer-001", ProcessedBy: "processor-001", ReviewNote: "eligible"}); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("accepted return: return=%s status=%s\n", returnRequest.ReturnRequestID, returns.ReturnRequestStatusRefunded)

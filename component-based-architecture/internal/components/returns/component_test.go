@@ -34,23 +34,26 @@ func TestRequestReturnStoresRequestedReturnWithoutSideEffects(t *testing.T) {
 	p := &paymentsStub{}
 	i := &inventoryStub{}
 	c := NewComponent(ordersStub{order: returnableOrder()}, p, i, returneligibility.NewComponent(), fixedClock{now: time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)})
-	r, e := c.RequestReturn(RequestReturnCommand{OrderID: "order-001", Reason: "damaged"})
+	r, e := c.RequestReturn(RequestReturnCommand{OrderID: "order-001", Reason: "damaged", RequestedBy: "agent-001"})
 	if e != nil {
 		t.Fatal(e)
 	}
 	if r.Status != ReturnRequestStatusRequested || p.request.Amount != 0 || len(i.items) != 0 {
 		t.Fatalf("unexpected request %+v refund %+v restock %+v", r, p.request, i.items)
 	}
-	if err := c.AcceptReturn(ReviewReturnCommand{ReturnRequestID: r.ReturnRequestID}); err != nil {
+	if err := c.AcceptReturn(ReviewReturnCommand{ReturnRequestID: r.ReturnRequestID, ReviewedBy: "reviewer-001", ProcessedBy: "processor-001", ReviewNote: "eligible"}); err != nil {
 		t.Fatal(err)
 	}
 	if p.request.Amount != 30000 || len(i.items) != 1 || i.items[0].Quantity != 2 {
 		t.Fatalf("unexpected acceptance refund %+v restock %+v", p.request, i.items)
 	}
+	if request := c.requests[r.ReturnRequestID]; request.RequestedBy != "agent-001" || request.ReviewedBy != "reviewer-001" || request.ProcessedBy != "processor-001" || request.ReviewNote != "eligible" {
+		t.Fatalf("unexpected return metadata %+v", request)
+	}
 }
 func TestRequestReturnPropagatesNonShippedError(t *testing.T) {
 	c := NewComponent(ordersStub{err: orders.ErrOrderNotReturnable}, &paymentsStub{}, &inventoryStub{}, returneligibility.NewComponent(), fixedClock{})
-	_, e := c.RequestReturn(RequestReturnCommand{OrderID: "order-001"})
+	_, e := c.RequestReturn(RequestReturnCommand{OrderID: "order-001", RequestedBy: "agent-001"})
 	if !errors.Is(e, orders.ErrOrderNotReturnable) {
 		t.Fatalf("got %v", e)
 	}
@@ -60,11 +63,11 @@ func TestAcceptReturnRejectsPolicyBlockedRequestWithoutSideEffects(t *testing.T)
 	p := &paymentsStub{}
 	i := &inventoryStub{}
 	c := NewComponent(ordersStub{order: returnableOrder()}, p, i, returneligibility.NewComponent(), fixedClock{now: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)})
-	r, err := c.RequestReturn(RequestReturnCommand{OrderID: "order-001", Reason: "damaged"})
+	r, err := c.RequestReturn(RequestReturnCommand{OrderID: "order-001", Reason: "damaged", RequestedBy: "agent-001"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := c.AcceptReturn(ReviewReturnCommand{ReturnRequestID: r.ReturnRequestID}); err != nil {
+	if err := c.AcceptReturn(ReviewReturnCommand{ReturnRequestID: r.ReturnRequestID, ReviewedBy: "reviewer-001", ReviewNote: "outside window"}); err != nil {
 		t.Fatal(err)
 	}
 	if request := c.requests[r.ReturnRequestID]; request.Status != ReturnRequestStatusRejected {
@@ -72,6 +75,37 @@ func TestAcceptReturnRejectsPolicyBlockedRequestWithoutSideEffects(t *testing.T)
 	}
 	if p.request.Amount != 0 || len(i.items) != 0 {
 		t.Fatalf("blocked return had side effects: refund %+v restock %+v", p.request, i.items)
+	}
+	if request := c.requests[r.ReturnRequestID]; request.ReviewedBy != "reviewer-001" || request.ProcessedBy != "" || request.ReviewNote != "outside window" {
+		t.Fatalf("unexpected rejected-return metadata %+v", request)
+	}
+}
+
+func TestRequestReturnRequiresRequester(t *testing.T) {
+	c := NewComponent(ordersStub{order: returnableOrder()}, &paymentsStub{}, &inventoryStub{}, returneligibility.NewComponent(), fixedClock{})
+	_, err := c.RequestReturn(RequestReturnCommand{OrderID: "order-001"})
+	if !errors.Is(err, ErrRequestedByRequired) {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestRejectReturnRecordsReviewerWithoutSideEffects(t *testing.T) {
+	p := &paymentsStub{}
+	i := &inventoryStub{}
+	c := NewComponent(ordersStub{order: returnableOrder()}, p, i, returneligibility.NewComponent(), fixedClock{now: time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)})
+	r, err := c.RequestReturn(RequestReturnCommand{OrderID: "order-001", RequestedBy: "agent-001"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.RejectReturn(ReviewReturnCommand{ReturnRequestID: r.ReturnRequestID, ReviewedBy: "reviewer-001", ReviewNote: "item is damaged by customer"}); err != nil {
+		t.Fatal(err)
+	}
+	request := c.requests[r.ReturnRequestID]
+	if request.Status != ReturnRequestStatusRejected || request.ReviewedBy != "reviewer-001" || request.ReviewNote != "item is damaged by customer" || request.ProcessedBy != "" {
+		t.Fatalf("unexpected rejected return %+v", request)
+	}
+	if p.request.Amount != 0 || len(i.items) != 0 {
+		t.Fatalf("rejection had side effects: refund %+v restock %+v", p.request, i.items)
 	}
 }
 

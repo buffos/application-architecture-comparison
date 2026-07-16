@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(component-based): complete lesson 016 real return window policy
+feat(component-based): complete lesson 017 return actor metadata
 
 # Add tag
 
-git tag -a component-based-016 -m "Component-Based Lesson 016" && git push origin --tags
-git push origin component-based-016
+git tag -a component-based-017 -m "Component-Based Lesson 017" && git push origin --tags
+git push origin component-based-017
 
 or
 
