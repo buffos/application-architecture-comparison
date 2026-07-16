@@ -7,6 +7,7 @@ import (
 	"component-based-architecture/internal/components/inventory"
 	"component-based-architecture/internal/components/payments"
 	"component-based-architecture/internal/components/quotes"
+	"component-based-architecture/internal/components/shipments"
 )
 
 type stubApprovedQuoteSource struct {
@@ -34,6 +35,19 @@ func (s *stubPaymentProcessor) Capture(request payments.PaymentRequest) (payment
 	return payments.CaptureResult{}, s.err
 }
 
+type stubShipmentCreator struct {
+	request shipments.ShipmentRequest
+	err     error
+}
+
+func (s *stubShipmentCreator) Create(request shipments.ShipmentRequest) (shipments.Shipment, error) {
+	s.request = request
+	if s.err != nil {
+		return shipments.Shipment{}, s.err
+	}
+	return shipments.Shipment{ID: "shipment-001", OrderID: request.OrderID, CustomerID: request.CustomerID, Lines: request.Lines}, nil
+}
+
 func (s stubApprovedQuoteSource) GetApprovedQuoteForOrder(quoteID string) (quotes.ApprovedQuote, error) {
 	if s.err != nil {
 		return quotes.ApprovedQuote{}, s.err
@@ -46,7 +60,7 @@ func TestConvertQuoteToOrderReservesStockAndCreatesOrderSnapshot(t *testing.T) {
 	component := NewComponent(stubApprovedQuoteSource{quote: quotes.ApprovedQuote{
 		QuoteID: "quote-001", CustomerID: "customer-001",
 		Lines: []quotes.ApprovedQuoteLine{{ProductSKU: "sku-001", ProductName: "Desk", ProductCategory: "Standard", Quantity: 2, UnitPrice: 15000}},
-	}}, reserver, &stubPaymentProcessor{})
+	}}, reserver, &stubPaymentProcessor{}, &stubShipmentCreator{})
 
 	result, err := component.ConvertQuoteToOrder(ConvertQuoteToOrderCommand{QuoteID: "quote-001"})
 	if err != nil {
@@ -67,7 +81,7 @@ func TestConvertQuoteToOrderReservesStockAndCreatesOrderSnapshot(t *testing.T) {
 }
 
 func TestConvertQuoteToOrderPropagatesNonApprovedQuoteError(t *testing.T) {
-	component := NewComponent(stubApprovedQuoteSource{err: quotes.ErrQuoteNotConvertible}, &stubReserver{}, &stubPaymentProcessor{})
+	component := NewComponent(stubApprovedQuoteSource{err: quotes.ErrQuoteNotConvertible}, &stubReserver{}, &stubPaymentProcessor{}, &stubShipmentCreator{})
 
 	_, err := component.ConvertQuoteToOrder(ConvertQuoteToOrderCommand{QuoteID: "quote-001"})
 	if !errors.Is(err, quotes.ErrQuoteNotConvertible) {
@@ -79,7 +93,7 @@ func TestConvertQuoteToOrderStopsWhenReservationFails(t *testing.T) {
 	component := NewComponent(stubApprovedQuoteSource{quote: quotes.ApprovedQuote{
 		QuoteID: "quote-001", CustomerID: "customer-001",
 		Lines: []quotes.ApprovedQuoteLine{{ProductSKU: "sku-001", Quantity: 1}},
-	}}, &stubReserver{err: inventory.ErrInsufficientStock}, &stubPaymentProcessor{})
+	}}, &stubReserver{err: inventory.ErrInsufficientStock}, &stubPaymentProcessor{}, &stubShipmentCreator{})
 
 	_, err := component.ConvertQuoteToOrder(ConvertQuoteToOrderCommand{QuoteID: "quote-001"})
 	if !errors.Is(err, inventory.ErrInsufficientStock) {
@@ -92,7 +106,7 @@ func TestCapturePaymentPaysPendingOrder(t *testing.T) {
 	component := NewComponent(stubApprovedQuoteSource{quote: quotes.ApprovedQuote{
 		QuoteID: "quote-001", CustomerID: "customer-001",
 		Lines: []quotes.ApprovedQuoteLine{{ProductSKU: "sku-001", Quantity: 2, UnitPrice: 15000}},
-	}}, &stubReserver{}, processor)
+	}}, &stubReserver{}, processor, &stubShipmentCreator{})
 	converted, err := component.ConvertQuoteToOrder(ConvertQuoteToOrderCommand{QuoteID: "quote-001"})
 	if err != nil {
 		t.Fatalf("convert quote: %v", err)
@@ -113,7 +127,7 @@ func TestCapturePaymentPaysPendingOrder(t *testing.T) {
 func TestCapturePaymentRejectsAlreadyPaidOrder(t *testing.T) {
 	component := NewComponent(stubApprovedQuoteSource{quote: quotes.ApprovedQuote{
 		QuoteID: "quote-001", CustomerID: "customer-001", Lines: []quotes.ApprovedQuoteLine{{ProductSKU: "sku-001", Quantity: 1, UnitPrice: 15000}},
-	}}, &stubReserver{}, &stubPaymentProcessor{})
+	}}, &stubReserver{}, &stubPaymentProcessor{}, &stubShipmentCreator{})
 	converted, err := component.ConvertQuoteToOrder(ConvertQuoteToOrderCommand{QuoteID: "quote-001"})
 	if err != nil {
 		t.Fatalf("convert quote: %v", err)
@@ -125,5 +139,45 @@ func TestCapturePaymentRejectsAlreadyPaidOrder(t *testing.T) {
 	_, err = component.CapturePayment(CapturePaymentCommand{OrderID: converted.OrderID})
 	if !errors.Is(err, ErrOrderNotPayable) {
 		t.Fatalf("expected %v, got %v", ErrOrderNotPayable, err)
+	}
+}
+
+func TestCreateShipmentShipsPaidOrder(t *testing.T) {
+	creator := &stubShipmentCreator{}
+	component := NewComponent(stubApprovedQuoteSource{quote: quotes.ApprovedQuote{
+		QuoteID: "quote-001", CustomerID: "customer-001", Lines: []quotes.ApprovedQuoteLine{{ProductSKU: "sku-001", ProductName: "Desk", Quantity: 1, UnitPrice: 15000}},
+	}}, &stubReserver{}, &stubPaymentProcessor{}, creator)
+	converted, err := component.ConvertQuoteToOrder(ConvertQuoteToOrderCommand{QuoteID: "quote-001"})
+	if err != nil {
+		t.Fatalf("convert quote: %v", err)
+	}
+	if _, err := component.CapturePayment(CapturePaymentCommand{OrderID: converted.OrderID}); err != nil {
+		t.Fatalf("capture payment: %v", err)
+	}
+
+	result, err := component.CreateShipment(CreateShipmentCommand{OrderID: converted.OrderID})
+	if err != nil {
+		t.Fatalf("create shipment: %v", err)
+	}
+	if result.Status != OrderStatusShipped {
+		t.Fatalf("expected %s, got %s", OrderStatusShipped, result.Status)
+	}
+	if creator.request.OrderID != converted.OrderID || len(creator.request.Lines) != 1 {
+		t.Fatalf("expected shipment request for order, got %+v", creator.request)
+	}
+}
+
+func TestCreateShipmentRejectsUnpaidOrder(t *testing.T) {
+	component := NewComponent(stubApprovedQuoteSource{quote: quotes.ApprovedQuote{
+		QuoteID: "quote-001", CustomerID: "customer-001", Lines: []quotes.ApprovedQuoteLine{{ProductSKU: "sku-001", Quantity: 1}},
+	}}, &stubReserver{}, &stubPaymentProcessor{}, &stubShipmentCreator{})
+	converted, err := component.ConvertQuoteToOrder(ConvertQuoteToOrderCommand{QuoteID: "quote-001"})
+	if err != nil {
+		t.Fatalf("convert quote: %v", err)
+	}
+
+	_, err = component.CreateShipment(CreateShipmentCommand{OrderID: converted.OrderID})
+	if !errors.Is(err, ErrOrderNotShippable) {
+		t.Fatalf("expected %v, got %v", ErrOrderNotShippable, err)
 	}
 }

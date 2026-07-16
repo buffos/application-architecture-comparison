@@ -12,6 +12,7 @@ import (
 	"component-based-architecture/internal/components/payments"
 	"component-based-architecture/internal/components/products"
 	"component-based-architecture/internal/components/quotes"
+	"component-based-architecture/internal/components/shipments"
 )
 
 func main() {
@@ -40,7 +41,8 @@ func main() {
 	inventoryComponent.RegisterStock(inventory.StockRecord{ProductSKU: "sku-001", Available: 10})
 	inventoryComponent.RegisterStock(inventory.StockRecord{ProductSKU: "sku-002", Available: 3})
 	paymentComponent := payments.NewComponent(paymentadapter.NewAcceptAllGateway())
-	orderComponent := orders.NewComponent(quoteComponent, inventoryComponent, paymentComponent)
+	shipmentComponent := shipments.NewComponent()
+	orderComponent := orders.NewComponent(quoteComponent, inventoryComponent, paymentComponent, shipmentComponent)
 	result, err := quoteComponent.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
 	})
@@ -102,4 +104,10 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("captured payment: order=%s status=%s\n", paid.OrderID, paid.Status)
+
+	shipment, err := orderComponent.CreateShipment(orders.CreateShipmentCommand{OrderID: order.OrderID})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("created shipment: shipment=%s order=%s status=%s\n", shipment.ShipmentID, shipment.OrderID, shipment.Status)
 }
