@@ -10,6 +10,7 @@ var (
 	ErrQuoteNotSubmittable                = errors.New("quote is not submittable")
 	ErrQuoteCannotBeSubmittedWithoutLines = errors.New("quote cannot be submitted without lines")
 	ErrQuoteNotApprovable                 = errors.New("quote is not approvable")
+	ErrQuoteNotConvertible                = errors.New("quote is not convertible")
 )
 
 const (

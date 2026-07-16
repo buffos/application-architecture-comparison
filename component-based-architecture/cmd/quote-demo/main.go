@@ -6,6 +6,7 @@ import (
 
 	"component-based-architecture/internal/components/approvals"
 	"component-based-architecture/internal/components/customers"
+	"component-based-architecture/internal/components/orders"
 	"component-based-architecture/internal/components/products"
 	"component-based-architecture/internal/components/quotes"
 )
@@ -32,6 +33,7 @@ func main() {
 
 	approvalComponent := approvals.NewComponent()
 	quoteComponent := quotes.NewComponent(customerComponent, productComponent, approvalComponent)
+	orderComponent := orders.NewComponent(quoteComponent)
 	result, err := quoteComponent.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
 	})
@@ -81,4 +83,10 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("approved custom quote: id=%s status=%s\n", approval.QuoteID, approval.Status)
+
+	order, err := orderComponent.ConvertQuoteToOrder(orders.ConvertQuoteToOrderCommand{QuoteID: pending.QuoteID})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("converted quote to order: order=%s quote=%s status=%s lines=%d\n", order.OrderID, order.QuoteID, order.Status, order.LineCount)
 }
