@@ -176,6 +176,34 @@ func TestReviewReturnRequiresIdempotencyKey(t *testing.T) {
 	}
 }
 
+func TestReturnReaderLoadsAndListsReturnRequests(t *testing.T) {
+	c := NewComponent(ordersStub{order: returnableOrder()}, &paymentsStub{}, &inventoryStub{}, returneligibility.NewComponent(), fixedClock{now: time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)}, idempotency.NewComponent())
+	created, err := c.RequestReturn(RequestReturnCommand{OrderID: "order-001", Reason: "damaged", RequestedBy: "agent-001"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var reader Reader = c
+	details, err := reader.GetReturnRequest(GetReturnRequestQuery{ReturnRequestID: created.ReturnRequestID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if details.Reason != "damaged" || details.RequestedBy != "agent-001" || details.Status != ReturnRequestStatusRequested {
+		t.Fatalf("unexpected details %+v", details)
+	}
+	listed := reader.ListReturnRequests(ListReturnRequestsQuery{Status: ReturnRequestStatusRequested})
+	if len(listed) != 1 || listed[0].ReturnRequestID != created.ReturnRequestID {
+		t.Fatalf("unexpected list %+v", listed)
+	}
+}
+
+func TestReturnReaderRejectsUnknownRequest(t *testing.T) {
+	c := NewComponent(ordersStub{}, &paymentsStub{}, &inventoryStub{}, returneligibility.NewComponent(), fixedClock{}, idempotency.NewComponent())
+	_, err := c.GetReturnRequest(GetReturnRequestQuery{ReturnRequestID: "return-999"})
+	if !errors.Is(err, ErrReturnRequestNotFound) {
+		t.Fatalf("got %v", err)
+	}
+}
+
 func returnableOrder() orders.ReturnableOrder {
 	return orders.ReturnableOrder{
 		OrderID: "order-001", CustomerID: "customer-001", ShippedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),

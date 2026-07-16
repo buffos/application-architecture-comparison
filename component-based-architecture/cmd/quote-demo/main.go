@@ -123,10 +123,18 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("requested return: return=%s order=%s status=%s\n", returnRequest.ReturnRequestID, returnRequest.OrderID, returnRequest.Status)
+	var returnReader returns.Reader = returnComponent
+	returnDetails, err := returnReader.GetReturnRequest(returns.GetReturnRequestQuery{ReturnRequestID: returnRequest.ReturnRequestID})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("loaded return: return=%s requester=%s status=%s\n", returnDetails.ReturnRequestID, returnDetails.RequestedBy, returnDetails.Status)
 	if _, err := returnComponent.AcceptReturn(returns.ReviewReturnCommand{ReturnRequestID: returnRequest.ReturnRequestID, ReviewedBy: "reviewer-001", ProcessedBy: "processor-001", ReviewNote: "eligible", IdempotencyKey: "accept-return-001"}); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("accepted return: return=%s status=%s\n", returnRequest.ReturnRequestID, returns.ReturnRequestStatusRefunded)
+	refundedReturns := returnReader.ListReturnRequests(returns.ListReturnRequestsQuery{Status: returns.ReturnRequestStatusRefunded})
+	fmt.Printf("listed refunded returns: count=%d\n", len(refundedReturns))
 
 	cancellable, err := quoteComponent.CreateDraftQuote(quotes.CreateDraftQuoteCommand{CustomerID: "customer-001"})
 	if err != nil {

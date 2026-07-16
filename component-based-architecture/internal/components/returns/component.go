@@ -61,6 +61,8 @@ type ReviewReturnResult struct {
 	LineCount                                    int
 }
 
+var _ Reader = (*Component)(nil)
+
 func (c *Component) RequestReturn(command RequestReturnCommand) (RequestReturnResult, error) {
 	if command.RequestedBy == "" {
 		return RequestReturnResult{}, ErrRequestedByRequired
