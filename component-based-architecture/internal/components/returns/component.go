@@ -2,6 +2,7 @@ package returns
 
 import (
 	"component-based-architecture/internal/components/clock"
+	"component-based-architecture/internal/components/idempotency"
 	"component-based-architecture/internal/components/inventory"
 	"component-based-architecture/internal/components/orders"
 	"component-based-architecture/internal/components/payments"
@@ -18,9 +19,10 @@ const (
 )
 
 var (
-	ErrRequestedByRequired = errors.New("return requester is required")
-	ErrReviewedByRequired  = errors.New("return reviewer is required")
-	ErrProcessedByRequired = errors.New("return processor is required")
+	ErrRequestedByRequired    = errors.New("return requester is required")
+	ErrReviewedByRequired     = errors.New("return reviewer is required")
+	ErrProcessedByRequired    = errors.New("return processor is required")
+	ErrIdempotencyKeyRequired = errors.New("idempotency key is required")
 )
 
 type ReturnRequest struct {
@@ -39,12 +41,13 @@ type Component struct {
 	inventory   inventory.Restocker
 	eligibility returneligibility.Evaluator
 	clock       clock.Reader
+	idempotency idempotency.Store
 	requests    map[string]ReturnRequest
 	nextID      int
 }
 
-func NewComponent(orders orders.ReturnableOrderSource, payments payments.Refunder, inventory inventory.Restocker, eligibility returneligibility.Evaluator, clock clock.Reader) *Component {
-	return &Component{orders: orders, payments: payments, inventory: inventory, eligibility: eligibility, clock: clock, requests: map[string]ReturnRequest{}}
+func NewComponent(orders orders.ReturnableOrderSource, payments payments.Refunder, inventory inventory.Restocker, eligibility returneligibility.Evaluator, clock clock.Reader, idempotency idempotency.Store) *Component {
+	return &Component{orders: orders, payments: payments, inventory: inventory, eligibility: eligibility, clock: clock, idempotency: idempotency, requests: map[string]ReturnRequest{}}
 }
 
 type RequestReturnCommand struct{ OrderID, Reason, RequestedBy string }
@@ -52,7 +55,11 @@ type RequestReturnResult struct {
 	ReturnRequestID, OrderID, CustomerID, Status string
 	LineCount                                    int
 }
-type ReviewReturnCommand struct{ ReturnRequestID, ReviewedBy, ProcessedBy, ReviewNote string }
+type ReviewReturnCommand struct{ ReturnRequestID, ReviewedBy, ProcessedBy, ReviewNote, IdempotencyKey string }
+type ReviewReturnResult struct {
+	ReturnRequestID, OrderID, CustomerID, Status string
+	LineCount                                    int
+}
 
 func (c *Component) RequestReturn(command RequestReturnCommand) (RequestReturnResult, error) {
 	if command.RequestedBy == "" {
@@ -73,36 +80,39 @@ func (c *Component) RequestReturn(command RequestReturnCommand) (RequestReturnRe
 	c.requests[request.ID] = request
 	return RequestReturnResult{ReturnRequestID: request.ID, OrderID: request.OrderID, CustomerID: request.CustomerID, Status: request.Status, LineCount: request.LineCount}, nil
 }
-func (c *Component) AcceptReturn(command ReviewReturnCommand) error {
+func (c *Component) AcceptReturn(command ReviewReturnCommand) (ReviewReturnResult, error) {
+	if result, ok, err := c.replayedResult(command.IdempotencyKey); err != nil || ok {
+		return result, err
+	}
 	if command.ReviewedBy == "" {
-		return ErrReviewedByRequired
+		return ReviewReturnResult{}, ErrReviewedByRequired
 	}
 	r, ok := c.requests[command.ReturnRequestID]
 	if !ok || r.Status != ReturnRequestStatusRequested {
-		return fmt.Errorf("return request is not reviewable")
+		return ReviewReturnResult{}, fmt.Errorf("return request is not reviewable")
 	}
 	if !c.eligibility.Allows(returneligibility.Review{ShippedAt: r.shippedAt, RequestedAt: r.requestedAt, Lines: r.returnWindows}) {
 		r.Status = ReturnRequestStatusRejected
 		r.ReviewedBy = command.ReviewedBy
 		r.ReviewNote = command.ReviewNote
 		c.requests[r.ID] = r
-		return nil
+		return c.storeReviewResult(command.IdempotencyKey, r), nil
 	}
 	if command.ProcessedBy == "" {
-		return ErrProcessedByRequired
+		return ReviewReturnResult{}, ErrProcessedByRequired
 	}
 	if err := c.payments.Refund(payments.RefundRequest{OrderID: r.OrderID, CustomerID: r.CustomerID, Amount: r.amount, Reason: r.Reason}); err != nil {
-		return err
+		return ReviewReturnResult{}, err
 	}
 	if err := c.inventory.Restock(r.restock); err != nil {
-		return err
+		return ReviewReturnResult{}, err
 	}
 	r.Status = ReturnRequestStatusRefunded
 	r.ReviewedBy = command.ReviewedBy
 	r.ProcessedBy = command.ProcessedBy
 	r.ReviewNote = command.ReviewNote
 	c.requests[r.ID] = r
-	return nil
+	return c.storeReviewResult(command.IdempotencyKey, r), nil
 }
 
 func returnWindows(lines []orders.ReturnableOrderLine) []returneligibility.ReviewLine {
@@ -112,17 +122,37 @@ func returnWindows(lines []orders.ReturnableOrderLine) []returneligibility.Revie
 	}
 	return windows
 }
-func (c *Component) RejectReturn(command ReviewReturnCommand) error {
+func (c *Component) RejectReturn(command ReviewReturnCommand) (ReviewReturnResult, error) {
+	if result, ok, err := c.replayedResult(command.IdempotencyKey); err != nil || ok {
+		return result, err
+	}
 	if command.ReviewedBy == "" {
-		return ErrReviewedByRequired
+		return ReviewReturnResult{}, ErrReviewedByRequired
 	}
 	r, ok := c.requests[command.ReturnRequestID]
 	if !ok || r.Status != ReturnRequestStatusRequested {
-		return fmt.Errorf("return request is not reviewable")
+		return ReviewReturnResult{}, fmt.Errorf("return request is not reviewable")
 	}
 	r.Status = ReturnRequestStatusRejected
 	r.ReviewedBy = command.ReviewedBy
 	r.ReviewNote = command.ReviewNote
 	c.requests[r.ID] = r
-	return nil
+	return c.storeReviewResult(command.IdempotencyKey, r), nil
+}
+
+func (c *Component) replayedResult(key string) (ReviewReturnResult, bool, error) {
+	if key == "" {
+		return ReviewReturnResult{}, false, ErrIdempotencyKeyRequired
+	}
+	result, ok := c.idempotency.Find(key)
+	if !ok {
+		return ReviewReturnResult{}, false, nil
+	}
+	return ReviewReturnResult{ReturnRequestID: result.ReturnRequestID, OrderID: result.OrderID, CustomerID: result.CustomerID, Status: result.Status, LineCount: result.LineCount}, true, nil
+}
+
+func (c *Component) storeReviewResult(key string, request ReturnRequest) ReviewReturnResult {
+	result := ReviewReturnResult{ReturnRequestID: request.ID, OrderID: request.OrderID, CustomerID: request.CustomerID, Status: request.Status, LineCount: request.LineCount}
+	c.idempotency.Save(key, idempotency.Result{ReturnRequestID: result.ReturnRequestID, OrderID: result.OrderID, CustomerID: result.CustomerID, Status: result.Status, LineCount: result.LineCount})
+	return result
 }

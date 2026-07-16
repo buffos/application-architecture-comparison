@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(component-based): complete lesson 017 return actor metadata
+feat(component-based): complete lesson 018 return command idempotency
 
 # Add tag
 
-git tag -a component-based-017 -m "Component-Based Lesson 017" && git push origin --tags
-git push origin component-based-017
+git tag -a component-based-018 -m "Component-Based Lesson 018" && git push origin --tags
+git push origin component-based-018
 
 or
 

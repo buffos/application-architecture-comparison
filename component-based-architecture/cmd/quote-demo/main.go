@@ -8,6 +8,7 @@ import (
 	"component-based-architecture/internal/components/approvals"
 	"component-based-architecture/internal/components/clock"
 	"component-based-architecture/internal/components/customers"
+	"component-based-architecture/internal/components/idempotency"
 	"component-based-architecture/internal/components/inventory"
 	"component-based-architecture/internal/components/orders"
 	"component-based-architecture/internal/components/payments"
@@ -48,7 +49,8 @@ func main() {
 	shipmentComponent := shipments.NewComponent(clockComponent)
 	orderComponent := orders.NewComponent(quoteComponent, inventoryComponent, paymentComponent, shipmentComponent)
 	returnEligibilityComponent := returneligibility.NewComponent()
-	returnComponent := returns.NewComponent(orderComponent, paymentComponent, inventoryComponent, returnEligibilityComponent, clockComponent)
+	idempotencyComponent := idempotency.NewComponent()
+	returnComponent := returns.NewComponent(orderComponent, paymentComponent, inventoryComponent, returnEligibilityComponent, clockComponent, idempotencyComponent)
 	result, err := quoteComponent.CreateDraftQuote(quotes.CreateDraftQuoteCommand{
 		CustomerID: "customer-001",
 	})
@@ -121,7 +123,7 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("requested return: return=%s order=%s status=%s\n", returnRequest.ReturnRequestID, returnRequest.OrderID, returnRequest.Status)
-	if err := returnComponent.AcceptReturn(returns.ReviewReturnCommand{ReturnRequestID: returnRequest.ReturnRequestID, ReviewedBy: "reviewer-001", ProcessedBy: "processor-001", ReviewNote: "eligible"}); err != nil {
+	if _, err := returnComponent.AcceptReturn(returns.ReviewReturnCommand{ReturnRequestID: returnRequest.ReturnRequestID, ReviewedBy: "reviewer-001", ProcessedBy: "processor-001", ReviewNote: "eligible", IdempotencyKey: "accept-return-001"}); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("accepted return: return=%s status=%s\n", returnRequest.ReturnRequestID, returns.ReturnRequestStatusRefunded)

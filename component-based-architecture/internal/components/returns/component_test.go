@@ -1,6 +1,7 @@
 package returns
 
 import (
+	"component-based-architecture/internal/components/idempotency"
 	"component-based-architecture/internal/components/inventory"
 	"component-based-architecture/internal/components/orders"
 	"component-based-architecture/internal/components/payments"
@@ -19,21 +20,35 @@ func (s ordersStub) GetReturnableOrder(id string) (orders.ReturnableOrder, error
 	return s.order, s.err
 }
 
-type paymentsStub struct{ request payments.RefundRequest }
+type paymentsStub struct {
+	request     payments.RefundRequest
+	refundCalls int
+}
 
-type inventoryStub struct{ items []inventory.RestockItem }
+type inventoryStub struct {
+	items        []inventory.RestockItem
+	restockCalls int
+}
 
 type fixedClock struct{ now time.Time }
 
 func (c fixedClock) Now() time.Time { return c.now }
 
-func (s *inventoryStub) Restock(items []inventory.RestockItem) error { s.items = items; return nil }
+func (s *inventoryStub) Restock(items []inventory.RestockItem) error {
+	s.restockCalls++
+	s.items = items
+	return nil
+}
 
-func (s *paymentsStub) Refund(request payments.RefundRequest) error { s.request = request; return nil }
+func (s *paymentsStub) Refund(request payments.RefundRequest) error {
+	s.refundCalls++
+	s.request = request
+	return nil
+}
 func TestRequestReturnStoresRequestedReturnWithoutSideEffects(t *testing.T) {
 	p := &paymentsStub{}
 	i := &inventoryStub{}
-	c := NewComponent(ordersStub{order: returnableOrder()}, p, i, returneligibility.NewComponent(), fixedClock{now: time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)})
+	c := NewComponent(ordersStub{order: returnableOrder()}, p, i, returneligibility.NewComponent(), fixedClock{now: time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)}, idempotency.NewComponent())
 	r, e := c.RequestReturn(RequestReturnCommand{OrderID: "order-001", Reason: "damaged", RequestedBy: "agent-001"})
 	if e != nil {
 		t.Fatal(e)
@@ -41,7 +56,7 @@ func TestRequestReturnStoresRequestedReturnWithoutSideEffects(t *testing.T) {
 	if r.Status != ReturnRequestStatusRequested || p.request.Amount != 0 || len(i.items) != 0 {
 		t.Fatalf("unexpected request %+v refund %+v restock %+v", r, p.request, i.items)
 	}
-	if err := c.AcceptReturn(ReviewReturnCommand{ReturnRequestID: r.ReturnRequestID, ReviewedBy: "reviewer-001", ProcessedBy: "processor-001", ReviewNote: "eligible"}); err != nil {
+	if _, err := c.AcceptReturn(ReviewReturnCommand{ReturnRequestID: r.ReturnRequestID, ReviewedBy: "reviewer-001", ProcessedBy: "processor-001", ReviewNote: "eligible", IdempotencyKey: "accept-001"}); err != nil {
 		t.Fatal(err)
 	}
 	if p.request.Amount != 30000 || len(i.items) != 1 || i.items[0].Quantity != 2 {
@@ -52,7 +67,7 @@ func TestRequestReturnStoresRequestedReturnWithoutSideEffects(t *testing.T) {
 	}
 }
 func TestRequestReturnPropagatesNonShippedError(t *testing.T) {
-	c := NewComponent(ordersStub{err: orders.ErrOrderNotReturnable}, &paymentsStub{}, &inventoryStub{}, returneligibility.NewComponent(), fixedClock{})
+	c := NewComponent(ordersStub{err: orders.ErrOrderNotReturnable}, &paymentsStub{}, &inventoryStub{}, returneligibility.NewComponent(), fixedClock{}, idempotency.NewComponent())
 	_, e := c.RequestReturn(RequestReturnCommand{OrderID: "order-001", RequestedBy: "agent-001"})
 	if !errors.Is(e, orders.ErrOrderNotReturnable) {
 		t.Fatalf("got %v", e)
@@ -62,12 +77,12 @@ func TestRequestReturnPropagatesNonShippedError(t *testing.T) {
 func TestAcceptReturnRejectsPolicyBlockedRequestWithoutSideEffects(t *testing.T) {
 	p := &paymentsStub{}
 	i := &inventoryStub{}
-	c := NewComponent(ordersStub{order: returnableOrder()}, p, i, returneligibility.NewComponent(), fixedClock{now: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)})
+	c := NewComponent(ordersStub{order: returnableOrder()}, p, i, returneligibility.NewComponent(), fixedClock{now: time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)}, idempotency.NewComponent())
 	r, err := c.RequestReturn(RequestReturnCommand{OrderID: "order-001", Reason: "damaged", RequestedBy: "agent-001"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := c.AcceptReturn(ReviewReturnCommand{ReturnRequestID: r.ReturnRequestID, ReviewedBy: "reviewer-001", ReviewNote: "outside window"}); err != nil {
+	if _, err := c.AcceptReturn(ReviewReturnCommand{ReturnRequestID: r.ReturnRequestID, ReviewedBy: "reviewer-001", ReviewNote: "outside window", IdempotencyKey: "accept-001"}); err != nil {
 		t.Fatal(err)
 	}
 	if request := c.requests[r.ReturnRequestID]; request.Status != ReturnRequestStatusRejected {
@@ -82,7 +97,7 @@ func TestAcceptReturnRejectsPolicyBlockedRequestWithoutSideEffects(t *testing.T)
 }
 
 func TestRequestReturnRequiresRequester(t *testing.T) {
-	c := NewComponent(ordersStub{order: returnableOrder()}, &paymentsStub{}, &inventoryStub{}, returneligibility.NewComponent(), fixedClock{})
+	c := NewComponent(ordersStub{order: returnableOrder()}, &paymentsStub{}, &inventoryStub{}, returneligibility.NewComponent(), fixedClock{}, idempotency.NewComponent())
 	_, err := c.RequestReturn(RequestReturnCommand{OrderID: "order-001"})
 	if !errors.Is(err, ErrRequestedByRequired) {
 		t.Fatalf("got %v", err)
@@ -92,12 +107,12 @@ func TestRequestReturnRequiresRequester(t *testing.T) {
 func TestRejectReturnRecordsReviewerWithoutSideEffects(t *testing.T) {
 	p := &paymentsStub{}
 	i := &inventoryStub{}
-	c := NewComponent(ordersStub{order: returnableOrder()}, p, i, returneligibility.NewComponent(), fixedClock{now: time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)})
+	c := NewComponent(ordersStub{order: returnableOrder()}, p, i, returneligibility.NewComponent(), fixedClock{now: time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)}, idempotency.NewComponent())
 	r, err := c.RequestReturn(RequestReturnCommand{OrderID: "order-001", RequestedBy: "agent-001"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := c.RejectReturn(ReviewReturnCommand{ReturnRequestID: r.ReturnRequestID, ReviewedBy: "reviewer-001", ReviewNote: "item is damaged by customer"}); err != nil {
+	if _, err := c.RejectReturn(ReviewReturnCommand{ReturnRequestID: r.ReturnRequestID, ReviewedBy: "reviewer-001", ReviewNote: "item is damaged by customer", IdempotencyKey: "reject-001"}); err != nil {
 		t.Fatal(err)
 	}
 	request := c.requests[r.ReturnRequestID]
@@ -106,6 +121,58 @@ func TestRejectReturnRecordsReviewerWithoutSideEffects(t *testing.T) {
 	}
 	if p.request.Amount != 0 || len(i.items) != 0 {
 		t.Fatalf("rejection had side effects: refund %+v restock %+v", p.request, i.items)
+	}
+}
+
+func TestAcceptReturnReplaysStoredResultWithoutSideEffects(t *testing.T) {
+	p := &paymentsStub{}
+	i := &inventoryStub{}
+	c := NewComponent(ordersStub{order: returnableOrder()}, p, i, returneligibility.NewComponent(), fixedClock{now: time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)}, idempotency.NewComponent())
+	r, err := c.RequestReturn(RequestReturnCommand{OrderID: "order-001", RequestedBy: "agent-001"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := ReviewReturnCommand{ReturnRequestID: r.ReturnRequestID, ReviewedBy: "reviewer-001", ProcessedBy: "processor-001", IdempotencyKey: "accept-001"}
+	first, err := c.AcceptReturn(command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := c.AcceptReturn(command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first != second || p.request.Amount != 30000 || len(i.items) != 1 || p.refundCalls != 1 || i.restockCalls != 1 {
+		t.Fatalf("unexpected replay: first=%+v second=%+v refund=%+v restock=%+v", first, second, p.request, i.items)
+	}
+}
+
+func TestRejectReturnReplaysStoredResultWithoutSideEffects(t *testing.T) {
+	p := &paymentsStub{}
+	i := &inventoryStub{}
+	c := NewComponent(ordersStub{order: returnableOrder()}, p, i, returneligibility.NewComponent(), fixedClock{now: time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)}, idempotency.NewComponent())
+	r, err := c.RequestReturn(RequestReturnCommand{OrderID: "order-001", RequestedBy: "agent-001"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := ReviewReturnCommand{ReturnRequestID: r.ReturnRequestID, ReviewedBy: "reviewer-001", IdempotencyKey: "reject-001"}
+	first, err := c.RejectReturn(command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := c.RejectReturn(command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first != second || p.request.Amount != 0 || len(i.items) != 0 {
+		t.Fatalf("unexpected replay: first=%+v second=%+v refund=%+v restock=%+v", first, second, p.request, i.items)
+	}
+}
+
+func TestReviewReturnRequiresIdempotencyKey(t *testing.T) {
+	c := NewComponent(ordersStub{order: returnableOrder()}, &paymentsStub{}, &inventoryStub{}, returneligibility.NewComponent(), fixedClock{}, idempotency.NewComponent())
+	_, err := c.AcceptReturn(ReviewReturnCommand{})
+	if !errors.Is(err, ErrIdempotencyKeyRequired) {
+		t.Fatalf("got %v", err)
 	}
 }
 
