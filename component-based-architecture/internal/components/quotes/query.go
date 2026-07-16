@@ -14,6 +14,7 @@ type QuoteDetails struct {
 	QuoteID    string
 	CustomerID string
 	Status     string
+	LineCount  int
 }
 
 func (c *Component) GetQuote(query GetQuoteQuery) (QuoteDetails, error) {
@@ -26,6 +27,7 @@ func (c *Component) GetQuote(query GetQuoteQuery) (QuoteDetails, error) {
 		QuoteID:    quote.ID,
 		CustomerID: quote.CustomerID,
 		Status:     quote.Status,
+		LineCount:  len(quote.Lines),
 	}, nil
 }
 
