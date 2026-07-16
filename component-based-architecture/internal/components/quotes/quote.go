@@ -2,7 +2,10 @@ package quotes
 
 import "errors"
 
-var ErrCustomerIDRequired = errors.New("customer id is required")
+var (
+	ErrCustomerIDRequired = errors.New("customer id is required")
+	ErrQuoteNotFound      = errors.New("quote not found")
+)
 
 const QuoteStatusDraft = "Draft"
 
