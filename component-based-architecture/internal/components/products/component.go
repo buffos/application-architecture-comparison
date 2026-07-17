@@ -29,3 +29,4 @@ func (c *Component) GetProductForQuote(sku string) (ProductForQuote, error) {
 }
 
 var _ Catalog = (*Component)(nil)
+var _ Reader = (*Component)(nil)

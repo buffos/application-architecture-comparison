@@ -33,6 +33,14 @@ func main() {
 	}); err != nil {
 		log.Fatal(err)
 	}
+	var productReader products.Reader = productComponent
+	productDetails, err := productReader.GetProduct(products.GetProductQuery{SKU: "sku-001"})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("loaded product: sku=%s category=%s active=%t\n", productDetails.SKU, productDetails.Category, productDetails.Active)
+	activeProducts := productReader.ListProducts(products.ListProductsQuery{Category: "Standard", Active: boolPointer(true)})
+	fmt.Printf("listed active standard products: count=%d\n", len(activeProducts))
 	if err := productComponent.Register(products.Product{
 		SKU: "sku-002", Name: "Custom Desk", Category: "CustomBuild", Active: true, UnitPrice: 45000, ReturnWindowDays: 30,
 	}); err != nil {
@@ -174,3 +182,5 @@ func main() {
 	}
 	fmt.Printf("cancelled order: order=%s status=%s\n", cancelled.OrderID, cancelled.Status)
 }
+
+func boolPointer(value bool) *bool { return &value }
