@@ -27,3 +27,4 @@ func (c *Component) Create(request ShipmentRequest) (Shipment, error) {
 }
 
 var _ Creator = (*Component)(nil)
+var _ Reader = (*Component)(nil)

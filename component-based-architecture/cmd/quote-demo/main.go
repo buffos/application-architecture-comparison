@@ -126,6 +126,14 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("created shipment: shipment=%s order=%s status=%s\n", shipment.ShipmentID, shipment.OrderID, shipment.Status)
+	var shipmentReader shipments.Reader = shipmentComponent
+	shipmentDetails, err := shipmentReader.GetShipment(shipments.GetShipmentQuery{ShipmentID: shipment.ShipmentID})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("loaded shipment: shipment=%s order=%s lines=%d\n", shipmentDetails.ShipmentID, shipmentDetails.OrderID, shipmentDetails.LineCount)
+	orderShipments := shipmentReader.ListShipments(shipments.ListShipmentsQuery{OrderID: order.OrderID})
+	fmt.Printf("listed order shipments: count=%d\n", len(orderShipments))
 	returnRequest, err := returnComponent.RequestReturn(returns.RequestReturnCommand{OrderID: order.OrderID, Reason: "damaged", RequestedBy: "agent-001"})
 	if err != nil {
 		log.Fatal(err)
