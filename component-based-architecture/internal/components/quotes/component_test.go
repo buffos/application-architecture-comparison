@@ -224,3 +224,22 @@ func TestApproveQuoteRejectsAlreadyApprovedQuote(t *testing.T) {
 		t.Fatalf("expected %v, got %v", ErrQuoteNotApprovable, err)
 	}
 }
+
+func TestQuoteLookupListsQuotesByStatus(t *testing.T) {
+	quoteComponent := newQuoteComponent(t)
+	created, err := quoteComponent.CreateDraftQuote(CreateDraftQuoteCommand{CustomerID: "customer-001"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := quoteComponent.AddQuoteLine(AddQuoteLineCommand{QuoteID: created.QuoteID, ProductSKU: "sku-001", Quantity: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := quoteComponent.SubmitQuote(SubmitQuoteCommand{QuoteID: created.QuoteID}); err != nil {
+		t.Fatal(err)
+	}
+	var lookup QuoteLookup = quoteComponent
+	listed := lookup.ListQuotes(ListQuotesQuery{Status: QuoteStatusApproved})
+	if len(listed) != 1 || listed[0].QuoteID != created.QuoteID {
+		t.Fatalf("unexpected list %+v", listed)
+	}
+}

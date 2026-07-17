@@ -81,6 +81,8 @@ func main() {
 	}
 
 	fmt.Printf("loaded quote: id=%s customer=%s status=%s lines=%d\n", details.QuoteID, details.CustomerID, details.Status, details.LineCount)
+	approvedQuotes := quoteLookup.ListQuotes(quotes.ListQuotesQuery{Status: quotes.QuoteStatusApproved})
+	fmt.Printf("listed approved quotes: count=%d\n", len(approvedQuotes))
 
 	pending, err := quoteComponent.CreateDraftQuote(quotes.CreateDraftQuoteCommand{CustomerID: "customer-001"})
 	if err != nil {
