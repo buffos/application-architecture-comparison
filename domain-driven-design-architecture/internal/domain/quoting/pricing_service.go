@@ -18,19 +18,40 @@ type ProductPricingInput struct {
 	BasePrice Money
 }
 
-// QuotePricingService is a stateless domain service for a rule that spans
-// customer and catalog facts but produces a Quoting value.
-type QuotePricingService struct{}
+type PricingPolicy interface {
+	Price(ProductPricingInput, CustomerPricingTier) (Money, error)
+}
 
-func NewQuotePricingService() QuotePricingService { return QuotePricingService{} }
+type TierPricingPolicy struct{}
 
-func (QuotePricingService) PriceLine(product ProductPricingInput, tier CustomerPricingTier, quantity int) (QuoteLine, error) {
+func (TierPricingPolicy) Price(product ProductPricingInput, tier CustomerPricingTier) (Money, error) {
 	discountPercent, err := discountForTier(tier)
 	if err != nil {
-		return QuoteLine{}, err
+		return Money{}, err
 	}
 	adjustedCents := product.BasePrice.Cents() * int64(100-discountPercent) / 100
-	price, err := NewMoney(adjustedCents, product.BasePrice.Currency())
+	return NewMoney(adjustedCents, product.BasePrice.Currency())
+}
+
+// QuotePricingService is a stateless domain service for a rule that spans
+// customer and catalog facts but produces a Quoting value.
+type QuotePricingService struct {
+	policy PricingPolicy
+}
+
+func NewQuotePricingService() QuotePricingService {
+	return NewQuotePricingServiceWithPolicy(TierPricingPolicy{})
+}
+
+func NewQuotePricingServiceWithPolicy(policy PricingPolicy) QuotePricingService {
+	if policy == nil {
+		policy = TierPricingPolicy{}
+	}
+	return QuotePricingService{policy: policy}
+}
+
+func (s QuotePricingService) PriceLine(product ProductPricingInput, tier CustomerPricingTier, quantity int) (QuoteLine, error) {
+	price, err := s.policy.Price(product, tier)
 	if err != nil {
 		return QuoteLine{}, err
 	}

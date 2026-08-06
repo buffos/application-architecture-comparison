@@ -7,6 +7,7 @@ import (
 
 	applicationcustomers "domain-driven-design-architecture/internal/application/customers"
 	applicationorders "domain-driven-design-architecture/internal/application/orders"
+	applicationpricing "domain-driven-design-architecture/internal/application/pricing"
 	applicationproducts "domain-driven-design-architecture/internal/application/products"
 	applicationquotes "domain-driven-design-architecture/internal/application/quotes"
 	applicationreports "domain-driven-design-architecture/internal/application/reports"
@@ -78,6 +79,12 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("priced quote line: sku=%s tier=%s unit-price=%d\n", line.ProductSKU(), customerAggregate.Tier(), line.UnitPrice().Cents())
+	seasonalService := quoting.NewQuotePricingServiceWithPolicy(applicationpricing.NewSeasonalPolicy(quoting.TierPricingPolicy{}, 10))
+	seasonalLine, err := seasonalService.PriceLine(quoting.ProductPricingInput{SKU: quoting.ProductSKU(product.SKU()), Category: quoting.ProductCategory(product.Category()), BasePrice: quotePrice}, quoting.CustomerPricingTier(customerAggregate.Tier()), 2)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("seasonal pricing plugin: unit-price=%d\n", seasonalLine.UnitPrice().Cents())
 	if err := quote.AddLine(line); err != nil {
 		log.Fatal(err)
 	}
