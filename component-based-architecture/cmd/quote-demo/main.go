@@ -27,6 +27,14 @@ func main() {
 	}); err != nil {
 		log.Fatal(err)
 	}
+	var customerReader customers.Reader = customerComponent
+	customerDetails, err := customerReader.GetCustomer(customers.GetCustomerQuery{ID: "customer-001"})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("loaded customer: id=%s active=%t\n", customerDetails.ID, customerDetails.Active)
+	activeCustomers := customerReader.ListCustomers(customers.ListCustomersQuery{ActiveOnly: true})
+	fmt.Printf("listed active customers: count=%d\n", len(activeCustomers))
 	productComponent := products.NewComponent()
 	if err := productComponent.Register(products.Product{
 		SKU: "sku-001", Name: "Desk", Category: "Standard", Active: true, UnitPrice: 15000, ReturnWindowDays: 30,

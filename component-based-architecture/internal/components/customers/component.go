@@ -34,3 +34,4 @@ func (c *Component) RequireActiveCustomer(id string) error {
 }
 
 var _ CustomerDirectory = (*Component)(nil)
+var _ Reader = (*Component)(nil)
