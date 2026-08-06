@@ -61,6 +61,8 @@ func main() {
 	inventoryComponent := inventory.NewComponent()
 	inventoryComponent.RegisterStock(inventory.StockRecord{ProductSKU: "sku-001", Available: 10})
 	inventoryComponent.RegisterStock(inventory.StockRecord{ProductSKU: "sku-002", Available: 3})
+	lowStockReport := reporting.NewLowStockComponent(inventoryComponent).LowStockItemsReport(3)
+	fmt.Printf("low-stock report: threshold=%d items=%d\n", lowStockReport.Threshold, len(lowStockReport.Items))
 	paymentComponent := payments.NewComponent(paymentadapter.NewAcceptAllGateway())
 	clockComponent := clock.NewComponent()
 	shipmentComponent := shipments.NewComponent(clockComponent)

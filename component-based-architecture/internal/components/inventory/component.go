@@ -68,3 +68,4 @@ func (c *Component) Restock(items []RestockItem) error {
 }
 
 var _ StockKeeper = (*Component)(nil)
+var _ StockReader = (*Component)(nil)
