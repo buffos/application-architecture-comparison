@@ -17,6 +17,7 @@ var (
 
 const (
 	OrderStatusPendingPayment = "PendingPayment"
+	OrderStatusPaymentReview  = "PaymentReview"
 	OrderStatusPaid           = "Paid"
 	OrderStatusShipped        = "Shipped"
 	OrderStatusCancelled      = "Cancelled"
@@ -42,6 +43,22 @@ type OrderLine struct {
 
 func (o *Order) MarkPaid() error {
 	if o.Status != OrderStatusPendingPayment {
+		return ErrOrderNotPayable
+	}
+	o.Status = OrderStatusPaid
+	return nil
+}
+
+func (o *Order) MarkPaymentReview() error {
+	if o.Status != OrderStatusPendingPayment {
+		return ErrOrderNotPayable
+	}
+	o.Status = OrderStatusPaymentReview
+	return nil
+}
+
+func (o *Order) ApprovePaymentReview() error {
+	if o.Status != OrderStatusPaymentReview {
 		return ErrOrderNotPayable
 	}
 	o.Status = OrderStatusPaid

@@ -46,6 +46,15 @@ type CapturePaymentResult struct {
 	LineCount  int
 }
 
+type ApprovePaymentReviewCommand struct{ OrderID string }
+
+type ApprovePaymentReviewResult struct {
+	OrderID    string
+	CustomerID string
+	Status     string
+	LineCount  int
+}
+
 type CreateShipmentCommand struct {
 	OrderID string
 }
@@ -105,15 +114,32 @@ func (c *Component) CapturePayment(command CapturePaymentCommand) (CapturePaymen
 	for _, line := range order.Lines {
 		amount += line.Quantity * line.UnitPrice
 	}
-	if _, err := c.payments.Capture(payments.PaymentRequest{OrderID: order.ID, CustomerID: order.CustomerID, Amount: amount}); err != nil {
+	capture, err := c.payments.Capture(payments.PaymentRequest{OrderID: order.ID, CustomerID: order.CustomerID, Amount: amount})
+	if err != nil {
 		return CapturePaymentResult{}, err
 	}
-	if err := order.MarkPaid(); err != nil {
+	if capture.Outcome == payments.CaptureOutcomeReview {
+		if err := order.MarkPaymentReview(); err != nil {
+			return CapturePaymentResult{}, err
+		}
+	} else if err := order.MarkPaid(); err != nil {
 		return CapturePaymentResult{}, err
 	}
 	c.orders[order.ID] = order
 
 	return CapturePaymentResult{OrderID: order.ID, CustomerID: order.CustomerID, Status: order.Status, LineCount: len(order.Lines)}, nil
+}
+
+func (c *Component) ApprovePaymentReview(command ApprovePaymentReviewCommand) (ApprovePaymentReviewResult, error) {
+	order, ok := c.orders[command.OrderID]
+	if !ok {
+		return ApprovePaymentReviewResult{}, ErrOrderNotFound
+	}
+	if err := order.ApprovePaymentReview(); err != nil {
+		return ApprovePaymentReviewResult{}, err
+	}
+	c.orders[order.ID] = order
+	return ApprovePaymentReviewResult{OrderID: order.ID, CustomerID: order.CustomerID, Status: order.Status, LineCount: len(order.Lines)}, nil
 }
 
 func (c *Component) CreateShipment(command CreateShipmentCommand) (CreateShipmentResult, error) {

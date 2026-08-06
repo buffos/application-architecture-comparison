@@ -35,11 +35,12 @@ func (s *stubReserver) Release(items []inventory.ReleaseItem) error {
 type stubPaymentProcessor struct {
 	request payments.PaymentRequest
 	err     error
+	result  payments.CaptureResult
 }
 
 func (s *stubPaymentProcessor) Capture(request payments.PaymentRequest) (payments.CaptureResult, error) {
 	s.request = request
-	return payments.CaptureResult{}, s.err
+	return s.result, s.err
 }
 
 type stubShipmentCreator struct {
@@ -229,6 +230,28 @@ func TestCancelOrderRejectsShippedOrder(t *testing.T) {
 	_, err = component.CancelOrder(CancelOrderCommand{OrderID: converted.OrderID})
 	if !errors.Is(err, ErrOrderNotCancellable) {
 		t.Fatalf("expected %v, got %v", ErrOrderNotCancellable, err)
+	}
+}
+
+func TestPaymentReviewRequiresApprovalBeforeShipment(t *testing.T) {
+	processor := &stubPaymentProcessor{result: payments.CaptureResult{Outcome: payments.CaptureOutcomeReview}}
+	component := NewComponent(stubApprovedQuoteSource{quote: quotes.ApprovedQuote{
+		QuoteID: "quote-001", CustomerID: "customer-001", Lines: []quotes.ApprovedQuoteLine{{ProductSKU: "sku-001", Quantity: 1, UnitPrice: 15000}},
+	}}, &stubReserver{}, processor, &stubShipmentCreator{})
+	converted, err := component.ConvertQuoteToOrder(ConvertQuoteToOrderCommand{QuoteID: "quote-001"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	captured, err := component.CapturePayment(CapturePaymentCommand{OrderID: converted.OrderID})
+	if err != nil || captured.Status != OrderStatusPaymentReview {
+		t.Fatalf("capture result=%+v err=%v", captured, err)
+	}
+	if _, err := component.CreateShipment(CreateShipmentCommand{OrderID: converted.OrderID}); !errors.Is(err, ErrOrderNotShippable) {
+		t.Fatalf("expected shipment to be blocked, got %v", err)
+	}
+	approved, err := component.ApprovePaymentReview(ApprovePaymentReviewCommand{OrderID: converted.OrderID})
+	if err != nil || approved.Status != OrderStatusPaid {
+		t.Fatalf("approval result=%+v err=%v", approved, err)
 	}
 }
 
