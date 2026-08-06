@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"domain-driven-design-architecture/internal/domain/catalog"
 	"domain-driven-design-architecture/internal/domain/customer"
 	"domain-driven-design-architecture/internal/domain/quoting"
 )
@@ -18,11 +19,23 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("customer aggregate: id=%s tier=%s active=%t\n", customerAggregate.ID(), customerAggregate.Tier(), customerAggregate.Active())
-	unitPrice, err := quoting.NewMoney(15000, "USD")
+	productPrice, err := catalog.NewPrice(15000, "USD")
 	if err != nil {
 		log.Fatal(err)
 	}
-	line, err := quoting.NewQuoteLine("sku-001", 2, unitPrice)
+	product, err := catalog.NewProduct("sku-001", "Desk", catalog.ProductCategoryStandard, productPrice, 30)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := product.EnsureSellable(); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("product aggregate: sku=%s category=%s active=%t\n", product.SKU(), product.Category(), product.Active())
+	quotePrice, err := quoting.NewMoney(product.BasePrice().Cents(), product.BasePrice().Currency())
+	if err != nil {
+		log.Fatal(err)
+	}
+	line, err := quoting.NewQuoteLine(quoting.ProductSKU(product.SKU()), 2, quotePrice)
 	if err != nil {
 		log.Fatal(err)
 	}
