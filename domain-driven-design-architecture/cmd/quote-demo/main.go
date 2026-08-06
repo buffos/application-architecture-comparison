@@ -45,7 +45,7 @@ func main() {
 		log.Fatal(err)
 	}
 	pricingService := quoting.NewQuotePricingService()
-	line, err := pricingService.PriceLine(quoting.ProductPricingInput{SKU: quoting.ProductSKU(product.SKU()), BasePrice: quotePrice}, quoting.CustomerPricingTier(customerAggregate.Tier()), 2)
+	line, err := pricingService.PriceLine(quoting.ProductPricingInput{SKU: quoting.ProductSKU(product.SKU()), Category: quoting.ProductCategory(product.Category()), BasePrice: quotePrice}, quoting.CustomerPricingTier(customerAggregate.Tier()), 2)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -53,6 +53,8 @@ func main() {
 	if err := quote.AddLine(line); err != nil {
 		log.Fatal(err)
 	}
+	approvalDecision := quoting.NewQuoteApprovalService().Evaluate(quote)
+	fmt.Printf("quote approval: required=%t reasons=%d\n", approvalDecision.Required, len(approvalDecision.Reasons))
 	total, err := quote.Total()
 	if err != nil {
 		log.Fatal(err)

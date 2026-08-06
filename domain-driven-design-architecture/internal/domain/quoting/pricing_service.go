@@ -14,6 +14,7 @@ const (
 
 type ProductPricingInput struct {
 	SKU       ProductSKU
+	Category  ProductCategory
 	BasePrice Money
 }
 
@@ -33,7 +34,11 @@ func (QuotePricingService) PriceLine(product ProductPricingInput, tier CustomerP
 	if err != nil {
 		return QuoteLine{}, err
 	}
-	return NewQuoteLine(product.SKU, quantity, price)
+	category := product.Category
+	if category == "" {
+		category = ProductCategoryStandard
+	}
+	return NewQuoteLineWithCategory(product.SKU, category, quantity, price)
 }
 
 func discountForTier(tier CustomerPricingTier) (int64, error) {

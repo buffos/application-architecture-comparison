@@ -6,6 +6,7 @@ var (
 	ErrQuoteIDRequired        = errors.New("quote id is required")
 	ErrCustomerIDRequired     = errors.New("customer id is required")
 	ErrProductSKURequired     = errors.New("product sku is required")
+	ErrProductCategoryInvalid = errors.New("product category is invalid")
 	ErrQuantityMustBePositive = errors.New("quantity must be positive")
 	ErrQuoteNotEditable       = errors.New("quote is not editable")
 	ErrQuoteHasNoLines        = errors.New("quote must contain at least one line")
@@ -14,6 +15,13 @@ var (
 type QuoteID string
 type CustomerID string
 type ProductSKU string
+type ProductCategory string
+
+const (
+	ProductCategoryStandard    ProductCategory = "Standard"
+	ProductCategoryCustomBuild ProductCategory = "CustomBuild"
+	ProductCategoryClearance   ProductCategory = "Clearance"
+)
 
 type QuoteStatus string
 
@@ -24,13 +32,21 @@ const (
 
 type QuoteLine struct {
 	sku       ProductSKU
+	category  ProductCategory
 	quantity  int
 	unitPrice Money
 }
 
 func NewQuoteLine(sku ProductSKU, quantity int, unitPrice Money) (QuoteLine, error) {
+	return NewQuoteLineWithCategory(sku, ProductCategoryStandard, quantity, unitPrice)
+}
+
+func NewQuoteLineWithCategory(sku ProductSKU, category ProductCategory, quantity int, unitPrice Money) (QuoteLine, error) {
 	if sku == "" {
 		return QuoteLine{}, ErrProductSKURequired
+	}
+	if !validProductCategory(category) {
+		return QuoteLine{}, ErrProductCategoryInvalid
 	}
 	if quantity <= 0 {
 		return QuoteLine{}, ErrQuantityMustBePositive
@@ -38,12 +54,13 @@ func NewQuoteLine(sku ProductSKU, quantity int, unitPrice Money) (QuoteLine, err
 	if unitPrice.Currency() == "" {
 		return QuoteLine{}, ErrCurrencyRequired
 	}
-	return QuoteLine{sku: sku, quantity: quantity, unitPrice: unitPrice}, nil
+	return QuoteLine{sku: sku, category: category, quantity: quantity, unitPrice: unitPrice}, nil
 }
 
-func (line QuoteLine) ProductSKU() ProductSKU { return line.sku }
-func (line QuoteLine) Quantity() int          { return line.quantity }
-func (line QuoteLine) UnitPrice() Money       { return line.unitPrice }
+func (line QuoteLine) ProductSKU() ProductSKU           { return line.sku }
+func (line QuoteLine) ProductCategory() ProductCategory { return line.category }
+func (line QuoteLine) Quantity() int                    { return line.quantity }
+func (line QuoteLine) UnitPrice() Money                 { return line.unitPrice }
 
 // Quote is the aggregate root for the Quoting bounded context.
 type Quote struct {
@@ -114,4 +131,13 @@ func (q Quote) Total() (Money, error) {
 		}
 	}
 	return total, nil
+}
+
+func validProductCategory(category ProductCategory) bool {
+	switch category {
+	case ProductCategoryStandard, ProductCategoryCustomBuild, ProductCategoryClearance:
+		return true
+	default:
+		return false
+	}
 }
