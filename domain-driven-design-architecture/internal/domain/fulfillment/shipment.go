@@ -7,9 +7,10 @@ import (
 )
 
 var (
-	ErrShipmentIDRequired      = errors.New("shipment id is required")
-	ErrOrderNotPaid            = errors.New("order is not paid")
-	ErrShipmentNotDispatchable = errors.New("shipment is not dispatchable")
+	ErrShipmentIDRequired       = errors.New("shipment id is required")
+	ErrOrderNotPaid             = errors.New("order is not paid")
+	ErrShipmentNotDispatchable  = errors.New("shipment is not dispatchable")
+	ErrShipmentSelectionInvalid = errors.New("shipment selection is invalid")
 )
 
 type ShipmentID string
@@ -40,15 +41,43 @@ type Shipment struct {
 }
 
 func NewShipmentFromPaidOrder(id ShipmentID, order ordering.Order) (Shipment, error) {
+	return NewShipmentFromOrderSelection(id, order, nil)
+}
+
+func NewShipmentFromOrderSelection(id ShipmentID, order ordering.Order, selections []ordering.ShipmentSelection) (Shipment, error) {
 	if id == "" {
 		return Shipment{}, ErrShipmentIDRequired
 	}
-	if order.Status() != ordering.OrderStatusPaid {
+	if order.Status() != ordering.OrderStatusPaid && order.Status() != ordering.OrderStatusPartiallyShipped {
 		return Shipment{}, ErrOrderNotPaid
 	}
-	lines := make([]ShipmentLine, 0, len(order.Lines()))
-	for _, line := range order.Lines() {
-		lines = append(lines, ShipmentLine{sku: ProductSKU(line.ProductSKU()), quantity: line.Quantity()})
+	if len(selections) == 0 {
+		for _, line := range order.Lines() {
+			if remaining := line.Quantity() - line.ShippedQuantity(); remaining > 0 {
+				selections = append(selections, ordering.ShipmentSelection{ProductSKU: ordering.ProductSKU(line.ProductSKU()), Quantity: remaining})
+			}
+		}
+	}
+	lines := make([]ShipmentLine, 0, len(selections))
+	for _, selection := range selections {
+		if selection.Quantity <= 0 {
+			return Shipment{}, ErrShipmentSelectionInvalid
+		}
+		matched := false
+		for _, line := range order.Lines() {
+			if ordering.ProductSKU(line.ProductSKU()) != selection.ProductSKU {
+				continue
+			}
+			if selection.Quantity > line.Quantity()-line.ShippedQuantity() {
+				return Shipment{}, ErrShipmentSelectionInvalid
+			}
+			matched = true
+			break
+		}
+		if !matched {
+			return Shipment{}, ErrShipmentSelectionInvalid
+		}
+		lines = append(lines, ShipmentLine{sku: ProductSKU(selection.ProductSKU), quantity: selection.Quantity})
 	}
 	return Shipment{id: id, orderID: OrderID(order.ID()), status: ShipmentStatusPending, lines: lines}, nil
 }

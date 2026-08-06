@@ -145,3 +145,28 @@ func TestOrderPaymentReviewWorkflow(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestOrderSupportsPartialShipment(t *testing.T) {
+	order, err := NewOrderFromQuote("order-001", approvedQuote(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := order.MarkPaid(); err != nil {
+		t.Fatal(err)
+	}
+	if err := order.ApplyShipment([]ShipmentSelection{{ProductSKU: "sku-001", Quantity: 1}}); err != nil {
+		t.Fatal(err)
+	}
+	if order.Status() != OrderStatusPartiallyShipped || order.Lines()[0].ShippedQuantity() != 1 {
+		t.Fatalf("unexpected partial order status=%s line=%+v", order.Status(), order.Lines()[0])
+	}
+	if err := order.Cancel(); !errors.Is(err, ErrOrderNotCancellable) {
+		t.Fatalf("partial shipment cancellation returned %v", err)
+	}
+	if err := order.MarkShipped(); err != nil {
+		t.Fatal(err)
+	}
+	if order.Status() != OrderStatusShipped || order.Lines()[0].ShippedQuantity() != 2 {
+		t.Fatalf("unexpected completed order status=%s line=%+v", order.Status(), order.Lines()[0])
+	}
+}

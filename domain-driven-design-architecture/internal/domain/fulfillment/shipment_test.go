@@ -18,7 +18,7 @@ func paidOrder(t *testing.T) ordering.Order {
 	if err != nil {
 		t.Fatal(err)
 	}
-	line, err := quoting.NewQuoteLine("sku-001", 1, price)
+	line, err := quoting.NewQuoteLine("sku-001", 2, price)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,5 +82,17 @@ func TestShipmentRejectsUnpaidOrder(t *testing.T) {
 	}
 	if _, err := NewShipmentFromPaidOrder("shipment-001", order); !errors.Is(err, ErrOrderNotPaid) {
 		t.Fatalf("unpaid order returned %v", err)
+	}
+}
+
+func TestShipmentCanContainPartialSelection(t *testing.T) {
+	order := paidOrder(t)
+	selection := []ordering.ShipmentSelection{{ProductSKU: "sku-001", Quantity: 1}}
+	shipment, err := NewShipmentFromOrderSelection("shipment-001", order, selection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(shipment.Lines()) != 1 || shipment.Lines()[0].Quantity() != 1 {
+		t.Fatalf("unexpected shipment %+v", shipment)
 	}
 }
