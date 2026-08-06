@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	applicationorders "domain-driven-design-architecture/internal/application/orders"
 	applicationreturns "domain-driven-design-architecture/internal/application/returns"
 	"domain-driven-design-architecture/internal/domain/catalog"
 	"domain-driven-design-architecture/internal/domain/customer"
@@ -79,6 +80,15 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("order aggregate: id=%s quote=%s status=%s total=%d %s\n", order.ID(), order.QuoteID(), order.Status(), orderTotal.Cents(), orderTotal.Currency())
+	orderReader := applicationorders.NewInMemoryReader()
+	if err := orderReader.Save(order); err != nil {
+		log.Fatal(err)
+	}
+	orderDetails, err := orderReader.GetOrder(string(order.ID()))
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("order query: id=%s status=%s lines=%d\n", orderDetails.OrderID, orderDetails.Status, len(orderDetails.Lines))
 	paymentAmount, err := payments.NewMoney(orderTotal.Cents(), orderTotal.Currency())
 	if err != nil {
 		log.Fatal(err)
