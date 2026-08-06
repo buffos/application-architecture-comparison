@@ -129,6 +129,14 @@ func main() {
 	fmt.Printf("return request: id=%s status=%s lines=%d\n", returnRequest.ID(), returnRequest.Status(), len(returnRequest.Lines()))
 	fmt.Printf("refund aggregate: id=%s status=%s amount=%d\n", refund.ID(), refund.Status(), refund.Amount().Cents())
 	stockRecords := map[inventory.ProductSKU]*inventory.StockRecord{stock.SKU(): &stock}
+	restockRequests := make([]inventory.RestockRequest, 0, len(returnRequest.Lines()))
+	for _, line := range returnRequest.Lines() {
+		restockRequests = append(restockRequests, inventory.RestockRequest{SKU: inventory.ProductSKU(line.ProductSKU()), Quantity: line.Quantity()})
+	}
+	if err := inventory.NewReturnRestockingService().RestockAll(stockRecords, restockRequests); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("return restock: sku=%s on-hand=%d available=%d\n", stock.SKU(), stock.OnHand(), stock.Available())
 	reservations, err := inventory.NewInventoryReservationService().ReserveAll(stockRecords, []inventory.ReservationRequest{{SKU: stock.SKU(), Quantity: 2}})
 	if err != nil {
 		log.Fatal(err)
