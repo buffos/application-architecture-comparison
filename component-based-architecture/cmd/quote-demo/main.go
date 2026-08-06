@@ -12,6 +12,8 @@ import (
 	"component-based-architecture/internal/components/inventory"
 	"component-based-architecture/internal/components/orders"
 	"component-based-architecture/internal/components/payments"
+	"component-based-architecture/internal/components/plugins"
+	pricingcomponent "component-based-architecture/internal/components/pricing"
 	"component-based-architecture/internal/components/products"
 	"component-based-architecture/internal/components/quotes"
 	"component-based-architecture/internal/components/reporting"
@@ -57,7 +59,17 @@ func main() {
 	}
 
 	approvalComponent := approvals.NewComponent()
-	quoteComponent := quotes.NewComponent(customerComponent, productComponent, approvalComponent)
+	pluginComponent := plugins.NewComponent()
+	registeredPlugin, err := pluginComponent.RegisterPricingPlugin(plugins.RegisterPricingPluginCommand{PluginID: "seasonal-pricing"})
+	if err != nil {
+		log.Fatal(err)
+	}
+	enabledPlugin, err := pluginComponent.EnablePlugin(plugins.EnablePluginCommand{PluginID: registeredPlugin.PluginID})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("pricing plugin: id=%s enabled=%t\n", enabledPlugin.PluginID, enabledPlugin.Enabled)
+	quoteComponent := quotes.NewComponent(customerComponent, productComponent, approvalComponent, pricingcomponent.NewComponent(pluginComponent))
 	inventoryComponent := inventory.NewComponent()
 	inventoryComponent.RegisterStock(inventory.StockRecord{ProductSKU: "sku-001", Available: 10})
 	inventoryComponent.RegisterStock(inventory.StockRecord{ProductSKU: "sku-002", Available: 3})
@@ -102,6 +114,9 @@ func main() {
 	fmt.Printf("loaded quote: id=%s customer=%s status=%s lines=%d\n", details.QuoteID, details.CustomerID, details.Status, details.LineCount)
 	approvedQuotes := quoteLookup.ListQuotes(quotes.ListQuotesQuery{Status: quotes.QuoteStatusApproved})
 	fmt.Printf("listed approved quotes: count=%d\n", len(approvedQuotes))
+	if len(approvedQuotes) > 0 {
+		fmt.Printf("plugin pricing: quote=%s total=%d\n", approvedQuotes[0].QuoteID, approvedQuotes[0].TotalAmount)
+	}
 
 	pending, err := quoteComponent.CreateDraftQuote(quotes.CreateDraftQuoteCommand{CustomerID: "customer-001"})
 	if err != nil {

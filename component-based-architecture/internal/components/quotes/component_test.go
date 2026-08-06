@@ -5,6 +5,8 @@ import (
 
 	"component-based-architecture/internal/components/approvals"
 	"component-based-architecture/internal/components/customers"
+	"component-based-architecture/internal/components/plugins"
+	"component-based-architecture/internal/components/pricing"
 	"component-based-architecture/internal/components/products"
 )
 
@@ -108,6 +110,35 @@ func TestAddQuoteLineAddsActiveProductToDraftQuote(t *testing.T) {
 	}
 	if details.LineCount != 1 {
 		t.Fatalf("expected one line in details, got %d", details.LineCount)
+	}
+}
+
+func TestAddQuoteLineUsesEnabledPricingPlugin(t *testing.T) {
+	customerComponent := customers.NewComponent()
+	if err := customerComponent.Register(customers.Customer{ID: "customer-001", Active: true}); err != nil {
+		t.Fatal(err)
+	}
+	productComponent := products.NewComponent()
+	if err := productComponent.Register(products.Product{SKU: "sku-001", Name: "Desk", Category: "Standard", Active: true, UnitPrice: 15000}); err != nil {
+		t.Fatal(err)
+	}
+	pluginComponent := plugins.NewComponent()
+	if _, err := pluginComponent.RegisterPricingPlugin(plugins.RegisterPricingPluginCommand{PluginID: "seasonal-pricing"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pluginComponent.EnablePlugin(plugins.EnablePluginCommand{PluginID: "seasonal-pricing"}); err != nil {
+		t.Fatal(err)
+	}
+	quoteComponent := NewComponent(customerComponent, productComponent, approvals.NewComponent(), pricing.NewComponent(pluginComponent))
+	created, err := quoteComponent.CreateDraftQuote(CreateDraftQuoteCommand{CustomerID: "customer-001"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := quoteComponent.AddQuoteLine(AddQuoteLineCommand{QuoteID: created.QuoteID, ProductSKU: "sku-001", Quantity: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if got := quoteComponent.quotes[created.QuoteID].Lines[0].UnitPrice; got != 14250 {
+		t.Fatalf("stored unit price = %d, want 14250", got)
 	}
 }
 

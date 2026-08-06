@@ -5,6 +5,7 @@ import (
 
 	"component-based-architecture/internal/components/approvals"
 	"component-based-architecture/internal/components/customers"
+	pricingcomponent "component-based-architecture/internal/components/pricing"
 	"component-based-architecture/internal/components/products"
 )
 
@@ -13,15 +14,21 @@ type Component struct {
 	customers customers.CustomerDirectory
 	approvals approvals.Evaluator
 	products  products.Catalog
+	pricing   pricingcomponent.QuotePricer
 	quotes    map[string]Quote
 	nextID    int
 }
 
-func NewComponent(customers customers.CustomerDirectory, products products.Catalog, approvals approvals.Evaluator) *Component {
+func NewComponent(customers customers.CustomerDirectory, products products.Catalog, approvals approvals.Evaluator, pricers ...pricingcomponent.QuotePricer) *Component {
+	var pricer pricingcomponent.QuotePricer = fixedPricing{}
+	if len(pricers) > 0 && pricers[0] != nil {
+		pricer = pricers[0]
+	}
 	return &Component{
 		customers: customers,
 		approvals: approvals,
 		products:  products,
+		pricing:   pricer,
 		quotes:    make(map[string]Quote),
 	}
 }
@@ -92,12 +99,22 @@ func (c *Component) AddQuoteLine(command AddQuoteLineCommand) (AddQuoteLineResul
 	if err != nil {
 		return AddQuoteLineResult{}, err
 	}
-	if err := quote.AddLine(ProductInput{SKU: product.SKU, Name: product.Name, Category: product.Category, UnitPrice: product.UnitPrice, ReturnWindowDays: product.ReturnWindowDays}, command.Quantity); err != nil {
+	unitPrice, err := c.pricing.UnitPrice(product)
+	if err != nil {
+		return AddQuoteLineResult{}, err
+	}
+	if err := quote.AddLine(ProductInput{SKU: product.SKU, Name: product.Name, Category: product.Category, UnitPrice: unitPrice, ReturnWindowDays: product.ReturnWindowDays}, command.Quantity); err != nil {
 		return AddQuoteLineResult{}, err
 	}
 	c.quotes[quote.ID] = quote
 
 	return AddQuoteLineResult{QuoteID: quote.ID, LineCount: len(quote.Lines), Status: quote.Status}, nil
+}
+
+type fixedPricing struct{}
+
+func (fixedPricing) UnitPrice(product products.ProductForQuote) (int, error) {
+	return product.UnitPrice, nil
 }
 
 func (c *Component) SubmitQuote(command SubmitQuoteCommand) (SubmitQuoteResult, error) {
