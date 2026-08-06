@@ -11,10 +11,10 @@ type ReturnableOrder struct {
 	ShippedAt           time.Time
 }
 type ReturnableOrderLine struct {
-	ProductSKU          string
-	Quantity, UnitPrice int
-	ProductCategory     string
-	ReturnWindowDays    int
+	ProductSKU                           string
+	Quantity, ShippedQuantity, UnitPrice int
+	ProductCategory                      string
+	ReturnWindowDays                     int
 }
 
 func (c *Component) GetReturnableOrder(orderID string) (ReturnableOrder, error) {
@@ -27,7 +27,7 @@ func (c *Component) GetReturnableOrder(orderID string) (ReturnableOrder, error) 
 	}
 	lines := make([]ReturnableOrderLine, 0, len(order.Lines))
 	for _, line := range order.Lines {
-		lines = append(lines, ReturnableOrderLine{ProductSKU: line.ProductSKU, ProductCategory: line.ProductCategory, Quantity: line.Quantity, UnitPrice: line.UnitPrice, ReturnWindowDays: line.ReturnWindowDays})
+		lines = append(lines, ReturnableOrderLine{ProductSKU: line.ProductSKU, ProductCategory: line.ProductCategory, Quantity: line.Quantity, ShippedQuantity: line.ShippedQuantity, UnitPrice: line.UnitPrice, ReturnWindowDays: line.ReturnWindowDays})
 	}
 	return ReturnableOrder{OrderID: order.ID, CustomerID: order.CustomerID, Lines: lines, ShippedAt: order.ShippedAt}, nil
 }

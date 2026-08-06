@@ -23,6 +23,7 @@ var (
 	ErrReviewedByRequired     = errors.New("return reviewer is required")
 	ErrProcessedByRequired    = errors.New("return processor is required")
 	ErrIdempotencyKeyRequired = errors.New("idempotency key is required")
+	ErrReturnQuantityInvalid  = errors.New("return quantity is invalid")
 )
 
 type ReturnRequest struct {
@@ -51,7 +52,15 @@ func NewComponent(orders orders.ReturnableOrderSource, payments payments.Refunde
 	return &Component{orders: orders, payments: payments, inventory: inventory, eligibility: eligibility, clock: clock, idempotency: idempotency, requests: map[string]ReturnRequest{}}
 }
 
-type RequestReturnCommand struct{ OrderID, Reason, RequestedBy string }
+type RequestReturnCommand struct {
+	OrderID, Reason, RequestedBy string
+	Lines                        []RequestedReturnLine
+}
+
+type RequestedReturnLine struct {
+	ProductSKU string
+	Quantity   int
+}
 type RequestReturnResult struct {
 	ReturnRequestID, OrderID, CustomerID, Status string
 	LineCount                                    int
@@ -72,14 +81,49 @@ func (c *Component) RequestReturn(command RequestReturnCommand) (RequestReturnRe
 	if err != nil {
 		return RequestReturnResult{}, err
 	}
+	selections := command.Lines
+	if len(selections) == 0 {
+		for _, line := range order.Lines {
+			quantity := line.ShippedQuantity
+			if quantity == 0 {
+				quantity = line.Quantity
+			}
+			selections = append(selections, RequestedReturnLine{ProductSKU: line.ProductSKU, Quantity: quantity})
+		}
+	}
+	selected := make([]selectedReturnLine, 0, len(selections))
+	for _, selection := range selections {
+		if selection.Quantity <= 0 {
+			return RequestReturnResult{}, ErrReturnQuantityInvalid
+		}
+		matched := false
+		for _, line := range order.Lines {
+			if line.ProductSKU != selection.ProductSKU {
+				continue
+			}
+			max := line.ShippedQuantity
+			if max == 0 {
+				max = line.Quantity
+			}
+			if selection.Quantity > max {
+				return RequestReturnResult{}, ErrReturnQuantityInvalid
+			}
+			selected = append(selected, selectedReturnLine{ProductSKU: line.ProductSKU, ProductCategory: line.ProductCategory, Quantity: selection.Quantity, UnitPrice: line.UnitPrice, ReturnWindowDays: line.ReturnWindowDays})
+			matched = true
+			break
+		}
+		if !matched {
+			return RequestReturnResult{}, ErrReturnQuantityInvalid
+		}
+	}
 	c.nextID++
 	amount := 0
-	restock := make([]inventory.RestockItem, 0, len(order.Lines))
-	for _, line := range order.Lines {
+	restock := make([]inventory.RestockItem, 0, len(selected))
+	for _, line := range selected {
 		amount += line.Quantity * line.UnitPrice
 		restock = append(restock, inventory.RestockItem{ProductSKU: line.ProductSKU, Quantity: line.Quantity})
 	}
-	request := ReturnRequest{ID: fmt.Sprintf("return-%03d", c.nextID), OrderID: order.OrderID, CustomerID: order.CustomerID, Reason: command.Reason, Status: ReturnRequestStatusRequested, LineCount: len(order.Lines), amount: amount, restock: restock, shippedAt: order.ShippedAt, requestedAt: c.clock.Now(), returnWindows: returnWindows(order.Lines), returnLines: returnLines(order.Lines), RequestedBy: command.RequestedBy}
+	request := ReturnRequest{ID: fmt.Sprintf("return-%03d", c.nextID), OrderID: order.OrderID, CustomerID: order.CustomerID, Reason: command.Reason, Status: ReturnRequestStatusRequested, LineCount: len(selected), amount: amount, restock: restock, shippedAt: order.ShippedAt, requestedAt: c.clock.Now(), returnWindows: returnWindows(selected), returnLines: returnLines(selected), RequestedBy: command.RequestedBy}
 	c.requests[request.ID] = request
 	return RequestReturnResult{ReturnRequestID: request.ID, OrderID: request.OrderID, CustomerID: request.CustomerID, Status: request.Status, LineCount: request.LineCount}, nil
 }
@@ -118,7 +162,13 @@ func (c *Component) AcceptReturn(command ReviewReturnCommand) (ReviewReturnResul
 	return c.storeReviewResult(command.IdempotencyKey, r), nil
 }
 
-func returnWindows(lines []orders.ReturnableOrderLine) []returneligibility.ReviewLine {
+type selectedReturnLine struct {
+	ProductSKU, ProductCategory string
+	Quantity, UnitPrice         int
+	ReturnWindowDays            int
+}
+
+func returnWindows(lines []selectedReturnLine) []returneligibility.ReviewLine {
 	windows := make([]returneligibility.ReviewLine, 0, len(lines))
 	for _, line := range lines {
 		windows = append(windows, returneligibility.ReviewLine{ReturnWindowDays: line.ReturnWindowDays})
@@ -126,7 +176,7 @@ func returnWindows(lines []orders.ReturnableOrderLine) []returneligibility.Revie
 	return windows
 }
 
-func returnLines(lines []orders.ReturnableOrderLine) []ReturnLineDetails {
+func returnLines(lines []selectedReturnLine) []ReturnLineDetails {
 	result := make([]ReturnLineDetails, 0, len(lines))
 	for _, line := range lines {
 		result = append(result, ReturnLineDetails{ProductSKU: line.ProductSKU, ProductCategory: line.ProductCategory, Quantity: line.Quantity})

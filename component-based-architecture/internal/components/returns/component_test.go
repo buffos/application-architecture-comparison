@@ -66,6 +66,42 @@ func TestRequestReturnStoresRequestedReturnWithoutSideEffects(t *testing.T) {
 		t.Fatalf("unexpected return metadata %+v", request)
 	}
 }
+
+func TestRequestReturnSupportsPartialLineSelection(t *testing.T) {
+	p := &paymentsStub{}
+	i := &inventoryStub{}
+	c := NewComponent(ordersStub{order: returnableOrder()}, p, i, returneligibility.NewComponent(), fixedClock{now: time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)}, idempotency.NewComponent())
+	created, err := c.RequestReturn(RequestReturnCommand{OrderID: "order-001", Reason: "damaged", RequestedBy: "agent-001", Lines: []RequestedReturnLine{{ProductSKU: "sku-001", Quantity: 1}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	details, err := c.GetReturnRequest(GetReturnRequestQuery{ReturnRequestID: created.ReturnRequestID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if details.LineCount != 1 || len(details.Lines) != 1 || details.Lines[0].Quantity != 1 {
+		t.Fatalf("unexpected partial return details %+v", details)
+	}
+	if _, err := c.AcceptReturn(ReviewReturnCommand{ReturnRequestID: created.ReturnRequestID, ReviewedBy: "reviewer-001", ProcessedBy: "processor-001", IdempotencyKey: "accept-partial-001"}); err != nil {
+		t.Fatal(err)
+	}
+	if p.request.Amount != 15000 || len(i.items) != 1 || i.items[0].Quantity != 1 {
+		t.Fatalf("unexpected partial side effects refund=%+v restock=%+v", p.request, i.items)
+	}
+}
+
+func TestRequestReturnRejectsOverShippedQuantity(t *testing.T) {
+	p := &paymentsStub{}
+	i := &inventoryStub{}
+	c := NewComponent(ordersStub{order: returnableOrder()}, p, i, returneligibility.NewComponent(), fixedClock{}, idempotency.NewComponent())
+	_, err := c.RequestReturn(RequestReturnCommand{OrderID: "order-001", RequestedBy: "agent-001", Lines: []RequestedReturnLine{{ProductSKU: "sku-001", Quantity: 3}}})
+	if !errors.Is(err, ErrReturnQuantityInvalid) {
+		t.Fatalf("got %v", err)
+	}
+	if p.refundCalls != 0 || i.restockCalls != 0 {
+		t.Fatalf("invalid return caused side effects: refund=%d restock=%d", p.refundCalls, i.restockCalls)
+	}
+}
 func TestRequestReturnPropagatesNonShippedError(t *testing.T) {
 	c := NewComponent(ordersStub{err: orders.ErrOrderNotReturnable}, &paymentsStub{}, &inventoryStub{}, returneligibility.NewComponent(), fixedClock{}, idempotency.NewComponent())
 	_, e := c.RequestReturn(RequestReturnCommand{OrderID: "order-001", RequestedBy: "agent-001"})
@@ -207,6 +243,6 @@ func TestReturnReaderRejectsUnknownRequest(t *testing.T) {
 func returnableOrder() orders.ReturnableOrder {
 	return orders.ReturnableOrder{
 		OrderID: "order-001", CustomerID: "customer-001", ShippedAt: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
-		Lines: []orders.ReturnableOrderLine{{ProductSKU: "sku-001", Quantity: 2, UnitPrice: 15000, ReturnWindowDays: 30}},
+		Lines: []orders.ReturnableOrderLine{{ProductSKU: "sku-001", Quantity: 2, ShippedQuantity: 2, UnitPrice: 15000, ReturnWindowDays: 30}},
 	}
 }
