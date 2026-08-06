@@ -13,6 +13,7 @@ var (
 	ErrReturnNotReviewable     = errors.New("return request is not reviewable")
 	ErrReviewDecisionInvalid   = errors.New("review decision is invalid")
 	ErrActorRequired           = errors.New("actor is required")
+	ErrReturnSelectionInvalid  = errors.New("return selection is invalid")
 	ErrRefundIDRequired        = errors.New("refund id is required")
 	ErrRefundNotIssuable       = errors.New("refund is not issuable")
 )
@@ -45,6 +46,11 @@ type ReturnLine struct {
 	unitPrice Money
 }
 
+type ReturnSelection struct {
+	ProductSKU ProductSKU
+	Quantity   int
+}
+
 func (line ReturnLine) ProductSKU() ProductSKU           { return line.sku }
 func (line ReturnLine) ProductCategory() ProductCategory { return line.category }
 func (line ReturnLine) Quantity() int                    { return line.quantity }
@@ -64,6 +70,10 @@ type ReturnRequest struct {
 }
 
 func NewReturnRequestFromShippedOrder(id ReturnRequestID, order ordering.Order, reason string) (ReturnRequest, error) {
+	return NewReturnRequestFromOrderSelection(id, order, reason, nil)
+}
+
+func NewReturnRequestFromOrderSelection(id ReturnRequestID, order ordering.Order, reason string, selections []ReturnSelection) (ReturnRequest, error) {
 	if id == "" {
 		return ReturnRequest{}, ErrReturnRequestIDRequired
 	}
@@ -73,13 +83,43 @@ func NewReturnRequestFromShippedOrder(id ReturnRequestID, order ordering.Order, 
 	if reason == "" {
 		return ReturnRequest{}, ErrReturnReasonRequired
 	}
-	lines := make([]ReturnLine, 0, len(order.Lines()))
-	for _, line := range order.Lines() {
-		price, err := NewMoney(line.UnitPrice().Cents(), line.UnitPrice().Currency())
-		if err != nil {
-			return ReturnRequest{}, err
+	if len(selections) == 0 {
+		for _, line := range order.Lines() {
+			quantity := line.ShippedQuantity()
+			if quantity == 0 {
+				quantity = line.Quantity()
+			}
+			selections = append(selections, ReturnSelection{ProductSKU: ProductSKU(line.ProductSKU()), Quantity: quantity})
 		}
-		lines = append(lines, ReturnLine{sku: ProductSKU(line.ProductSKU()), category: ProductCategory(line.ProductCategory()), quantity: line.Quantity(), unitPrice: price})
+	}
+	lines := make([]ReturnLine, 0, len(selections))
+	for _, selection := range selections {
+		if selection.Quantity <= 0 {
+			return ReturnRequest{}, ErrReturnSelectionInvalid
+		}
+		matched := false
+		for _, line := range order.Lines() {
+			if ProductSKU(line.ProductSKU()) != selection.ProductSKU {
+				continue
+			}
+			shippedQuantity := line.ShippedQuantity()
+			if shippedQuantity == 0 {
+				shippedQuantity = line.Quantity()
+			}
+			if selection.Quantity > shippedQuantity {
+				return ReturnRequest{}, ErrReturnSelectionInvalid
+			}
+			price, err := NewMoney(line.UnitPrice().Cents(), line.UnitPrice().Currency())
+			if err != nil {
+				return ReturnRequest{}, err
+			}
+			lines = append(lines, ReturnLine{sku: ProductSKU(line.ProductSKU()), category: ProductCategory(line.ProductCategory()), quantity: selection.Quantity, unitPrice: price})
+			matched = true
+			break
+		}
+		if !matched {
+			return ReturnRequest{}, ErrReturnSelectionInvalid
+		}
 	}
 	return ReturnRequest{id: id, orderID: OrderID(order.ID()), customerID: CustomerID(order.CustomerID()), reason: reason, status: ReturnStatusRequested, lines: lines}, nil
 }
