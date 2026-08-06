@@ -8,6 +8,7 @@ import (
 	"domain-driven-design-architecture/internal/domain/customer"
 	"domain-driven-design-architecture/internal/domain/inventory"
 	"domain-driven-design-architecture/internal/domain/ordering"
+	"domain-driven-design-architecture/internal/domain/payments"
 	"domain-driven-design-architecture/internal/domain/quoting"
 )
 
@@ -74,6 +75,22 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("order aggregate: id=%s quote=%s status=%s total=%d %s\n", order.ID(), order.QuoteID(), order.Status(), orderTotal.Cents(), orderTotal.Currency())
+	paymentAmount, err := payments.NewMoney(orderTotal.Cents(), orderTotal.Currency())
+	if err != nil {
+		log.Fatal(err)
+	}
+	payment, err := payments.NewPayment("payment-001", payments.OrderID(order.ID()), paymentAmount)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := payment.Capture(); err != nil {
+		log.Fatal(err)
+	}
+	if err := order.MarkPaid(); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("payment aggregate: id=%s status=%s order=%s\n", payment.ID(), payment.Status(), payment.OrderID())
+	fmt.Printf("paid order aggregate: id=%s status=%s\n", order.ID(), order.Status())
 	stockRecords := map[inventory.ProductSKU]*inventory.StockRecord{stock.SKU(): &stock}
 	reservations, err := inventory.NewInventoryReservationService().ReserveAll(stockRecords, []inventory.ReservationRequest{{SKU: stock.SKU(), Quantity: 2}})
 	if err != nil {

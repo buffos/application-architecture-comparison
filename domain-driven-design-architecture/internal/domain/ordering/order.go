@@ -7,9 +7,10 @@ import (
 )
 
 var (
-	ErrOrderIDRequired  = errors.New("order id is required")
-	ErrQuoteNotApproved = errors.New("quote is not approved")
-	ErrOrderHasNoLines  = errors.New("order must contain at least one line")
+	ErrOrderIDRequired         = errors.New("order id is required")
+	ErrQuoteNotApproved        = errors.New("quote is not approved")
+	ErrOrderHasNoLines         = errors.New("order must contain at least one line")
+	ErrOrderNotAwaitingPayment = errors.New("order is not awaiting payment")
 )
 
 type OrderID string
@@ -20,7 +21,10 @@ type ProductCategory string
 
 type OrderStatus string
 
-const OrderStatusPendingPayment OrderStatus = "PendingPayment"
+const (
+	OrderStatusPendingPayment OrderStatus = "PendingPayment"
+	OrderStatusPaid           OrderStatus = "Paid"
+)
 
 type OrderLine struct {
 	sku       ProductSKU
@@ -90,4 +94,12 @@ func (o Order) Total() (Money, error) {
 		}
 	}
 	return total, nil
+}
+
+func (o *Order) MarkPaid() error {
+	if o.status != OrderStatusPendingPayment {
+		return ErrOrderNotAwaitingPayment
+	}
+	o.status = OrderStatusPaid
+	return nil
 }
