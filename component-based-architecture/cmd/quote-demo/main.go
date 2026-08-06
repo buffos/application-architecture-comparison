@@ -173,6 +173,13 @@ func main() {
 	fmt.Printf("accepted return: return=%s status=%s\n", returnRequest.ReturnRequestID, returns.ReturnRequestStatusRefunded)
 	refundedReturns := returnReader.ListReturnRequests(returns.ListReturnRequestsQuery{Status: returns.ReturnRequestStatusRefunded})
 	fmt.Printf("listed refunded returns: count=%d\n", len(refundedReturns))
+	returnRateReport, err := reporting.NewReturnRateComponent(orderComponent, returnComponent).ReturnRateByCategoryReport()
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, row := range returnRateReport.Rows {
+		fmt.Printf("return rate: category=%s shipped=%d returned=%d rate=%.2f\n", row.Category, row.ShippedQuantity, row.ReturnedQuantity, row.ReturnRate)
+	}
 
 	cancellable, err := quoteComponent.CreateDraftQuote(quotes.CreateDraftQuoteCommand{CustomerID: "customer-001"})
 	if err != nil {

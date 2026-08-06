@@ -30,6 +30,13 @@ type ReturnRequestDetails struct {
 	ReviewedBy      string
 	ProcessedBy     string
 	ReviewNote      string
+	Lines           []ReturnLineDetails
+}
+
+type ReturnLineDetails struct {
+	ProductSKU      string
+	ProductCategory string
+	Quantity        int
 }
 
 type ReturnRequestSummary struct {
@@ -77,5 +84,6 @@ func returnRequestDetails(request ReturnRequest) ReturnRequestDetails {
 		ReviewedBy:      request.ReviewedBy,
 		ProcessedBy:     request.ProcessedBy,
 		ReviewNote:      request.ReviewNote,
+		Lines:           append([]ReturnLineDetails(nil), request.returnLines...),
 	}
 }

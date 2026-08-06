@@ -32,6 +32,7 @@ type ReturnRequest struct {
 	restock                                 []inventory.RestockItem
 	shippedAt, requestedAt                  time.Time
 	returnWindows                           []returneligibility.ReviewLine
+	returnLines                             []ReturnLineDetails
 	RequestedBy, ReviewedBy, ProcessedBy    string
 	ReviewNote                              string
 }
@@ -78,7 +79,7 @@ func (c *Component) RequestReturn(command RequestReturnCommand) (RequestReturnRe
 		amount += line.Quantity * line.UnitPrice
 		restock = append(restock, inventory.RestockItem{ProductSKU: line.ProductSKU, Quantity: line.Quantity})
 	}
-	request := ReturnRequest{ID: fmt.Sprintf("return-%03d", c.nextID), OrderID: order.OrderID, CustomerID: order.CustomerID, Reason: command.Reason, Status: ReturnRequestStatusRequested, LineCount: len(order.Lines), amount: amount, restock: restock, shippedAt: order.ShippedAt, requestedAt: c.clock.Now(), returnWindows: returnWindows(order.Lines), RequestedBy: command.RequestedBy}
+	request := ReturnRequest{ID: fmt.Sprintf("return-%03d", c.nextID), OrderID: order.OrderID, CustomerID: order.CustomerID, Reason: command.Reason, Status: ReturnRequestStatusRequested, LineCount: len(order.Lines), amount: amount, restock: restock, shippedAt: order.ShippedAt, requestedAt: c.clock.Now(), returnWindows: returnWindows(order.Lines), returnLines: returnLines(order.Lines), RequestedBy: command.RequestedBy}
 	c.requests[request.ID] = request
 	return RequestReturnResult{ReturnRequestID: request.ID, OrderID: request.OrderID, CustomerID: request.CustomerID, Status: request.Status, LineCount: request.LineCount}, nil
 }
@@ -123,6 +124,14 @@ func returnWindows(lines []orders.ReturnableOrderLine) []returneligibility.Revie
 		windows = append(windows, returneligibility.ReviewLine{ReturnWindowDays: line.ReturnWindowDays})
 	}
 	return windows
+}
+
+func returnLines(lines []orders.ReturnableOrderLine) []ReturnLineDetails {
+	result := make([]ReturnLineDetails, 0, len(lines))
+	for _, line := range lines {
+		result = append(result, ReturnLineDetails{ProductSKU: line.ProductSKU, ProductCategory: line.ProductCategory, Quantity: line.Quantity})
+	}
+	return result
 }
 func (c *Component) RejectReturn(command ReviewReturnCommand) (ReviewReturnResult, error) {
 	if result, ok, err := c.replayedResult(command.IdempotencyKey); err != nil || ok {

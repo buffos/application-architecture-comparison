@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(component-based): complete lesson 025 quote conversion report
+feat(component-based): complete lesson 026 return rate by category report
 
 # Add tag
 
-git tag -a component-based-025 -m "Component-Based Lesson 025" && git push origin --tags
-git push origin component-based-025
+git tag -a component-based-026 -m "Component-Based Lesson 026" && git push origin --tags
+git push origin component-based-026
 
 or
 

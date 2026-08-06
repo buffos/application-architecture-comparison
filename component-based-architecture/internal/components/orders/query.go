@@ -28,10 +28,11 @@ type OrderDetails struct {
 }
 
 type OrderLineDetails struct {
-	ProductSKU  string
-	ProductName string
-	Quantity    int
-	UnitPrice   int
+	ProductSKU      string
+	ProductName     string
+	ProductCategory string
+	Quantity        int
+	UnitPrice       int
 }
 
 type OrderSummary struct {
@@ -64,7 +65,7 @@ func (c *Component) ListOrders(query ListOrdersQuery) []OrderSummary {
 func orderDetails(order Order) OrderDetails {
 	lines := make([]OrderLineDetails, 0, len(order.Lines))
 	for _, line := range order.Lines {
-		lines = append(lines, OrderLineDetails{ProductSKU: line.ProductSKU, ProductName: line.ProductName, Quantity: line.Quantity, UnitPrice: line.UnitPrice})
+		lines = append(lines, OrderLineDetails{ProductSKU: line.ProductSKU, ProductName: line.ProductName, ProductCategory: line.ProductCategory, Quantity: line.Quantity, UnitPrice: line.UnitPrice})
 	}
 	return OrderDetails{OrderID: order.ID, QuoteID: order.QuoteID, CustomerID: order.CustomerID, Status: order.Status, LineCount: len(lines), ShippedAt: order.ShippedAt, Lines: lines}
 }
