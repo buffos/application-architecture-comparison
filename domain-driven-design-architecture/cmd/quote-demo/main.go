@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"domain-driven-design-architecture/internal/domain/catalog"
 	"domain-driven-design-architecture/internal/domain/customer"
@@ -117,10 +118,12 @@ func main() {
 	}
 	eligibilityLines := make([]returns.EligibilityLine, 0, len(returnRequest.Lines()))
 	for _, line := range returnRequest.Lines() {
-		eligibilityLines = append(eligibilityLines, returns.EligibilityLine{Category: returns.ProductCategory(line.ProductCategory())})
+		eligibilityLines = append(eligibilityLines, returns.EligibilityLine{Category: returns.ProductCategory(line.ProductCategory()), ReturnWindowDays: 30})
 	}
 	eligibilityDecision := returns.NewReturnEligibilityService().Evaluate(eligibilityLines)
 	fmt.Printf("return eligibility: eligible=%t reason=%s\n", eligibilityDecision.Eligible, eligibilityDecision.Reason)
+	windowDecision := returns.NewReturnEligibilityService().EvaluateWindow(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC), eligibilityLines)
+	fmt.Printf("return window: eligible=%t reason=%s\n", windowDecision.Eligible, windowDecision.Reason)
 	refundAmount, err := returns.NewMoney(orderTotal.Cents(), orderTotal.Currency())
 	if err != nil {
 		log.Fatal(err)

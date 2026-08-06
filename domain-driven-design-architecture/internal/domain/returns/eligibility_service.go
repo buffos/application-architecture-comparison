@@ -1,5 +1,7 @@
 package returns
 
+import "time"
+
 type ProductCategory string
 
 const (
@@ -9,7 +11,8 @@ const (
 )
 
 type EligibilityLine struct {
-	Category ProductCategory
+	Category         ProductCategory
+	ReturnWindowDays int
 }
 
 type EligibilityDecision struct {
@@ -30,4 +33,17 @@ func (ReturnEligibilityService) Evaluate(lines []EligibilityLine) EligibilityDec
 		}
 	}
 	return EligibilityDecision{Eligible: true}
+}
+
+func (s ReturnEligibilityService) EvaluateWindow(shippedAt, requestedAt time.Time, lines []EligibilityLine) EligibilityDecision {
+	decision := s.Evaluate(lines)
+	if !decision.Eligible {
+		return decision
+	}
+	for _, line := range lines {
+		if line.ReturnWindowDays <= 0 || requestedAt.After(shippedAt.AddDate(0, 0, line.ReturnWindowDays)) {
+			return EligibilityDecision{Eligible: false, Reason: "return window has expired"}
+		}
+	}
+	return decision
 }
