@@ -57,6 +57,12 @@ type ApprovePaymentReviewResult struct {
 
 type CreateShipmentCommand struct {
 	OrderID string
+	Lines   []ShipmentSelection
+}
+
+type ShipmentSelection struct {
+	ProductSKU string
+	Quantity   int
 }
 
 type CreateShipmentResult struct {
@@ -147,20 +153,39 @@ func (c *Component) CreateShipment(command CreateShipmentCommand) (CreateShipmen
 	if !ok {
 		return CreateShipmentResult{}, ErrOrderNotFound
 	}
-	if order.Status != OrderStatusPaid {
+	if order.Status != OrderStatusPaid && order.Status != OrderStatusPartiallyShipped {
 		return CreateShipmentResult{}, ErrOrderNotShippable
 	}
 
+	selections := append([]ShipmentSelection(nil), command.Lines...)
+	if len(selections) == 0 {
+		for _, line := range order.Lines {
+			if remaining := line.Quantity - line.ShippedQuantity; remaining > 0 {
+				selections = append(selections, ShipmentSelection{ProductSKU: line.ProductSKU, Quantity: remaining})
+			}
+		}
+	}
 	lines := make([]shipments.ShipmentLine, 0, len(order.Lines))
-	for _, line := range order.Lines {
-		lines = append(lines, shipments.ShipmentLine{ProductSKU: line.ProductSKU, ProductName: line.ProductName, Quantity: line.Quantity})
+	for _, selection := range selections {
+		for _, line := range order.Lines {
+			if line.ProductSKU == selection.ProductSKU {
+				lines = append(lines, shipments.ShipmentLine{ProductSKU: line.ProductSKU, ProductName: line.ProductName, Quantity: selection.Quantity})
+				break
+			}
+		}
+	}
+	if len(lines) == 0 {
+		return CreateShipmentResult{}, ErrOrderNotShippable
 	}
 	shipment, err := c.shipments.Create(shipments.ShipmentRequest{OrderID: order.ID, CustomerID: order.CustomerID, Lines: lines})
 	if err != nil {
 		return CreateShipmentResult{}, err
 	}
-	if err := order.MarkShipped(shipment.ShippedAt); err != nil {
+	if err := order.ApplyShipment(selections); err != nil {
 		return CreateShipmentResult{}, err
+	}
+	if order.Status == OrderStatusShipped {
+		order.ShippedAt = shipment.ShippedAt
 	}
 	c.orders[order.ID] = order
 

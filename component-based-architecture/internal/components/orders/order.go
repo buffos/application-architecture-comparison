@@ -16,11 +16,12 @@ var (
 )
 
 const (
-	OrderStatusPendingPayment = "PendingPayment"
-	OrderStatusPaymentReview  = "PaymentReview"
-	OrderStatusPaid           = "Paid"
-	OrderStatusShipped        = "Shipped"
-	OrderStatusCancelled      = "Cancelled"
+	OrderStatusPendingPayment   = "PendingPayment"
+	OrderStatusPaymentReview    = "PaymentReview"
+	OrderStatusPartiallyShipped = "PartiallyShipped"
+	OrderStatusPaid             = "Paid"
+	OrderStatusShipped          = "Shipped"
+	OrderStatusCancelled        = "Cancelled"
 )
 
 type Order struct {
@@ -39,6 +40,7 @@ type OrderLine struct {
 	Quantity         int
 	UnitPrice        int
 	ReturnWindowDays int
+	ShippedQuantity  int
 }
 
 func (o *Order) MarkPaid() error {
@@ -75,10 +77,52 @@ func (o *Order) MarkShipped(shippedAt time.Time) error {
 }
 
 func (o *Order) Cancel() error {
-	if o.Status == OrderStatusShipped || o.Status == OrderStatusCancelled {
+	if o.Status == OrderStatusShipped || o.Status == OrderStatusPartiallyShipped || o.Status == OrderStatusCancelled {
 		return ErrOrderNotCancellable
 	}
 	o.Status = OrderStatusCancelled
+	return nil
+}
+
+func (o *Order) ApplyShipment(selections []ShipmentSelection) error {
+	for _, selection := range selections {
+		if selection.Quantity <= 0 {
+			return ErrOrderNotShippable
+		}
+		matched := false
+		for _, line := range o.Lines {
+			if line.ProductSKU != selection.ProductSKU {
+				continue
+			}
+			if selection.Quantity > line.Quantity-line.ShippedQuantity {
+				return ErrOrderNotShippable
+			}
+			matched = true
+			break
+		}
+		if !matched {
+			return ErrOrderNotShippable
+		}
+	}
+	for _, selection := range selections {
+		for index := range o.Lines {
+			if o.Lines[index].ProductSKU == selection.ProductSKU {
+				o.Lines[index].ShippedQuantity += selection.Quantity
+			}
+		}
+	}
+	remaining := false
+	for _, line := range o.Lines {
+		if line.ShippedQuantity < line.Quantity {
+			remaining = true
+			break
+		}
+	}
+	if remaining {
+		o.Status = OrderStatusPartiallyShipped
+	} else {
+		o.Status = OrderStatusShipped
+	}
 	return nil
 }
 

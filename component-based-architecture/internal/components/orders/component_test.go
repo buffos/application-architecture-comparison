@@ -233,6 +233,31 @@ func TestCancelOrderRejectsShippedOrder(t *testing.T) {
 	}
 }
 
+func TestPartialShipmentTracksProgressAndBlocksCancellation(t *testing.T) {
+	creator := &stubShipmentCreator{}
+	component := NewComponent(stubApprovedQuoteSource{quote: quotes.ApprovedQuote{
+		QuoteID: "quote-001", CustomerID: "customer-001", Lines: []quotes.ApprovedQuoteLine{{ProductSKU: "sku-001", ProductName: "Desk", Quantity: 3, UnitPrice: 15000}},
+	}}, &stubReserver{}, &stubPaymentProcessor{}, creator)
+	converted, err := component.ConvertQuoteToOrder(ConvertQuoteToOrderCommand{QuoteID: "quote-001"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := component.CapturePayment(CapturePaymentCommand{OrderID: converted.OrderID}); err != nil {
+		t.Fatal(err)
+	}
+	partial, err := component.CreateShipment(CreateShipmentCommand{OrderID: converted.OrderID, Lines: []ShipmentSelection{{ProductSKU: "sku-001", Quantity: 1}}})
+	if err != nil || partial.Status != OrderStatusPartiallyShipped || len(creator.request.Lines) != 1 || creator.request.Lines[0].Quantity != 1 {
+		t.Fatalf("partial result=%+v request=%+v err=%v", partial, creator.request, err)
+	}
+	if _, err := component.CancelOrder(CancelOrderCommand{OrderID: converted.OrderID}); !errors.Is(err, ErrOrderNotCancellable) {
+		t.Fatalf("expected cancellation to be blocked, got %v", err)
+	}
+	complete, err := component.CreateShipment(CreateShipmentCommand{OrderID: converted.OrderID})
+	if err != nil || complete.Status != OrderStatusShipped || creator.request.Lines[0].Quantity != 2 {
+		t.Fatalf("completion result=%+v request=%+v err=%v", complete, creator.request, err)
+	}
+}
+
 func TestPaymentReviewRequiresApprovalBeforeShipment(t *testing.T) {
 	processor := &stubPaymentProcessor{result: payments.CaptureResult{Outcome: payments.CaptureOutcomeReview}}
 	component := NewComponent(stubApprovedQuoteSource{quote: quotes.ApprovedQuote{
