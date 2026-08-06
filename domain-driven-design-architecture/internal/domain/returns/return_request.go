@@ -12,6 +12,7 @@ var (
 	ErrOrderNotShipped         = errors.New("order is not shipped")
 	ErrReturnNotReviewable     = errors.New("return request is not reviewable")
 	ErrReviewDecisionInvalid   = errors.New("review decision is invalid")
+	ErrActorRequired           = errors.New("actor is required")
 	ErrRefundIDRequired        = errors.New("refund id is required")
 	ErrRefundNotIssuable       = errors.New("refund is not issuable")
 )
@@ -51,12 +52,15 @@ func (line ReturnLine) UnitPrice() Money                 { return line.unitPrice
 
 // ReturnRequest is the aggregate root for return intent and review state.
 type ReturnRequest struct {
-	id         ReturnRequestID
-	orderID    OrderID
-	customerID CustomerID
-	reason     string
-	status     ReturnStatus
-	lines      []ReturnLine
+	id          ReturnRequestID
+	orderID     OrderID
+	customerID  CustomerID
+	reason      string
+	status      ReturnStatus
+	lines       []ReturnLine
+	requestedBy string
+	reviewedBy  string
+	processedBy string
 }
 
 func NewReturnRequestFromShippedOrder(id ReturnRequestID, order ordering.Order, reason string) (ReturnRequest, error) {
@@ -86,6 +90,17 @@ func (r ReturnRequest) CustomerID() CustomerID { return r.customerID }
 func (r ReturnRequest) Reason() string         { return r.reason }
 func (r ReturnRequest) Status() ReturnStatus   { return r.status }
 func (r ReturnRequest) Lines() []ReturnLine    { return append([]ReturnLine(nil), r.lines...) }
+func (r ReturnRequest) RequestedBy() string    { return r.requestedBy }
+func (r ReturnRequest) ReviewedBy() string     { return r.reviewedBy }
+func (r ReturnRequest) ProcessedBy() string    { return r.processedBy }
+
+func (r *ReturnRequest) AssignRequester(actor string) error {
+	if actor == "" {
+		return ErrActorRequired
+	}
+	r.requestedBy = actor
+	return nil
+}
 
 func (r *ReturnRequest) Accept() error {
 	return r.Review(ReviewDecisionAccept)
@@ -107,6 +122,28 @@ func (r *ReturnRequest) Review(decision ReviewDecision) error {
 	default:
 		return ErrReviewDecisionInvalid
 	}
+	return nil
+}
+
+func (r *ReturnRequest) ReviewBy(decision ReviewDecision, actor string) error {
+	if actor == "" {
+		return ErrActorRequired
+	}
+	if err := r.Review(decision); err != nil {
+		return err
+	}
+	r.reviewedBy = actor
+	return nil
+}
+
+func (r *ReturnRequest) ProcessBy(actor string) error {
+	if actor == "" {
+		return ErrActorRequired
+	}
+	if r.status != ReturnStatusAccepted {
+		return ErrReturnNotReviewable
+	}
+	r.processedBy = actor
 	return nil
 }
 

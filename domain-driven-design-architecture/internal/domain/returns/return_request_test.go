@@ -95,3 +95,35 @@ func TestReturnRequestReviewIsOneWay(t *testing.T) {
 		t.Fatalf("review after rejection returned %v", err)
 	}
 }
+
+func TestReturnRequestTracksActors(t *testing.T) {
+	request, err := NewReturnRequestFromShippedOrder("return-001", shippedOrder(t), "damaged")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := request.AssignRequester("agent-001"); err != nil {
+		t.Fatal(err)
+	}
+	if err := request.ReviewBy(ReviewDecisionAccept, "reviewer-001"); err != nil {
+		t.Fatal(err)
+	}
+	if err := request.ProcessBy("processor-001"); err != nil {
+		t.Fatal(err)
+	}
+	if request.RequestedBy() != "agent-001" || request.ReviewedBy() != "reviewer-001" || request.ProcessedBy() != "processor-001" {
+		t.Fatalf("unexpected actors: requested=%s reviewed=%s processed=%s", request.RequestedBy(), request.ReviewedBy(), request.ProcessedBy())
+	}
+}
+
+func TestReturnRequestRequiresActors(t *testing.T) {
+	request, err := NewReturnRequestFromShippedOrder("return-001", shippedOrder(t), "damaged")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := request.AssignRequester(""); !errors.Is(err, ErrActorRequired) {
+		t.Fatalf("empty requester returned %v", err)
+	}
+	if err := request.ProcessBy("processor-001"); !errors.Is(err, ErrReturnNotReviewable) {
+		t.Fatalf("unaccepted process returned %v", err)
+	}
+}

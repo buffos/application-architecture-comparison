@@ -113,7 +113,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := returnRequest.Review(returns.ReviewDecisionAccept); err != nil {
+	if err := returnRequest.AssignRequester("agent-001"); err != nil {
+		log.Fatal(err)
+	}
+	if err := returnRequest.ReviewBy(returns.ReviewDecisionAccept, "reviewer-001"); err != nil {
 		log.Fatal(err)
 	}
 	eligibilityLines := make([]returns.EligibilityLine, 0, len(returnRequest.Lines()))
@@ -133,6 +136,9 @@ func main() {
 		log.Fatal(err)
 	}
 	if err := refund.Issue(); err != nil {
+		log.Fatal(err)
+	}
+	if err := returnRequest.ProcessBy("processor-001"); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("return request: id=%s status=%s lines=%d\n", returnRequest.ID(), returnRequest.Status(), len(returnRequest.Lines()))
