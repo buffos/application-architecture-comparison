@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(domain-driven-design): complete lesson 020 order query surface
+feat(domain-driven-design): complete lesson 021 shipment query surface
 
 # Add tag
 
-git tag -a domain-driven-design-020 -m "Domain-Driven Design Lesson 020" && git push origin --tags
-git push origin domain-driven-design-020
+git tag -a domain-driven-design-021 -m "Domain-Driven Design Lesson 021" && git push origin --tags
+git push origin domain-driven-design-021
 
 or
 

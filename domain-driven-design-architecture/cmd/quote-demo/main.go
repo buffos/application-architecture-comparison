@@ -7,6 +7,7 @@ import (
 
 	applicationorders "domain-driven-design-architecture/internal/application/orders"
 	applicationreturns "domain-driven-design-architecture/internal/application/returns"
+	applicationshipments "domain-driven-design-architecture/internal/application/shipments"
 	"domain-driven-design-architecture/internal/domain/catalog"
 	"domain-driven-design-architecture/internal/domain/customer"
 	"domain-driven-design-architecture/internal/domain/fulfillment"
@@ -116,6 +117,13 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("shipment aggregate: id=%s status=%s lines=%d\n", shipment.ID(), shipment.Status(), len(shipment.Lines()))
+	shipmentReader := applicationshipments.NewInMemoryReader()
+	shipmentReader.Save(shipment)
+	shipmentDetails, err := shipmentReader.GetShipment(string(shipment.ID()))
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("shipment query: id=%s status=%s lines=%d\n", shipmentDetails.ShipmentID, shipmentDetails.Status, len(shipmentDetails.Lines))
 	fmt.Printf("shipped order aggregate: id=%s status=%s\n", order.ID(), order.Status())
 	if err := order.Cancel(); err != nil {
 		fmt.Printf("cancellation blocked: order=%s reason=%s\n", order.ID(), err)
