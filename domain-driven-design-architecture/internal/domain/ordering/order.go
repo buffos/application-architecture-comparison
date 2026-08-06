@@ -12,6 +12,7 @@ var (
 	ErrOrderHasNoLines         = errors.New("order must contain at least one line")
 	ErrOrderNotAwaitingPayment = errors.New("order is not awaiting payment")
 	ErrOrderNotShippable       = errors.New("order is not shippable")
+	ErrOrderNotCancellable     = errors.New("order is not cancellable")
 )
 
 type OrderID string
@@ -26,6 +27,7 @@ const (
 	OrderStatusPendingPayment OrderStatus = "PendingPayment"
 	OrderStatusPaid           OrderStatus = "Paid"
 	OrderStatusShipped        OrderStatus = "Shipped"
+	OrderStatusCancelled      OrderStatus = "Cancelled"
 )
 
 type OrderLine struct {
@@ -111,5 +113,13 @@ func (o *Order) MarkShipped() error {
 		return ErrOrderNotShippable
 	}
 	o.status = OrderStatusShipped
+	return nil
+}
+
+func (o *Order) Cancel() error {
+	if o.status != OrderStatusPendingPayment && o.status != OrderStatusPaid {
+		return ErrOrderNotCancellable
+	}
+	o.status = OrderStatusCancelled
 	return nil
 }

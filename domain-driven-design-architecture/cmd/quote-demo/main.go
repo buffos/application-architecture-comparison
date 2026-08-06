@@ -104,6 +104,9 @@ func main() {
 	}
 	fmt.Printf("shipment aggregate: id=%s status=%s lines=%d\n", shipment.ID(), shipment.Status(), len(shipment.Lines()))
 	fmt.Printf("shipped order aggregate: id=%s status=%s\n", order.ID(), order.Status())
+	if err := order.Cancel(); err != nil {
+		fmt.Printf("cancellation blocked: order=%s reason=%s\n", order.ID(), err)
+	}
 	stockRecords := map[inventory.ProductSKU]*inventory.StockRecord{stock.SKU(): &stock}
 	reservations, err := inventory.NewInventoryReservationService().ReserveAll(stockRecords, []inventory.ReservationRequest{{SKU: stock.SKU(), Quantity: 2}})
 	if err != nil {
