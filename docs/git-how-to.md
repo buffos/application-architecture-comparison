@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(domain-driven-design): complete lesson 003 stock record aggregate and inventory context
+feat(domain-driven-design): complete lesson 004 quote pricing domain service
 
 # Add tag
 
-git tag -a domain-driven-design-003 -m "Domain-Driven Design Lesson 003" && git push origin --tags
-git push origin domain-driven-design-003
+git tag -a domain-driven-design-004 -m "Domain-Driven Design Lesson 004" && git push origin --tags
+git push origin domain-driven-design-004
 
 or
 

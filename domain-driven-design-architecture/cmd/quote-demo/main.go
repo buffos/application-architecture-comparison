@@ -44,10 +44,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	line, err := quoting.NewQuoteLine(quoting.ProductSKU(product.SKU()), 2, quotePrice)
+	pricingService := quoting.NewQuotePricingService()
+	line, err := pricingService.PriceLine(quoting.ProductPricingInput{SKU: quoting.ProductSKU(product.SKU()), BasePrice: quotePrice}, quoting.CustomerPricingTier(customerAggregate.Tier()), 2)
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Printf("priced quote line: sku=%s tier=%s unit-price=%d\n", line.ProductSKU(), customerAggregate.Tier(), line.UnitPrice().Cents())
 	if err := quote.AddLine(line); err != nil {
 		log.Fatal(err)
 	}
