@@ -9,6 +9,7 @@ import (
 	applicationorders "domain-driven-design-architecture/internal/application/orders"
 	applicationproducts "domain-driven-design-architecture/internal/application/products"
 	applicationquotes "domain-driven-design-architecture/internal/application/quotes"
+	applicationreports "domain-driven-design-architecture/internal/application/reports"
 	applicationreturns "domain-driven-design-architecture/internal/application/returns"
 	applicationshipments "domain-driven-design-architecture/internal/application/shipments"
 	"domain-driven-design-architecture/internal/domain/catalog"
@@ -107,6 +108,8 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("order aggregate: id=%s quote=%s status=%s total=%d %s\n", order.ID(), order.QuoteID(), order.Status(), orderTotal.Cents(), orderTotal.Currency())
+	conversionReport := applicationreports.BuildQuoteConversionReport([]quoting.Quote{quote}, []ordering.Order{order})
+	fmt.Printf("quote conversion report: converted=%d rate=%.2f\n", conversionReport.ConvertedQuotes, conversionReport.ConversionRate)
 	orderReader := applicationorders.NewInMemoryReader()
 	if err := orderReader.Save(order); err != nil {
 		log.Fatal(err)
