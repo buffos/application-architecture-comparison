@@ -12,10 +12,11 @@ type ListQuotesQuery struct {
 }
 
 type QuoteSummary struct {
-	QuoteID    string
-	CustomerID string
-	Status     string
-	LineCount  int
+	QuoteID     string
+	CustomerID  string
+	Status      string
+	LineCount   int
+	TotalAmount int
 }
 
 type GetQuoteQuery struct {
@@ -49,7 +50,11 @@ func (c *Component) ListQuotes(query ListQuotesQuery) []QuoteSummary {
 		if query.Status != "" && quote.Status != query.Status {
 			continue
 		}
-		quotes = append(quotes, QuoteSummary{QuoteID: quote.ID, CustomerID: quote.CustomerID, Status: quote.Status, LineCount: len(quote.Lines)})
+		total := 0
+		for _, line := range quote.Lines {
+			total += line.Quantity * line.UnitPrice
+		}
+		quotes = append(quotes, QuoteSummary{QuoteID: quote.ID, CustomerID: quote.CustomerID, Status: quote.Status, LineCount: len(quote.Lines), TotalAmount: total})
 	}
 	return quotes
 }

@@ -115,6 +115,8 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("submitted custom quote: id=%s status=%s\n", pendingSubmission.QuoteID, pendingSubmission.Status)
+	approvalQueue := reporting.NewApprovalQueueComponent(quoteComponent).OrdersAwaitingApprovalReport()
+	fmt.Printf("approval queue: pending=%d\n", len(approvalQueue.Rows))
 
 	approval, err := quoteComponent.ApproveQuote(quotes.ApproveQuoteCommand{QuoteID: pending.QuoteID})
 	if err != nil {
