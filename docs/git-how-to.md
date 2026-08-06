@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(domain-driven-design): complete lesson 033 why not stop at ddd
+feat(transaction-script): complete lesson 001 transaction script skeleton
 
 # Add tag
 
-git tag -a domain-driven-design-033 -m "Domain-Driven Design Lesson 033" && git push origin --tags
-git push origin domain-driven-design-033
+git tag -a transaction-script-001 -m "Transaction Script Lesson 001" && git push origin --tags
+git push origin transaction-script-001
 
 or
 
