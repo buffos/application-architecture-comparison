@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(domain-driven-design): complete lesson 006 quote approval lifecycle
+feat(domain-driven-design): complete lesson 007 order aggregate from approved quote
 
 # Add tag
 
-git tag -a domain-driven-design-006 -m "Domain-Driven Design Lesson 006" && git push origin --tags
-git push origin domain-driven-design-006
+git tag -a domain-driven-design-007 -m "Domain-Driven Design Lesson 007" && git push origin --tags
+git push origin domain-driven-design-007
 
 or
 

@@ -7,6 +7,7 @@ import (
 	"domain-driven-design-architecture/internal/domain/catalog"
 	"domain-driven-design-architecture/internal/domain/customer"
 	"domain-driven-design-architecture/internal/domain/inventory"
+	"domain-driven-design-architecture/internal/domain/ordering"
 	"domain-driven-design-architecture/internal/domain/quoting"
 )
 
@@ -64,4 +65,13 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("submitted quote aggregate: id=%s status=%s\n", quote.ID(), quote.Status())
+	order, err := ordering.NewOrderFromQuote("order-001", quote)
+	if err != nil {
+		log.Fatal(err)
+	}
+	orderTotal, err := order.Total()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("order aggregate: id=%s quote=%s status=%s total=%d %s\n", order.ID(), order.QuoteID(), order.Status(), orderTotal.Cents(), orderTotal.Currency())
 }
