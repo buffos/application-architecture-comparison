@@ -1,0 +1,75 @@
+package quoting
+
+import (
+	"errors"
+	"testing"
+)
+
+func TestQuoteAggregateOwnsLifecycleAndTotal(t *testing.T) {
+	quote, err := NewQuote("quote-001", "customer-001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	price, err := NewMoney(15000, "usd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	line, err := NewQuoteLine("sku-001", 2, price)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := quote.AddLine(line); err != nil {
+		t.Fatal(err)
+	}
+	total, err := quote.Total()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total.Cents() != 30000 || total.Currency() != "USD" {
+		t.Fatalf("total = %+v, want 30000 USD", total)
+	}
+	if err := quote.Submit(); err != nil {
+		t.Fatal(err)
+	}
+	if quote.Status() != QuoteStatusSubmitted {
+		t.Fatalf("status = %s, want %s", quote.Status(), QuoteStatusSubmitted)
+	}
+	if err := quote.AddLine(line); !errors.Is(err, ErrQuoteNotEditable) {
+		t.Fatalf("adding after submit returned %v", err)
+	}
+}
+
+func TestQuoteAggregateRejectsInvalidChanges(t *testing.T) {
+	quote, err := NewQuote("quote-001", "customer-001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := quote.Submit(); !errors.Is(err, ErrQuoteHasNoLines) {
+		t.Fatalf("empty submit returned %v", err)
+	}
+	price, err := NewMoney(1000, "USD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewQuoteLine("sku-001", 0, price); !errors.Is(err, ErrQuantityMustBePositive) {
+		t.Fatalf("invalid quantity returned %v", err)
+	}
+	line, err := NewQuoteLine("sku-001", 1, price)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := quote.AddLine(line); err != nil {
+		t.Fatal(err)
+	}
+	euro, err := NewMoney(1000, "EUR")
+	if err != nil {
+		t.Fatal(err)
+	}
+	mixed, err := NewQuoteLine("sku-002", 1, euro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := quote.AddLine(mixed); !errors.Is(err, ErrCurrencyMismatch) {
+		t.Fatalf("mixed currency returned %v", err)
+	}
+}

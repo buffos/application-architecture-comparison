@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(component-based): complete lesson 033 why not stop at component-based architecture
+feat(domain-driven-design): complete lesson 000 ubiquitous language and quote aggregate
 
 # Add tag
 
-git tag -a component-based-033 -m "Component-Based Lesson 033" && git push origin --tags
-git push origin component-based-033
+git tag -a domain-driven-design-000 -m "Domain-Driven Design Lesson 000" && git push origin --tags
+git push origin domain-driven-design-000
 
 or
 
