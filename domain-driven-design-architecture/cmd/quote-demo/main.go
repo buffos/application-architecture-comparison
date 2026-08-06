@@ -4,14 +4,20 @@ import (
 	"fmt"
 	"log"
 
+	"domain-driven-design-architecture/internal/domain/customer"
 	"domain-driven-design-architecture/internal/domain/quoting"
 )
 
 func main() {
-	quote, err := quoting.NewQuote("quote-001", "customer-001")
+	customerAggregate, err := customer.NewCustomer("customer-001", customer.CustomerTierPreferred, customer.PaymentTermsInvoice30)
 	if err != nil {
 		log.Fatal(err)
 	}
+	quote, err := quoting.NewQuote("quote-001", quoting.CustomerID(customerAggregate.ID()))
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("customer aggregate: id=%s tier=%s active=%t\n", customerAggregate.ID(), customerAggregate.Tier(), customerAggregate.Active())
 	unitPrice, err := quoting.NewMoney(15000, "USD")
 	if err != nil {
 		log.Fatal(err)
