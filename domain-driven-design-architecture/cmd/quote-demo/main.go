@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	applicationcustomers "domain-driven-design-architecture/internal/application/customers"
 	applicationorders "domain-driven-design-architecture/internal/application/orders"
 	applicationproducts "domain-driven-design-architecture/internal/application/products"
 	applicationquotes "domain-driven-design-architecture/internal/application/quotes"
@@ -30,6 +31,13 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("customer aggregate: id=%s tier=%s active=%t\n", customerAggregate.ID(), customerAggregate.Tier(), customerAggregate.Active())
+	customerReader := applicationcustomers.NewInMemoryReader()
+	customerReader.Save(customerAggregate)
+	customerDetails, err := customerReader.GetCustomer(string(customerAggregate.ID()))
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("customer query: id=%s tier=%s active=%t\n", customerDetails.CustomerID, customerDetails.Tier, customerDetails.Active)
 	productPrice, err := catalog.NewPrice(15000, "USD")
 	if err != nil {
 		log.Fatal(err)
