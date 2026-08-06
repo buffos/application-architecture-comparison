@@ -121,6 +121,13 @@ func main() {
 	if _, err := reviewService.Review(&returnRequest, returns.ReviewDecisionAccept, "reviewer-001", "processor-001", "return-review-001"); err != nil {
 		log.Fatal(err)
 	}
+	returnReader := applicationreturns.NewInMemoryReader()
+	returnReader.Save(returnRequest)
+	returnDetails, err := returnReader.GetReturnRequest(string(returnRequest.ID()))
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("return query: id=%s reviewed-by=%s lines=%d\n", returnDetails.ReturnRequestID, returnDetails.ReviewedBy, len(returnDetails.Lines))
 	eligibilityLines := make([]returns.EligibilityLine, 0, len(returnRequest.Lines()))
 	for _, line := range returnRequest.Lines() {
 		eligibilityLines = append(eligibilityLines, returns.EligibilityLine{Category: returns.ProductCategory(line.ProductCategory()), ReturnWindowDays: 30})
