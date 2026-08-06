@@ -66,6 +66,8 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("stock aggregate: sku=%s available=%d reserved=%d low=%t\n", stock.SKU(), stock.Available(), stock.Reserved(), stock.IsLowStock())
+	lowStockReport := applicationreports.BuildLowStockItemsReport([]inventory.StockRecord{stock}, 8)
+	fmt.Printf("low-stock report: items=%d\n", len(lowStockReport.Items))
 	quotePrice, err := quoting.NewMoney(product.BasePrice().Cents(), product.BasePrice().Currency())
 	if err != nil {
 		log.Fatal(err)
