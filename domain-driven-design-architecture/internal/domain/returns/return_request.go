@@ -39,13 +39,15 @@ const (
 
 type ReturnLine struct {
 	sku       ProductSKU
+	category  ProductCategory
 	quantity  int
 	unitPrice Money
 }
 
-func (line ReturnLine) ProductSKU() ProductSKU { return line.sku }
-func (line ReturnLine) Quantity() int          { return line.quantity }
-func (line ReturnLine) UnitPrice() Money       { return line.unitPrice }
+func (line ReturnLine) ProductSKU() ProductSKU           { return line.sku }
+func (line ReturnLine) ProductCategory() ProductCategory { return line.category }
+func (line ReturnLine) Quantity() int                    { return line.quantity }
+func (line ReturnLine) UnitPrice() Money                 { return line.unitPrice }
 
 // ReturnRequest is the aggregate root for return intent and review state.
 type ReturnRequest struct {
@@ -73,7 +75,7 @@ func NewReturnRequestFromShippedOrder(id ReturnRequestID, order ordering.Order, 
 		if err != nil {
 			return ReturnRequest{}, err
 		}
-		lines = append(lines, ReturnLine{sku: ProductSKU(line.ProductSKU()), quantity: line.Quantity(), unitPrice: price})
+		lines = append(lines, ReturnLine{sku: ProductSKU(line.ProductSKU()), category: ProductCategory(line.ProductCategory()), quantity: line.Quantity(), unitPrice: price})
 	}
 	return ReturnRequest{id: id, orderID: OrderID(order.ID()), customerID: CustomerID(order.CustomerID()), reason: reason, status: ReturnStatusRequested, lines: lines}, nil
 }

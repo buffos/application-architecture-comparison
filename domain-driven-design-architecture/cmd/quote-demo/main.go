@@ -115,6 +115,12 @@ func main() {
 	if err := returnRequest.Review(returns.ReviewDecisionAccept); err != nil {
 		log.Fatal(err)
 	}
+	eligibilityLines := make([]returns.EligibilityLine, 0, len(returnRequest.Lines()))
+	for _, line := range returnRequest.Lines() {
+		eligibilityLines = append(eligibilityLines, returns.EligibilityLine{Category: returns.ProductCategory(line.ProductCategory())})
+	}
+	eligibilityDecision := returns.NewReturnEligibilityService().Evaluate(eligibilityLines)
+	fmt.Printf("return eligibility: eligible=%t reason=%s\n", eligibilityDecision.Eligible, eligibilityDecision.Reason)
 	refundAmount, err := returns.NewMoney(orderTotal.Cents(), orderTotal.Currency())
 	if err != nil {
 		log.Fatal(err)
