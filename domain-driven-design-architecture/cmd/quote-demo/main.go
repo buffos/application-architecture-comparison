@@ -74,4 +74,10 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("order aggregate: id=%s quote=%s status=%s total=%d %s\n", order.ID(), order.QuoteID(), order.Status(), orderTotal.Cents(), orderTotal.Currency())
+	stockRecords := map[inventory.ProductSKU]*inventory.StockRecord{stock.SKU(): &stock}
+	reservations, err := inventory.NewInventoryReservationService().ReserveAll(stockRecords, []inventory.ReservationRequest{{SKU: stock.SKU(), Quantity: 2}})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("inventory reservation: sku=%s quantity=%d available=%d\n", reservations[0].SKU, reservations[0].Quantity, stock.Available())
 }
