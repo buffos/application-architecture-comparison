@@ -6,6 +6,7 @@ import (
 	"time"
 
 	applicationorders "domain-driven-design-architecture/internal/application/orders"
+	applicationproducts "domain-driven-design-architecture/internal/application/products"
 	applicationquotes "domain-driven-design-architecture/internal/application/quotes"
 	applicationreturns "domain-driven-design-architecture/internal/application/returns"
 	applicationshipments "domain-driven-design-architecture/internal/application/shipments"
@@ -41,6 +42,13 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("product aggregate: sku=%s category=%s active=%t\n", product.SKU(), product.Category(), product.Active())
+	productReader := applicationproducts.NewInMemoryReader()
+	productReader.Save(product)
+	productDetails, err := productReader.GetProduct(string(product.SKU()))
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("product query: sku=%s active=%t return-window=%d\n", productDetails.SKU, productDetails.Active, productDetails.ReturnWindowDays)
 	stock, err := inventory.NewStockRecord(inventory.ProductSKU(product.SKU()), 10, 3)
 	if err != nil {
 		log.Fatal(err)
