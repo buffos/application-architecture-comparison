@@ -76,3 +76,22 @@ func TestReturnRequestRequiresShippedOrder(t *testing.T) {
 		t.Fatalf("unshipped return returned %v", err)
 	}
 }
+
+func TestReturnRequestReviewIsOneWay(t *testing.T) {
+	request, err := NewReturnRequestFromShippedOrder("return-001", shippedOrder(t), "damaged")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := request.Review(ReviewDecisionReject); err != nil {
+		t.Fatal(err)
+	}
+	if request.Status() != ReturnStatusRejected {
+		t.Fatalf("status = %s, want %s", request.Status(), ReturnStatusRejected)
+	}
+	if err := request.Review(ReviewDecisionAccept); !errors.Is(err, ErrReturnNotReviewable) {
+		t.Fatalf("second review returned %v", err)
+	}
+	if err := request.Review(ReviewDecision("unknown")); !errors.Is(err, ErrReturnNotReviewable) {
+		t.Fatalf("review after rejection returned %v", err)
+	}
+}

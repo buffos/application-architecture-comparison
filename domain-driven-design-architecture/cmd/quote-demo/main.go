@@ -112,7 +112,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := returnRequest.Accept(); err != nil {
+	if err := returnRequest.Review(returns.ReviewDecisionAccept); err != nil {
 		log.Fatal(err)
 	}
 	refundAmount, err := returns.NewMoney(orderTotal.Cents(), orderTotal.Currency())

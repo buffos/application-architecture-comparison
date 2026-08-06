@@ -11,6 +11,7 @@ var (
 	ErrReturnReasonRequired    = errors.New("return reason is required")
 	ErrOrderNotShipped         = errors.New("order is not shipped")
 	ErrReturnNotReviewable     = errors.New("return request is not reviewable")
+	ErrReviewDecisionInvalid   = errors.New("review decision is invalid")
 	ErrRefundIDRequired        = errors.New("refund id is required")
 	ErrRefundNotIssuable       = errors.New("refund is not issuable")
 )
@@ -27,6 +28,13 @@ const (
 	ReturnStatusRequested ReturnStatus = "Requested"
 	ReturnStatusAccepted  ReturnStatus = "Accepted"
 	ReturnStatusRejected  ReturnStatus = "Rejected"
+)
+
+type ReviewDecision string
+
+const (
+	ReviewDecisionAccept ReviewDecision = "Accept"
+	ReviewDecisionReject ReviewDecision = "Reject"
 )
 
 type ReturnLine struct {
@@ -78,18 +86,25 @@ func (r ReturnRequest) Status() ReturnStatus   { return r.status }
 func (r ReturnRequest) Lines() []ReturnLine    { return append([]ReturnLine(nil), r.lines...) }
 
 func (r *ReturnRequest) Accept() error {
-	if r.status != ReturnStatusRequested {
-		return ErrReturnNotReviewable
-	}
-	r.status = ReturnStatusAccepted
-	return nil
+	return r.Review(ReviewDecisionAccept)
 }
 
 func (r *ReturnRequest) Reject() error {
+	return r.Review(ReviewDecisionReject)
+}
+
+func (r *ReturnRequest) Review(decision ReviewDecision) error {
 	if r.status != ReturnStatusRequested {
 		return ErrReturnNotReviewable
 	}
-	r.status = ReturnStatusRejected
+	switch decision {
+	case ReviewDecisionAccept:
+		r.status = ReturnStatusAccepted
+	case ReviewDecisionReject:
+		r.status = ReturnStatusRejected
+	default:
+		return ErrReviewDecisionInvalid
+	}
 	return nil
 }
 
