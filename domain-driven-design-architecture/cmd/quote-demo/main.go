@@ -11,6 +11,7 @@ import (
 	"domain-driven-design-architecture/internal/domain/ordering"
 	"domain-driven-design-architecture/internal/domain/payments"
 	"domain-driven-design-architecture/internal/domain/quoting"
+	"domain-driven-design-architecture/internal/domain/returns"
 )
 
 func main() {
@@ -107,6 +108,26 @@ func main() {
 	if err := order.Cancel(); err != nil {
 		fmt.Printf("cancellation blocked: order=%s reason=%s\n", order.ID(), err)
 	}
+	returnRequest, err := returns.NewReturnRequestFromShippedOrder("return-001", order, "damaged")
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := returnRequest.Accept(); err != nil {
+		log.Fatal(err)
+	}
+	refundAmount, err := returns.NewMoney(orderTotal.Cents(), orderTotal.Currency())
+	if err != nil {
+		log.Fatal(err)
+	}
+	refund, err := returns.NewRefund("refund-001", returnRequest.ID(), refundAmount)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := refund.Issue(); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("return request: id=%s status=%s lines=%d\n", returnRequest.ID(), returnRequest.Status(), len(returnRequest.Lines()))
+	fmt.Printf("refund aggregate: id=%s status=%s amount=%d\n", refund.ID(), refund.Status(), refund.Amount().Cents())
 	stockRecords := map[inventory.ProductSKU]*inventory.StockRecord{stock.SKU(): &stock}
 	reservations, err := inventory.NewInventoryReservationService().ReserveAll(stockRecords, []inventory.ReservationRequest{{SKU: stock.SKU(), Quantity: 2}})
 	if err != nil {
