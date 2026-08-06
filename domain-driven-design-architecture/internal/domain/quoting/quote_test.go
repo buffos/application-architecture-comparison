@@ -31,8 +31,8 @@ func TestQuoteAggregateOwnsLifecycleAndTotal(t *testing.T) {
 	if err := quote.Submit(); err != nil {
 		t.Fatal(err)
 	}
-	if quote.Status() != QuoteStatusSubmitted {
-		t.Fatalf("status = %s, want %s", quote.Status(), QuoteStatusSubmitted)
+	if quote.Status() != QuoteStatusApproved {
+		t.Fatalf("status = %s, want %s", quote.Status(), QuoteStatusApproved)
 	}
 	if err := quote.AddLine(line); !errors.Is(err, ErrQuoteNotEditable) {
 		t.Fatalf("adding after submit returned %v", err)
@@ -71,5 +71,48 @@ func TestQuoteAggregateRejectsInvalidChanges(t *testing.T) {
 	}
 	if err := quote.AddLine(mixed); !errors.Is(err, ErrCurrencyMismatch) {
 		t.Fatalf("mixed currency returned %v", err)
+	}
+}
+
+func TestQuoteApprovalLifecycleUsesDecision(t *testing.T) {
+	price, err := NewMoney(45000, "USD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	line, err := NewQuoteLineWithCategory("sku-custom", ProductCategoryCustomBuild, 1, price)
+	if err != nil {
+		t.Fatal(err)
+	}
+	quote, err := NewQuote("quote-001", "customer-001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := quote.AddLine(line); err != nil {
+		t.Fatal(err)
+	}
+	if err := quote.SubmitForApproval(ApprovalDecision{Required: true}); err != nil {
+		t.Fatal(err)
+	}
+	if quote.Status() != QuoteStatusPendingApproval {
+		t.Fatalf("status = %s, want %s", quote.Status(), QuoteStatusPendingApproval)
+	}
+	if err := quote.Approve(); err != nil {
+		t.Fatal(err)
+	}
+	if quote.Status() != QuoteStatusApproved {
+		t.Fatalf("status = %s, want %s", quote.Status(), QuoteStatusApproved)
+	}
+}
+
+func TestQuoteApprovalLifecycleRejectsInvalidTransitions(t *testing.T) {
+	quote, err := NewQuote("quote-001", "customer-001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := quote.Approve(); !errors.Is(err, ErrQuoteNotApprovable) {
+		t.Fatalf("approve draft returned %v", err)
+	}
+	if err := quote.Reject(); !errors.Is(err, ErrQuoteNotRejectable) {
+		t.Fatalf("reject draft returned %v", err)
 	}
 }

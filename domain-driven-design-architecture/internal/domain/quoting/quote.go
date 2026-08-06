@@ -10,6 +10,8 @@ var (
 	ErrQuantityMustBePositive = errors.New("quantity must be positive")
 	ErrQuoteNotEditable       = errors.New("quote is not editable")
 	ErrQuoteHasNoLines        = errors.New("quote must contain at least one line")
+	ErrQuoteNotApprovable     = errors.New("quote is not approvable")
+	ErrQuoteNotRejectable     = errors.New("quote is not rejectable")
 )
 
 type QuoteID string
@@ -26,8 +28,11 @@ const (
 type QuoteStatus string
 
 const (
-	QuoteStatusDraft     QuoteStatus = "Draft"
-	QuoteStatusSubmitted QuoteStatus = "Submitted"
+	QuoteStatusDraft           QuoteStatus = "Draft"
+	QuoteStatusSubmitted       QuoteStatus = "Submitted"
+	QuoteStatusPendingApproval QuoteStatus = "PendingApproval"
+	QuoteStatusApproved        QuoteStatus = "Approved"
+	QuoteStatusRejected        QuoteStatus = "Rejected"
 )
 
 type QuoteLine struct {
@@ -102,13 +107,37 @@ func (q *Quote) AddLine(line QuoteLine) error {
 }
 
 func (q *Quote) Submit() error {
+	return q.SubmitForApproval(ApprovalDecision{})
+}
+
+func (q *Quote) SubmitForApproval(decision ApprovalDecision) error {
 	if q.status != QuoteStatusDraft {
 		return ErrQuoteNotEditable
 	}
 	if len(q.lines) == 0 {
 		return ErrQuoteHasNoLines
 	}
-	q.status = QuoteStatusSubmitted
+	if decision.Required {
+		q.status = QuoteStatusPendingApproval
+	} else {
+		q.status = QuoteStatusApproved
+	}
+	return nil
+}
+
+func (q *Quote) Approve() error {
+	if q.status != QuoteStatusPendingApproval {
+		return ErrQuoteNotApprovable
+	}
+	q.status = QuoteStatusApproved
+	return nil
+}
+
+func (q *Quote) Reject() error {
+	if q.status != QuoteStatusPendingApproval {
+		return ErrQuoteNotRejectable
+	}
+	q.status = QuoteStatusRejected
 	return nil
 }
 

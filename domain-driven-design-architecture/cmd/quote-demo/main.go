@@ -60,7 +60,7 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("quote aggregate: id=%s status=%s lines=%d total=%d %s\n", quote.ID(), quote.Status(), len(quote.Lines()), total.Cents(), total.Currency())
-	if err := quote.Submit(); err != nil {
+	if err := quote.SubmitForApproval(approvalDecision); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("submitted quote aggregate: id=%s status=%s\n", quote.ID(), quote.Status())
