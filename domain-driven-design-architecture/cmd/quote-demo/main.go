@@ -101,6 +101,8 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("quote query: id=%s status=%s total=%d\n", quoteDetails.QuoteID, quoteDetails.Status, quoteDetails.TotalCents)
+	approvalQueue := applicationreports.BuildOrdersAwaitingApprovalReport([]quoting.Quote{quote})
+	fmt.Printf("approval queue report: rows=%d\n", len(approvalQueue.Rows))
 	order, err := ordering.NewOrderFromQuote("order-001", quote)
 	if err != nil {
 		log.Fatal(err)
