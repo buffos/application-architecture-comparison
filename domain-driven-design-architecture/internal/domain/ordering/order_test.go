@@ -123,3 +123,25 @@ func TestOrderRejectsCancellationAfterShipment(t *testing.T) {
 		t.Fatalf("shipped cancellation returned %v", err)
 	}
 }
+
+func TestOrderPaymentReviewWorkflow(t *testing.T) {
+	order, err := NewOrderFromQuote("order-001", approvedQuote(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := order.MarkPaymentReview(); err != nil {
+		t.Fatal(err)
+	}
+	if order.Status() != OrderStatusPaymentReview {
+		t.Fatalf("status = %s, want %s", order.Status(), OrderStatusPaymentReview)
+	}
+	if err := order.MarkShipped(); !errors.Is(err, ErrOrderNotShippable) {
+		t.Fatalf("shipped during review returned %v", err)
+	}
+	if err := order.ApprovePaymentReview(); err != nil {
+		t.Fatal(err)
+	}
+	if err := order.MarkShipped(); err != nil {
+		t.Fatal(err)
+	}
+}

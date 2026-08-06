@@ -13,6 +13,7 @@ var (
 	ErrOrderNotAwaitingPayment = errors.New("order is not awaiting payment")
 	ErrOrderNotShippable       = errors.New("order is not shippable")
 	ErrOrderNotCancellable     = errors.New("order is not cancellable")
+	ErrOrderNotReviewable      = errors.New("order is not in payment review")
 )
 
 type OrderID string
@@ -25,6 +26,7 @@ type OrderStatus string
 
 const (
 	OrderStatusPendingPayment OrderStatus = "PendingPayment"
+	OrderStatusPaymentReview  OrderStatus = "PaymentReview"
 	OrderStatusPaid           OrderStatus = "Paid"
 	OrderStatusShipped        OrderStatus = "Shipped"
 	OrderStatusCancelled      OrderStatus = "Cancelled"
@@ -103,6 +105,22 @@ func (o Order) Total() (Money, error) {
 func (o *Order) MarkPaid() error {
 	if o.status != OrderStatusPendingPayment {
 		return ErrOrderNotAwaitingPayment
+	}
+	o.status = OrderStatusPaid
+	return nil
+}
+
+func (o *Order) MarkPaymentReview() error {
+	if o.status != OrderStatusPendingPayment {
+		return ErrOrderNotReviewable
+	}
+	o.status = OrderStatusPaymentReview
+	return nil
+}
+
+func (o *Order) ApprovePaymentReview() error {
+	if o.status != OrderStatusPaymentReview {
+		return ErrOrderNotReviewable
 	}
 	o.status = OrderStatusPaid
 	return nil
