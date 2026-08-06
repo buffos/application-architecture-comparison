@@ -204,6 +204,8 @@ func main() {
 	if err := inventory.NewReturnRestockingService().RestockAll(stockRecords, restockRequests); err != nil {
 		log.Fatal(err)
 	}
+	returnRateReport := applicationreports.BuildReturnRateByCategoryReport([]ordering.Order{order}, []returns.ReturnRequest{returnRequest})
+	fmt.Printf("return rate report: categories=%d rate=%.2f\n", len(returnRateReport.Rows), returnRateReport.Rows[0].ReturnRate)
 	fmt.Printf("return restock: sku=%s on-hand=%d available=%d\n", stock.SKU(), stock.OnHand(), stock.Available())
 	reservations, err := inventory.NewInventoryReservationService().ReserveAll(stockRecords, []inventory.ReservationRequest{{SKU: stock.SKU(), Quantity: 2}})
 	if err != nil {
