@@ -72,3 +72,22 @@ func TestOrderCanBecomePaidOnlyFromPendingPayment(t *testing.T) {
 		t.Fatalf("repeated paid transition returned %v", err)
 	}
 }
+
+func TestOrderCanBecomeShippedOnlyAfterPayment(t *testing.T) {
+	order, err := NewOrderFromQuote("order-001", approvedQuote(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := order.MarkShipped(); !errors.Is(err, ErrOrderNotShippable) {
+		t.Fatalf("unpaid shipment returned %v", err)
+	}
+	if err := order.MarkPaid(); err != nil {
+		t.Fatal(err)
+	}
+	if err := order.MarkShipped(); err != nil {
+		t.Fatal(err)
+	}
+	if order.Status() != OrderStatusShipped {
+		t.Fatalf("status = %s, want %s", order.Status(), OrderStatusShipped)
+	}
+}

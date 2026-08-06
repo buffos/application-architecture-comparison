@@ -6,6 +6,7 @@ import (
 
 	"domain-driven-design-architecture/internal/domain/catalog"
 	"domain-driven-design-architecture/internal/domain/customer"
+	"domain-driven-design-architecture/internal/domain/fulfillment"
 	"domain-driven-design-architecture/internal/domain/inventory"
 	"domain-driven-design-architecture/internal/domain/ordering"
 	"domain-driven-design-architecture/internal/domain/payments"
@@ -91,6 +92,18 @@ func main() {
 	}
 	fmt.Printf("payment aggregate: id=%s status=%s order=%s\n", payment.ID(), payment.Status(), payment.OrderID())
 	fmt.Printf("paid order aggregate: id=%s status=%s\n", order.ID(), order.Status())
+	shipment, err := fulfillment.NewShipmentFromPaidOrder("shipment-001", order)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := shipment.Dispatch(); err != nil {
+		log.Fatal(err)
+	}
+	if err := order.MarkShipped(); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("shipment aggregate: id=%s status=%s lines=%d\n", shipment.ID(), shipment.Status(), len(shipment.Lines()))
+	fmt.Printf("shipped order aggregate: id=%s status=%s\n", order.ID(), order.Status())
 	stockRecords := map[inventory.ProductSKU]*inventory.StockRecord{stock.SKU(): &stock}
 	reservations, err := inventory.NewInventoryReservationService().ReserveAll(stockRecords, []inventory.ReservationRequest{{SKU: stock.SKU(), Quantity: 2}})
 	if err != nil {
