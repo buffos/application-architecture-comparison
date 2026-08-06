@@ -6,6 +6,7 @@ import (
 	"time"
 
 	applicationorders "domain-driven-design-architecture/internal/application/orders"
+	applicationquotes "domain-driven-design-architecture/internal/application/quotes"
 	applicationreturns "domain-driven-design-architecture/internal/application/returns"
 	applicationshipments "domain-driven-design-architecture/internal/application/shipments"
 	"domain-driven-design-architecture/internal/domain/catalog"
@@ -72,6 +73,15 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("submitted quote aggregate: id=%s status=%s\n", quote.ID(), quote.Status())
+	quoteReader := applicationquotes.NewInMemoryReader()
+	if err := quoteReader.Save(quote); err != nil {
+		log.Fatal(err)
+	}
+	quoteDetails, err := quoteReader.GetQuote(string(quote.ID()))
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("quote query: id=%s status=%s total=%d\n", quoteDetails.QuoteID, quoteDetails.Status, quoteDetails.TotalCents)
 	order, err := ordering.NewOrderFromQuote("order-001", quote)
 	if err != nil {
 		log.Fatal(err)
