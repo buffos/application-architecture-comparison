@@ -14,6 +14,7 @@ import (
 	"component-based-architecture/internal/components/payments"
 	"component-based-architecture/internal/components/products"
 	"component-based-architecture/internal/components/quotes"
+	"component-based-architecture/internal/components/reporting"
 	"component-based-architecture/internal/components/returneligibility"
 	"component-based-architecture/internal/components/returns"
 	"component-based-architecture/internal/components/shipments"
@@ -124,6 +125,9 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("converted quote to order: order=%s quote=%s status=%s lines=%d\n", order.OrderID, order.QuoteID, order.Status, order.LineCount)
+	reportingComponent := reporting.NewComponent(quoteComponent, orderComponent)
+	conversionReport := reportingComponent.QuoteConversionReport()
+	fmt.Printf("quote conversion report: total=%d approved=%d converted=%d rate=%.2f\n", conversionReport.TotalQuotes, conversionReport.ApprovedQuotes, conversionReport.ConvertedQuotes, conversionReport.ConversionRate)
 	var orderReader orders.Reader = orderComponent
 	orderDetails, err := orderReader.GetOrder(orders.GetOrderQuery{OrderID: order.OrderID})
 	if err != nil {
