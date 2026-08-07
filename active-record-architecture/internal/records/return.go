@@ -22,6 +22,7 @@ var (
 	ErrReturnNotAcceptable = errors.New("return is not requested")
 	ErrReturnNotRejectable = errors.New("return is not requested")
 	ErrReturnNotRefundable = errors.New("return refund cannot be completed")
+	ErrReturnNotEligible   = errors.New("return is not eligible")
 	ErrReturnOrderMissing  = errors.New("return order not found")
 	ErrReturnStockMissing  = errors.New("return stock record not found")
 )
@@ -60,6 +61,13 @@ func (request *ReturnRequest) Accept() error {
 	}
 	if request.Status != ReturnStatusRequested {
 		return ErrReturnNotAcceptable
+	}
+	order, err := FindOrder(request.db, request.OrderID)
+	if err != nil {
+		return ErrReturnOrderMissing
+	}
+	if decision := request.EvaluateEligibility(order); !decision.Eligible {
+		return ErrReturnNotEligible
 	}
 	request.Status = ReturnStatusAccepted
 	return request.Save()
