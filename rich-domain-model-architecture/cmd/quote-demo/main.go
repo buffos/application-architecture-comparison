@@ -118,6 +118,27 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("quote query: id=%s status=%s total=%d\n", quoteDetails.QuoteID, quoteDetails.Status, quoteDetails.TotalCents)
+	pendingQuote, err := quoting.NewQuote("quote-pending", quoting.CustomerID(customerAggregate.ID()))
+	if err != nil {
+		log.Fatal(err)
+	}
+	pendingPrice, err := quoting.NewMoney(45000, "USD")
+	if err != nil {
+		log.Fatal(err)
+	}
+	pendingLine, err := quoting.NewQuoteLineFromProductSnapshotWithCategory("sku-custom", "Custom Desk", quoting.ProductCategoryCustomBuild, 1, pendingPrice)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := pendingQuote.AddLine(pendingLine); err != nil {
+		log.Fatal(err)
+	}
+	pendingDecision := quoting.NewQuoteApprovalService().Evaluate(pendingQuote)
+	if err := pendingQuote.SubmitForApproval(pendingDecision); err != nil {
+		log.Fatal(err)
+	}
+	approvalQueue := reports.BuildOrdersAwaitingApprovalReport([]quoting.Quote{quote, pendingQuote})
+	fmt.Printf("approval queue report: rows=%d\n", len(approvalQueue.Rows))
 
 	order, err := ordering.NewOrderFromQuote("order-001", quote)
 	if err != nil {
