@@ -161,7 +161,7 @@ func main() {
 	}
 	fmt.Printf("return request: id=%s status=%s lines=%d\n", returnRequest.ID(), returnRequest.Status(), len(returnRequest.Lines()))
 	fmt.Printf("refund aggregate: id=%s status=%s amount=%d\n", refund.ID(), refund.Status(), refund.Amount().Cents())
-	if err := returnRequest.Review(domainreturns.ReviewDecisionAccept); err != nil {
+	if err := returnRequest.Accept(); err != nil {
 		log.Fatal(err)
 	}
 	restockRequests := make([]inventory.RestockRequest, 0, len(returnRequest.Lines()))

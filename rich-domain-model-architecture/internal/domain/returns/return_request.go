@@ -128,6 +128,14 @@ func (request *ReturnRequest) Review(decision ReviewDecision) error {
 	return nil
 }
 
+func (request *ReturnRequest) Accept() error {
+	return request.Review(ReviewDecisionAccept)
+}
+
+func (request *ReturnRequest) Reject() error {
+	return request.Review(ReviewDecisionReject)
+}
+
 type RefundStatus string
 
 const (
