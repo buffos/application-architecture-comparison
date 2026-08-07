@@ -6,6 +6,7 @@ var (
 	ErrPaymentIDRequired    = errors.New("payment id is required")
 	ErrOrderIDRequired      = errors.New("order id is required")
 	ErrPaymentNotCapturable = errors.New("payment is not capturable")
+	ErrPaymentNotReviewable = errors.New("payment is not reviewable")
 )
 
 type PaymentID string
@@ -15,6 +16,7 @@ type PaymentStatus string
 
 const (
 	PaymentStatusPending  PaymentStatus = "Pending"
+	PaymentStatusReview   PaymentStatus = "Review"
 	PaymentStatusCaptured PaymentStatus = "Captured"
 	PaymentStatusFailed   PaymentStatus = "Failed"
 )
@@ -53,8 +55,32 @@ func (payment *Payment) Capture() error {
 	return nil
 }
 
-func (payment *Payment) Fail() error {
+func (payment *Payment) RequestReview() error {
 	if payment.status != PaymentStatusPending {
+		return ErrPaymentNotReviewable
+	}
+	payment.status = PaymentStatusReview
+	return nil
+}
+
+func (payment *Payment) ApproveReview() error {
+	if payment.status != PaymentStatusReview {
+		return ErrPaymentNotReviewable
+	}
+	payment.status = PaymentStatusCaptured
+	return nil
+}
+
+func (payment *Payment) RejectReview() error {
+	if payment.status != PaymentStatusReview {
+		return ErrPaymentNotReviewable
+	}
+	payment.status = PaymentStatusFailed
+	return nil
+}
+
+func (payment *Payment) Fail() error {
+	if payment.status != PaymentStatusPending && payment.status != PaymentStatusReview {
 		return ErrPaymentNotCapturable
 	}
 	payment.status = PaymentStatusFailed

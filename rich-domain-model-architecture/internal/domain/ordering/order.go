@@ -13,6 +13,7 @@ var (
 	ErrOrderNotAwaitingPayment = errors.New("order is not awaiting payment")
 	ErrOrderNotShippable       = errors.New("order is not shippable")
 	ErrOrderNotCancellable     = errors.New("order is not cancellable")
+	ErrOrderNotReviewable      = errors.New("order is not in payment review")
 )
 
 type OrderID string
@@ -25,6 +26,7 @@ type OrderStatus string
 
 const (
 	OrderStatusPendingPayment OrderStatus = "PendingPayment"
+	OrderStatusPaymentReview  OrderStatus = "PaymentReview"
 	OrderStatusPaid           OrderStatus = "Paid"
 	OrderStatusShipped        OrderStatus = "Shipped"
 	OrderStatusCancelled      OrderStatus = "Cancelled"
@@ -38,11 +40,11 @@ type OrderLine struct {
 	unitPrice   Money
 }
 
-func (line OrderLine) ProductSKU() ProductSKU         { return line.sku }
-func (line OrderLine) ProductName() string             { return line.productName }
+func (line OrderLine) ProductSKU() ProductSKU           { return line.sku }
+func (line OrderLine) ProductName() string              { return line.productName }
 func (line OrderLine) ProductCategory() ProductCategory { return line.category }
-func (line OrderLine) Quantity() int                   { return line.quantity }
-func (line OrderLine) UnitPrice() Money                { return line.unitPrice }
+func (line OrderLine) Quantity() int                    { return line.quantity }
+func (line OrderLine) UnitPrice() Money                 { return line.unitPrice }
 
 // Order is the aggregate root for committed commercial transactions.
 type Order struct {
@@ -89,11 +91,11 @@ func NewOrderFromQuote(id OrderID, quote quoting.Quote) (Order, error) {
 	}, nil
 }
 
-func (order Order) ID() OrderID             { return order.id }
-func (order Order) QuoteID() QuoteID        { return order.quoteID }
-func (order Order) CustomerID() CustomerID  { return order.customerID }
-func (order Order) Status() OrderStatus     { return order.status }
-func (order Order) Lines() []OrderLine      { return append([]OrderLine(nil), order.lines...) }
+func (order Order) ID() OrderID            { return order.id }
+func (order Order) QuoteID() QuoteID       { return order.quoteID }
+func (order Order) CustomerID() CustomerID { return order.customerID }
+func (order Order) Status() OrderStatus    { return order.status }
+func (order Order) Lines() []OrderLine     { return append([]OrderLine(nil), order.lines...) }
 
 func (order Order) Total() (Money, error) {
 	if len(order.lines) == 0 {
@@ -119,6 +121,22 @@ func (order Order) Total() (Money, error) {
 func (order *Order) MarkPaid() error {
 	if order.status != OrderStatusPendingPayment {
 		return ErrOrderNotAwaitingPayment
+	}
+	order.status = OrderStatusPaid
+	return nil
+}
+
+func (order *Order) MarkPaymentReview() error {
+	if order.status != OrderStatusPendingPayment {
+		return ErrOrderNotReviewable
+	}
+	order.status = OrderStatusPaymentReview
+	return nil
+}
+
+func (order *Order) ApprovePaymentReview() error {
+	if order.status != OrderStatusPaymentReview {
+		return ErrOrderNotReviewable
 	}
 	order.status = OrderStatusPaid
 	return nil
