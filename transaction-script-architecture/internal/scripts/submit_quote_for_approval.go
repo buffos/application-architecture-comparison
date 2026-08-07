@@ -35,12 +35,10 @@ func SubmitQuoteForApproval(store *data.Store, quoteID string) (data.Quote, erro
 		return data.Quote{}, ErrQuoteHasNoLines
 	}
 
+	decision := EvaluateQuoteApproval(quote)
 	quote.Status = data.QuoteStatusApproved
-	for _, line := range quote.Lines {
-		if line.ProductCategory == "CustomBuild" {
-			quote.Status = data.QuoteStatusPendingApproval
-			break
-		}
+	if decision.Required {
+		quote.Status = data.QuoteStatusPendingApproval
 	}
 
 	store.Quotes[quote.ID] = quote
