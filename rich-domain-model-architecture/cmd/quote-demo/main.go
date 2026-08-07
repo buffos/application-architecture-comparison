@@ -184,6 +184,13 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("return review: id=%s status=%s reviewed=%s processed=%s\n", reviewResult.ReturnRequestID, reviewResult.Status, reviewResult.ReviewedBy, reviewResult.ProcessedBy)
+	returnReader := applicationreturns.NewInMemoryReader()
+	returnReader.Save(returnRequest)
+	returnDetails, err := returnReader.GetReturnRequest(string(returnRequest.ID()))
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("return query: id=%s status=%s reviewed=%s lines=%d\n", returnDetails.ReturnRequestID, returnDetails.Status, returnDetails.ReviewedBy, len(returnDetails.Lines))
 	restockRequests := make([]inventory.RestockRequest, 0, len(returnRequest.Lines()))
 	for _, line := range returnRequest.Lines() {
 		restockRequests = append(restockRequests, inventory.RestockRequest{SKU: inventory.ProductSKU(line.ProductSKU()), Quantity: line.Quantity()})
