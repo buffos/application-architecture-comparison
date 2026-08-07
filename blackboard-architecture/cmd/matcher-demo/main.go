@@ -50,6 +50,34 @@ func NewBlackboard(payment Payment, invoices []Invoice) *Blackboard {
 	}
 }
 
+func (bb *Blackboard) AddEvidence(invoiceID string, points float64, reason string) {
+	hypothesis, exists := bb.Hypotheses[invoiceID]
+	if !exists {
+		return
+	}
+
+	hypothesis.Score += points
+	if hypothesis.Score > 1.0 {
+		hypothesis.Score = 1.0
+	}
+	hypothesis.Reasons = append(hypothesis.Reasons, reason)
+	bb.Hypotheses[invoiceID] = hypothesis
+}
+
+func (bb *Blackboard) BestHypothesis() (MatchHypothesis, bool) {
+	var best MatchHypothesis
+	found := false
+
+	for _, hypothesis := range bb.Hypotheses {
+		if !found || hypothesis.Score > best.Score {
+			best = hypothesis
+			found = true
+		}
+	}
+
+	return best, found
+}
+
 func formatCents(amountCents int64) string {
 	return fmt.Sprintf("%d.%02d", amountCents/100, amountCents%100)
 }
@@ -67,6 +95,11 @@ func main() {
 	}
 
 	blackboard := NewBlackboard(incomingPayment, unpaidInvoices)
+	blackboard.AddEvidence(
+		"INV-102",
+		0.4,
+		"Temporary exact amount observation (+0.4)",
+	)
 
 	fmt.Printf("Payment memo: %q\n", blackboard.Payment.RawMemo)
 	fmt.Printf("Payment amount: %s\n", formatCents(blackboard.Payment.AmountCents))
@@ -80,5 +113,13 @@ func main() {
 			formatCents(invoice.AmountCents),
 			hypothesis.Score,
 		)
+	}
+
+	if best, ok := blackboard.BestHypothesis(); ok {
+		fmt.Printf("Best hypothesis: %s with score %.1f\n", best.InvoiceID, best.Score)
+		fmt.Println("Reasons:")
+		for _, reason := range best.Reasons {
+			fmt.Printf("- %s\n", reason)
+		}
 	}
 }
