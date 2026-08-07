@@ -11,6 +11,7 @@ var (
 	ErrReturnNotAcceptable = errors.New("return is not requested")
 	ErrReturnNotRejectable = errors.New("return is not requested")
 	ErrReturnNotRefundable = errors.New("return must be accepted before refund")
+	ErrReturnNotEligible   = errors.New("return is not eligible")
 	ErrReturnOrderMissing  = errors.New("return order not found")
 	ErrReturnStockMissing  = errors.New("return stock record not found")
 )
@@ -33,6 +34,14 @@ func AcceptReturn(store *data.Store, returnID string) (data.ReturnRequest, error
 
 	if request.Status != data.ReturnStatusRequested {
 		return data.ReturnRequest{}, ErrReturnNotAcceptable
+	}
+
+	order, ok := store.Orders[request.OrderID]
+	if !ok {
+		return data.ReturnRequest{}, ErrReturnOrderMissing
+	}
+	if decision := EvaluateReturnEligibility(order, request); !decision.Eligible {
+		return data.ReturnRequest{}, ErrReturnNotEligible
 	}
 
 	request.Status = data.ReturnStatusAccepted
