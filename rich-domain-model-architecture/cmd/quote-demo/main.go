@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"rich-domain-model-architecture/internal/domain/catalog"
 	"rich-domain-model-architecture/internal/domain/customer"
@@ -161,12 +162,18 @@ func main() {
 	}
 	eligibilityLines := make([]domainreturns.EligibilityLine, 0, len(returnRequest.Lines()))
 	for _, line := range returnRequest.Lines() {
-		eligibilityLines = append(eligibilityLines, domainreturns.EligibilityLine{Category: line.ProductCategory()})
+		eligibilityLines = append(eligibilityLines, domainreturns.EligibilityLine{Category: line.ProductCategory(), ReturnWindowDays: product.ReturnWindowDays()})
 	}
 	eligibilityDecision := domainreturns.NewReturnEligibilityService().Evaluate(eligibilityLines)
+	windowDecision := domainreturns.NewReturnEligibilityService().EvaluateWindow(
+		time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC),
+		eligibilityLines,
+	)
 	fmt.Printf("return request: id=%s status=%s lines=%d\n", returnRequest.ID(), returnRequest.Status(), len(returnRequest.Lines()))
 	fmt.Printf("refund aggregate: id=%s status=%s amount=%d\n", refund.ID(), refund.Status(), refund.Amount().Cents())
 	fmt.Printf("return eligibility: eligible=%t reason=%s\n", eligibilityDecision.Eligible, eligibilityDecision.Reason)
+	fmt.Printf("return window: eligible=%t reason=%s\n", windowDecision.Eligible, windowDecision.Reason)
 	if err := returnRequest.Accept(); err != nil {
 		log.Fatal(err)
 	}

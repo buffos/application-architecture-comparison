@@ -9,6 +9,7 @@ var (
 	ErrProductSKURequired         = errors.New("product sku is required")
 	ErrProductNameRequired        = errors.New("product name is required")
 	ErrProductCategoryInvalid     = errors.New("product category is invalid")
+	ErrReturnWindowInvalid        = errors.New("return window must be positive")
 	ErrProductInactive            = errors.New("product is not sellable")
 	ErrProductAlreadyDiscontinued = errors.New("product is already discontinued")
 )
@@ -29,10 +30,15 @@ type Product struct {
 	name      string
 	category  ProductCategory
 	basePrice Price
+	returnWindowDays int
 	active    bool
 }
 
 func NewProduct(sku SKU, name string, category ProductCategory, basePrice Price) (Product, error) {
+	return NewProductWithReturnWindow(sku, name, category, basePrice, 30)
+}
+
+func NewProductWithReturnWindow(sku SKU, name string, category ProductCategory, basePrice Price, returnWindowDays int) (Product, error) {
 	if sku == "" {
 		return Product{}, ErrProductSKURequired
 	}
@@ -47,21 +53,26 @@ func NewProduct(sku SKU, name string, category ProductCategory, basePrice Price)
 	if basePrice.Currency() == "" {
 		return Product{}, ErrPriceCurrencyRequired
 	}
+	if returnWindowDays <= 0 {
+		return Product{}, ErrReturnWindowInvalid
+	}
 
 	return Product{
 		sku:       sku,
 		name:      name,
 		category:  category,
-		basePrice: basePrice,
-		active:    true,
+		basePrice:       basePrice,
+		returnWindowDays: returnWindowDays,
+		active:           true,
 	}, nil
 }
 
-func (product Product) SKU() SKU                  { return product.sku }
-func (product Product) Name() string              { return product.name }
+func (product Product) SKU() SKU                   { return product.sku }
+func (product Product) Name() string               { return product.name }
 func (product Product) Category() ProductCategory { return product.category }
-func (product Product) BasePrice() Price          { return product.basePrice }
-func (product Product) Active() bool              { return product.active }
+func (product Product) BasePrice() Price           { return product.basePrice }
+func (product Product) ReturnWindowDays() int      { return product.returnWindowDays }
+func (product Product) Active() bool               { return product.active }
 
 func (product Product) EnsureSellable() error {
 	if !product.active {

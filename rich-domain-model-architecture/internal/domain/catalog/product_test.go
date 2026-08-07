@@ -28,6 +28,9 @@ func TestProductOwnsCatalogLifecycle(t *testing.T) {
 	if product.BasePrice().Cents() != 17500 {
 		t.Fatalf("price = %d, want 17500", product.BasePrice().Cents())
 	}
+	if product.ReturnWindowDays() != 30 {
+		t.Fatalf("return window = %d, want 30", product.ReturnWindowDays())
+	}
 
 	if err := product.Discontinue(); err != nil {
 		t.Fatal(err)
@@ -63,5 +66,8 @@ func TestProductRejectsInvalidState(t *testing.T) {
 	}
 	if _, err := NewProduct("sku-001", "Desk", ProductCategoryStandard, Price{}); !errors.Is(err, ErrPriceCurrencyRequired) {
 		t.Fatalf("empty price returned %v", err)
+	}
+	if _, err := NewProductWithReturnWindow("sku-001", "Desk", ProductCategoryStandard, price, 0); !errors.Is(err, ErrReturnWindowInvalid) {
+		t.Fatalf("invalid return window returned %v", err)
 	}
 }
