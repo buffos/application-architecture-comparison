@@ -169,7 +169,7 @@ func (quote *Quote) AddLine(line QuoteLine) error {
 	return nil
 }
 
-func (quote *Quote) SubmitForApproval() error {
+func (quote *Quote) SubmitForApproval(decision ApprovalDecision) error {
 	if quote.status != QuoteStatusDraft {
 		return ErrQuoteNotSubmittable
 	}
@@ -177,7 +177,11 @@ func (quote *Quote) SubmitForApproval() error {
 		return ErrQuoteHasNoLines
 	}
 
-	quote.status = QuoteStatusPendingApproval
+	if decision.Required {
+		quote.status = QuoteStatusPendingApproval
+		return nil
+	}
+	quote.status = QuoteStatusApproved
 	return nil
 }
 

@@ -65,7 +65,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := quote.SubmitForApproval(); err != nil {
+	if err := quote.SubmitForApproval(approvalDecision); err != nil {
 		log.Fatal(err)
 	}
 
@@ -76,8 +76,10 @@ func main() {
 	fmt.Printf("approval decision: required=%t reasons=%d\n", approvalDecision.Required, len(approvalDecision.Reasons))
 	fmt.Printf("domain aggregate: id=%s customer=%s status=%s lines=%d total=%d %s\n", quote.ID(), quote.CustomerID(), quote.Status(), len(quote.Lines()), total.Cents(), total.Currency())
 
-	if err := quote.Approve(); err != nil {
-		log.Fatal(err)
+	if approvalDecision.Required {
+		if err := quote.Approve(); err != nil {
+			log.Fatal(err)
+		}
 	}
 	fmt.Printf("approved aggregate: id=%s status=%s\n", quote.ID(), quote.Status())
 }

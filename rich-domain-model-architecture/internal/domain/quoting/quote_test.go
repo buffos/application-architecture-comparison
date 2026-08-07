@@ -31,7 +31,7 @@ func TestQuoteAggregateOwnsBehaviorAndLifecycle(t *testing.T) {
 		t.Fatalf("total = %+v, want 30000 USD", total)
 	}
 
-	if err := quote.SubmitForApproval(); err != nil {
+	if err := quote.SubmitForApproval(ApprovalDecision{Required: true}); err != nil {
 		t.Fatal(err)
 	}
 	if quote.Status() != QuoteStatusPendingApproval {
@@ -53,7 +53,7 @@ func TestQuoteAggregateRejectsInvalidChanges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := quote.SubmitForApproval(); !errors.Is(err, ErrQuoteHasNoLines) {
+	if err := quote.SubmitForApproval(ApprovalDecision{}); !errors.Is(err, ErrQuoteHasNoLines) {
 		t.Fatalf("empty submit returned %v", err)
 	}
 
