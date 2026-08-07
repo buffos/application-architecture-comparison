@@ -159,8 +159,14 @@ func main() {
 	if err := refund.Issue(); err != nil {
 		log.Fatal(err)
 	}
+	eligibilityLines := make([]domainreturns.EligibilityLine, 0, len(returnRequest.Lines()))
+	for _, line := range returnRequest.Lines() {
+		eligibilityLines = append(eligibilityLines, domainreturns.EligibilityLine{Category: line.ProductCategory()})
+	}
+	eligibilityDecision := domainreturns.NewReturnEligibilityService().Evaluate(eligibilityLines)
 	fmt.Printf("return request: id=%s status=%s lines=%d\n", returnRequest.ID(), returnRequest.Status(), len(returnRequest.Lines()))
 	fmt.Printf("refund aggregate: id=%s status=%s amount=%d\n", refund.ID(), refund.Status(), refund.Amount().Cents())
+	fmt.Printf("return eligibility: eligible=%t reason=%s\n", eligibilityDecision.Eligible, eligibilityDecision.Reason)
 	if err := returnRequest.Accept(); err != nil {
 		log.Fatal(err)
 	}
