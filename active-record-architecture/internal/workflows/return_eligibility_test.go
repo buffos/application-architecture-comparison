@@ -13,7 +13,7 @@ func TestAcceptReturnRejectsClearanceItemBeforeStateChange(t *testing.T) {
 		t.Fatalf("ReturnRequest.Save() error = %v", err)
 	}
 
-	if _, err := AcceptReturn(db, request.ID); err != records.ErrReturnNotEligible {
+	if _, err := AcceptReturn(db, request.ID, "reviewer-1"); err != records.ErrReturnNotEligible {
 		t.Fatalf("clearance acceptance error = %v, want %v", err, records.ErrReturnNotEligible)
 	}
 	savedRequest, err := records.FindReturnRequest(db, request.ID)
@@ -55,7 +55,7 @@ func TestEvaluateReturnEligibilityDoesNotMutateRecords(t *testing.T) {
 
 func TestNormalReturnCanStillBeAcceptedBeforeCompletion(t *testing.T) {
 	db, request := requestedReturn(t)
-	accepted, err := AcceptReturn(db, request.ID)
+	accepted, err := AcceptReturn(db, request.ID, "reviewer-1")
 	if err != nil {
 		t.Fatalf("AcceptReturn() error = %v", err)
 	}

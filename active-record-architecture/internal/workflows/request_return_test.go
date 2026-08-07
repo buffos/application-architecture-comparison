@@ -12,7 +12,7 @@ func TestRequestReturnCreatesRequestedReturnAndNotStartedRefund(t *testing.T) {
 		t.Fatalf("CreateShipment() error = %v", err)
 	}
 
-	request, err := RequestReturn(db, order.ID, nil, "damaged on arrival")
+	request, err := RequestReturn(db, order.ID, nil, "damaged on arrival", "customer-1")
 	if err != nil {
 		t.Fatalf("RequestReturn() error = %v", err)
 	}
@@ -55,7 +55,7 @@ func TestRequestReturnAllowsExplicitQuantityAndRejectsExcess(t *testing.T) {
 		t.Fatalf("CreateShipment() error = %v", err)
 	}
 	lines := []records.ReturnLine{{OrderLineID: order.Lines[0].ID, Quantity: 1}}
-	request, err := RequestReturn(db, order.ID, lines, "partial return")
+	request, err := RequestReturn(db, order.ID, lines, "partial return", "customer-1")
 	if err != nil {
 		t.Fatalf("explicit RequestReturn() error = %v", err)
 	}
@@ -68,7 +68,7 @@ func TestRequestReturnAllowsExplicitQuantityAndRejectsExcess(t *testing.T) {
 		t.Fatalf("CreateShipment() error = %v", err)
 	}
 	tooMany := []records.ReturnLine{{OrderLineID: order.Lines[0].ID, Quantity: 2}}
-	if _, err := RequestReturn(db, order.ID, tooMany, "too many"); err != records.ErrReturnLinesInvalid {
+	if _, err := RequestReturn(db, order.ID, tooMany, "too many", "customer-1"); err != records.ErrReturnLinesInvalid {
 		t.Fatalf("excess quantity error = %v, want %v", err, records.ErrReturnLinesInvalid)
 	}
 	if _, err := records.FindReturnRequest(db, "return-001"); err != records.ErrReturnNotFound {
@@ -78,7 +78,7 @@ func TestRequestReturnAllowsExplicitQuantityAndRejectsExcess(t *testing.T) {
 
 func TestRequestReturnRequiresShippedOrder(t *testing.T) {
 	db, order := readyOrder(t)
-	if _, err := RequestReturn(db, order.ID, nil, "not shipped"); err != records.ErrOrderNotReturnable {
+	if _, err := RequestReturn(db, order.ID, nil, "not shipped", "customer-1"); err != records.ErrOrderNotReturnable {
 		t.Fatalf("not-shipped error = %v, want %v", err, records.ErrOrderNotReturnable)
 	}
 }

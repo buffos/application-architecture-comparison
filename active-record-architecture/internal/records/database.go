@@ -79,6 +79,9 @@ type returnRow struct {
 	Status       string
 	Reason       string
 	ReviewNote   string
+	RequestedBy  string
+	ReviewedBy   string
+	ProcessedBy  string
 	Lines        []ReturnLine
 	RefundID     string
 	RefundStatus string
@@ -92,6 +95,7 @@ type refundRow struct {
 	OrderID         string
 	Amount          int
 	Status          string
+	ProcessedBy     string
 }
 
 // Database is the small persistence boundary used by this lesson. Its tables

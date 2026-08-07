@@ -16,6 +16,7 @@ type Refund struct {
 	OrderID         string
 	Amount          int
 	Status          string
+	ProcessedBy     string
 }
 
 // FindRefund loads a Refund Active Record from the refunds table.
@@ -38,6 +39,7 @@ func FindRefund(db *Database, id string) (*Refund, error) {
 		OrderID:         row.OrderID,
 		Amount:          row.Amount,
 		Status:          row.Status,
+		ProcessedBy:     row.ProcessedBy,
 	}, nil
 }
 
@@ -55,6 +57,7 @@ func (refund *Refund) Save() error {
 		OrderID:         refund.OrderID,
 		Amount:          refund.Amount,
 		Status:          refund.Status,
+		ProcessedBy:     refund.ProcessedBy,
 	}
 	return nil
 }

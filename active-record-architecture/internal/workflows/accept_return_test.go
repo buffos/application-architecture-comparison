@@ -12,7 +12,7 @@ func requestedReturn(t *testing.T) (*records.Database, *records.ReturnRequest) {
 	if _, err := CreateShipment(db, order.ID, "warehouse-1"); err != nil {
 		t.Fatalf("CreateShipment() error = %v", err)
 	}
-	request, err := RequestReturn(db, order.ID, nil, "damaged on arrival")
+	request, err := RequestReturn(db, order.ID, nil, "damaged on arrival", "customer-1")
 	if err != nil {
 		t.Fatalf("RequestReturn() error = %v", err)
 	}
@@ -22,7 +22,7 @@ func requestedReturn(t *testing.T) (*records.Database, *records.ReturnRequest) {
 func TestAcceptReturnRecordsReviewWithoutSideEffects(t *testing.T) {
 	db, request := requestedReturn(t)
 
-	accepted, err := AcceptReturn(db, request.ID)
+	accepted, err := AcceptReturn(db, request.ID, "reviewer-1")
 	if err != nil {
 		t.Fatalf("AcceptReturn() error = %v", err)
 	}
@@ -48,10 +48,10 @@ func TestAcceptReturnRecordsReviewWithoutSideEffects(t *testing.T) {
 
 func TestAcceptReturnCannotRepeatReview(t *testing.T) {
 	db, request := requestedReturn(t)
-	if _, err := AcceptReturn(db, request.ID); err != nil {
+	if _, err := AcceptReturn(db, request.ID, "reviewer-1"); err != nil {
 		t.Fatalf("first AcceptReturn() error = %v", err)
 	}
-	if _, err := AcceptReturn(db, request.ID); err != records.ErrReturnNotAcceptable {
+	if _, err := AcceptReturn(db, request.ID, "reviewer-1"); err != records.ErrReturnNotAcceptable {
 		t.Fatalf("repeated AcceptReturn() error = %v, want %v", err, records.ErrReturnNotAcceptable)
 	}
 }

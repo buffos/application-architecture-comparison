@@ -8,7 +8,7 @@ import (
 
 // RequestReturn loads an order and asks it to create the passive return and
 // refund records. The order itself is not changed by a return request.
-func RequestReturn(db *records.Database, orderID string, lines []records.ReturnLine, reason string) (*records.ReturnRequest, error) {
+func RequestReturn(db *records.Database, orderID string, lines []records.ReturnLine, reason string, requestedBy string) (*records.ReturnRequest, error) {
 	if db == nil {
 		return nil, records.ErrDatabaseRequired
 	}
@@ -17,11 +17,11 @@ func RequestReturn(db *records.Database, orderID string, lines []records.ReturnL
 	if err != nil {
 		return nil, err
 	}
-	return order.RequestReturn(lines, reason)
+	return order.RequestReturn(lines, reason, requestedBy)
 }
 
 // RequestReturnAt is the deterministic form used by tests and demonstrations.
-func RequestReturnAt(db *records.Database, orderID string, lines []records.ReturnLine, reason string, requestedAt time.Time) (*records.ReturnRequest, error) {
+func RequestReturnAt(db *records.Database, orderID string, lines []records.ReturnLine, reason string, requestedBy string, requestedAt time.Time) (*records.ReturnRequest, error) {
 	if db == nil {
 		return nil, records.ErrDatabaseRequired
 	}
@@ -30,5 +30,5 @@ func RequestReturnAt(db *records.Database, orderID string, lines []records.Retur
 	if err != nil {
 		return nil, err
 	}
-	return order.RequestReturnAt(lines, reason, requestedAt)
+	return order.RequestReturnAt(lines, reason, requestedBy, requestedAt)
 }

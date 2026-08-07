@@ -9,7 +9,7 @@ import (
 // AcceptReturn loads a return and invokes its compressed acceptance
 // operation. The return model persists the order, stock, refund, and return
 // records involved in the reverse flow.
-func AcceptReturn(db *records.Database, returnID string) (*records.ReturnRequest, error) {
+func AcceptReturn(db *records.Database, returnID string, reviewedBy string) (*records.ReturnRequest, error) {
 	if db == nil {
 		return nil, records.ErrDatabaseRequired
 	}
@@ -18,14 +18,14 @@ func AcceptReturn(db *records.Database, returnID string) (*records.ReturnRequest
 	if err != nil {
 		return nil, err
 	}
-	if err := request.Accept(); err != nil {
+	if err := request.Accept(reviewedBy); err != nil {
 		return nil, err
 	}
 	return request, nil
 }
 
 // AcceptReturnAt is the deterministic form used by tests and demonstrations.
-func AcceptReturnAt(db *records.Database, returnID string, now time.Time) (*records.ReturnRequest, error) {
+func AcceptReturnAt(db *records.Database, returnID string, now time.Time, reviewedBy string) (*records.ReturnRequest, error) {
 	if db == nil {
 		return nil, records.ErrDatabaseRequired
 	}
@@ -34,7 +34,7 @@ func AcceptReturnAt(db *records.Database, returnID string, now time.Time) (*reco
 	if err != nil {
 		return nil, err
 	}
-	if err := request.AcceptAt(now); err != nil {
+	if err := request.AcceptAt(now, reviewedBy); err != nil {
 		return nil, err
 	}
 	return request, nil

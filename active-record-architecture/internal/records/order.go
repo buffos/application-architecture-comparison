@@ -78,15 +78,18 @@ type Order struct {
 
 // RequestReturn validates shipped quantities and creates the passive return
 // and refund records. It does not restock inventory or complete the refund.
-func (order *Order) RequestReturn(lines []ReturnLine, reason string) (*ReturnRequest, error) {
-	return order.RequestReturnAt(lines, reason, time.Now())
+func (order *Order) RequestReturn(lines []ReturnLine, reason string, requestedBy string) (*ReturnRequest, error) {
+	return order.RequestReturnAt(lines, reason, requestedBy, time.Now())
 }
 
 // RequestReturnAt is the deterministic form of RequestReturn used by tests
 // and demonstrations.
-func (order *Order) RequestReturnAt(lines []ReturnLine, reason string, requestedAt time.Time) (*ReturnRequest, error) {
+func (order *Order) RequestReturnAt(lines []ReturnLine, reason string, requestedBy string, requestedAt time.Time) (*ReturnRequest, error) {
 	if order == nil || order.db == nil {
 		return nil, ErrDatabaseRequired
+	}
+	if requestedBy == "" {
+		return nil, ErrActorRequired
 	}
 	if order.Status != OrderStatusShipped && order.Status != OrderStatusPartiallyShipped {
 		return nil, ErrOrderNotReturnable
@@ -158,6 +161,7 @@ func (order *Order) RequestReturnAt(lines []ReturnLine, reason string, requested
 		OrderID:      order.ID,
 		Status:       ReturnStatusRequested,
 		Reason:       reason,
+		RequestedBy:  requestedBy,
 		Lines:        cloneReturnLines(normalizedLines),
 		RefundStatus: RefundStatusNotStarted,
 		RefundAmount: refundAmount,

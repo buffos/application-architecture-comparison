@@ -4,7 +4,7 @@ import "active-record-architecture/internal/records"
 
 // CompleteRefund loads an accepted return and invokes its reverse-side-effect
 // operation.
-func CompleteRefund(db *records.Database, returnID string) (*records.ReturnRequest, error) {
+func CompleteRefund(db *records.Database, returnID string, processedBy string) (*records.ReturnRequest, error) {
 	if db == nil {
 		return nil, records.ErrDatabaseRequired
 	}
@@ -13,7 +13,7 @@ func CompleteRefund(db *records.Database, returnID string) (*records.ReturnReque
 	if err != nil {
 		return nil, err
 	}
-	if err := request.CompleteRefund(); err != nil {
+	if err := request.CompleteRefund(processedBy); err != nil {
 		return nil, err
 	}
 	return request, nil

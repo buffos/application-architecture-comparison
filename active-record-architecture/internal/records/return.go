@@ -26,6 +26,7 @@ var (
 	ErrReturnNotEligible   = errors.New("return is not eligible")
 	ErrReturnOrderMissing  = errors.New("return order not found")
 	ErrReturnStockMissing  = errors.New("return stock record not found")
+	ErrActorRequired       = errors.New("return actor is required")
 )
 
 // ReturnLine is a passive request for a quantity from an order-line snapshot.
@@ -48,6 +49,9 @@ type ReturnRequest struct {
 	Status       string
 	Reason       string
 	ReviewNote   string
+	RequestedBy  string
+	ReviewedBy   string
+	ProcessedBy  string
 	Lines        []ReturnLine
 	RefundID     string
 	RefundStatus string
@@ -57,15 +61,18 @@ type ReturnRequest struct {
 
 // Accept records a positive review decision. Side effects wait for
 // CompleteRefund so the review boundary is explicit.
-func (request *ReturnRequest) Accept() error {
-	return request.AcceptAt(time.Now())
+func (request *ReturnRequest) Accept(reviewedBy string) error {
+	return request.AcceptAt(time.Now(), reviewedBy)
 }
 
 // AcceptAt is the deterministic form of Accept used by tests and
 // demonstrations.
-func (request *ReturnRequest) AcceptAt(now time.Time) error {
+func (request *ReturnRequest) AcceptAt(now time.Time, reviewedBy string) error {
 	if request == nil || request.db == nil {
 		return ErrDatabaseRequired
+	}
+	if reviewedBy == "" {
+		return ErrActorRequired
 	}
 	if request.Status != ReturnStatusRequested {
 		return ErrReturnNotAcceptable
@@ -78,28 +85,36 @@ func (request *ReturnRequest) AcceptAt(now time.Time) error {
 		return ErrReturnNotEligible
 	}
 	request.Status = ReturnStatusAccepted
+	request.ReviewedBy = reviewedBy
 	return request.Save()
 }
 
 // Reject records a negative review decision without changing the order,
 // stock, or refund records.
-func (request *ReturnRequest) Reject(reviewNote string) error {
+func (request *ReturnRequest) Reject(reviewedBy string, reviewNote string) error {
 	if request == nil || request.db == nil {
 		return ErrDatabaseRequired
+	}
+	if reviewedBy == "" {
+		return ErrActorRequired
 	}
 	if request.Status != ReturnStatusRequested {
 		return ErrReturnNotRejectable
 	}
 	request.Status = ReturnStatusRejected
+	request.ReviewedBy = reviewedBy
 	request.ReviewNote = reviewNote
 	return request.Save()
 }
 
 // CompleteRefund applies the accepted return's reverse side effects and
 // completes its linked refund.
-func (request *ReturnRequest) CompleteRefund() error {
+func (request *ReturnRequest) CompleteRefund(processedBy string) error {
 	if request == nil || request.db == nil {
 		return ErrDatabaseRequired
+	}
+	if processedBy == "" {
+		return ErrActorRequired
 	}
 	if request.Status != ReturnStatusAccepted {
 		return ErrReturnNotRefundable
@@ -164,11 +179,13 @@ func (request *ReturnRequest) CompleteRefund() error {
 	}
 
 	refund.Status = RefundStatusCompleted
+	refund.ProcessedBy = processedBy
 	if err := refund.Save(); err != nil {
 		return err
 	}
 	request.Status = ReturnStatusRefunded
 	request.RefundStatus = RefundStatusCompleted
+	request.ProcessedBy = processedBy
 	if err := order.Save(); err != nil {
 		return err
 	}
@@ -196,6 +213,9 @@ func FindReturnRequest(db *Database, id string) (*ReturnRequest, error) {
 		Status:       row.Status,
 		Reason:       row.Reason,
 		ReviewNote:   row.ReviewNote,
+		RequestedBy:  row.RequestedBy,
+		ReviewedBy:   row.ReviewedBy,
+		ProcessedBy:  row.ProcessedBy,
 		Lines:        cloneReturnLines(row.Lines),
 		RefundID:     row.RefundID,
 		RefundStatus: row.RefundStatus,
@@ -218,6 +238,9 @@ func (request *ReturnRequest) Save() error {
 		Status:       request.Status,
 		Reason:       request.Reason,
 		ReviewNote:   request.ReviewNote,
+		RequestedBy:  request.RequestedBy,
+		ReviewedBy:   request.ReviewedBy,
+		ProcessedBy:  request.ProcessedBy,
 		Lines:        cloneReturnLines(request.Lines),
 		RefundID:     request.RefundID,
 		RefundStatus: request.RefundStatus,
