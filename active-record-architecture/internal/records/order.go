@@ -13,6 +13,7 @@ const (
 	OrderStatusPaymentReview       = "PaymentReview"
 	OrderStatusReadyForFulfillment = "ReadyForFulfillment"
 	OrderStatusShipped             = "Shipped"
+	OrderStatusCancelled           = "Cancelled"
 	PaymentStatusNotRequired       = "NotRequired"
 	PaymentStatusPending           = "Pending"
 	PaymentStatusAccepted          = "Accepted"
@@ -33,6 +34,10 @@ var (
 	ErrOrderNotShippable     = errors.New("order is not ready for fulfillment")
 	ErrNoShipmentLines       = errors.New("order has no remaining shippable lines")
 	ErrShippedByRequired     = errors.New("shipper is required")
+	ErrOrderNotCancellable   = errors.New("order cannot be cancelled")
+	ErrCancelledByRequired   = errors.New("cancelling actor is required")
+	ErrCancellationReasonRequired = errors.New("cancellation reason is required")
+	ErrStockReleaseInvalid   = errors.New("reserved stock cannot be released")
 )
 
 // OrderLine is a committed product snapshot embedded in an Order Active
@@ -66,6 +71,62 @@ type Order struct {
 	Total         int
 	PaymentStatus string
 	ShippedAt     time.Time
+	CancelledBy   string
+	CancellationReason string
+}
+
+// Cancel stops an unshipped order and releases every outstanding stock
+// reservation. All stock rows are validated before any release is applied.
+func (order *Order) Cancel(cancelledBy string, reason string) error {
+	if order == nil || order.db == nil {
+		return ErrDatabaseRequired
+	}
+	if cancelledBy == "" {
+		return ErrCancelledByRequired
+	}
+	if reason == "" {
+		return ErrCancellationReasonRequired
+	}
+	if order.Status != OrderStatusPendingReservation &&
+		order.Status != OrderStatusBackordered &&
+		order.Status != OrderStatusReadyForPayment &&
+		order.Status != OrderStatusPaymentReview &&
+		order.Status != OrderStatusReadyForFulfillment {
+		return ErrOrderNotCancellable
+	}
+
+	for _, line := range order.Lines {
+		if line.ReservedQuantity == 0 {
+			continue
+		}
+		stock, err := FindStock(order.db, line.SKU)
+		if err != nil || stock.Reserved < line.ReservedQuantity {
+			return ErrStockReleaseInvalid
+		}
+	}
+
+	for index := range order.Lines {
+		line := &order.Lines[index]
+		if line.ReservedQuantity == 0 {
+			continue
+		}
+		stock, err := FindStock(order.db, line.SKU)
+		if err != nil {
+			return ErrStockReleaseInvalid
+		}
+		if err := stock.Release(line.ReservedQuantity); err != nil {
+			return err
+		}
+		if err := stock.Save(); err != nil {
+			return err
+		}
+		line.ReservedQuantity = 0
+	}
+
+	order.Status = OrderStatusCancelled
+	order.CancelledBy = cancelledBy
+	order.CancellationReason = reason
+	return nil
 }
 
 // CapturePayment creates and persists a payment attempt, then updates the
@@ -271,6 +332,8 @@ func FindOrder(db *Database, id string) (*Order, error) {
 		PaymentID:     row.PaymentID,
 		PaymentStatus: row.PaymentStatus,
 		ShippedAt:     row.ShippedAt,
+		CancelledBy:   row.CancelledBy,
+		CancellationReason: row.CancellationReason,
 		Lines:         cloneOrderLines(row.Lines),
 		Total:         row.Total,
 	}, nil
@@ -286,16 +349,18 @@ func (order *Order) Save() error {
 	}
 
 	order.db.orders[order.ID] = orderRow{
-		ID:            order.ID,
-		SourceQuoteID: order.SourceQuoteID,
-		CustomerID:    order.CustomerID,
-		Status:        order.Status,
-		RequestedBy:   order.RequestedBy,
-		PaymentID:     order.PaymentID,
-		PaymentStatus: order.PaymentStatus,
-		ShippedAt:     order.ShippedAt,
-		Lines:         cloneOrderLines(order.Lines),
-		Total:         order.Total,
+		ID:                 order.ID,
+		SourceQuoteID:      order.SourceQuoteID,
+		CustomerID:         order.CustomerID,
+		Status:             order.Status,
+		RequestedBy:        order.RequestedBy,
+		PaymentID:          order.PaymentID,
+		PaymentStatus:      order.PaymentStatus,
+		ShippedAt:          order.ShippedAt,
+		CancelledBy:        order.CancelledBy,
+		CancellationReason: order.CancellationReason,
+		Lines:              cloneOrderLines(order.Lines),
+		Total:              order.Total,
 	}
 	return nil
 }

@@ -86,6 +86,19 @@ func (stock *StockRecord) Consume(quantity int) error {
 	return nil
 }
 
+// Release returns a reservation to the available portion of the stock row.
+// It does not change on-hand inventory because the goods were never shipped.
+func (stock *StockRecord) Release(quantity int) error {
+	if stock == nil || stock.db == nil {
+		return ErrDatabaseRequired
+	}
+	if quantity <= 0 || stock.Reserved < quantity {
+		return ErrStockReleaseInvalid
+	}
+	stock.Reserved -= quantity
+	return nil
+}
+
 // Save writes the current StockRecord Active Record to its table.
 func (stock *StockRecord) Save() error {
 	if stock == nil || stock.db == nil {

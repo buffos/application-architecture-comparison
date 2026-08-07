@@ -34,16 +34,18 @@ type productRow struct {
 }
 
 type orderRow struct {
-	ID            string
-	SourceQuoteID string
-	CustomerID    string
-	Status        string
-	RequestedBy   string
-	PaymentID     string
-	PaymentStatus string
-	ShippedAt     time.Time
-	Lines         []OrderLine
-	Total         int
+	ID                 string
+	SourceQuoteID      string
+	CustomerID         string
+	Status             string
+	RequestedBy        string
+	PaymentID          string
+	PaymentStatus      string
+	ShippedAt          time.Time
+	CancelledBy        string
+	CancellationReason string
+	Lines              []OrderLine
+	Total              int
 }
 
 type stockRow struct {
