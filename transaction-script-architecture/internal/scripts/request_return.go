@@ -11,6 +11,8 @@ import (
 var (
 	ErrOrderNotReturnable = errors.New("order is not shipped")
 	ErrReturnLinesInvalid = errors.New("return lines are invalid")
+	ErrReturnIDRequired   = errors.New("return id is required")
+	ErrReturnNotFound     = errors.New("return request not found")
 )
 
 // RequestReturn creates a return request after checking the order's shipped
