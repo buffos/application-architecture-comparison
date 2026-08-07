@@ -5,11 +5,20 @@ import (
 	"log"
 
 	"rich-domain-model-architecture/internal/domain/catalog"
+	"rich-domain-model-architecture/internal/domain/customer"
 	"rich-domain-model-architecture/internal/domain/quoting"
 )
 
 func main() {
-	quote, err := quoting.NewQuote("quote-001", "customer-001")
+	customerAggregate, err := customer.NewCustomer("customer-001", customer.CustomerTierPreferred, customer.PaymentTermsInvoice30)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := customerAggregate.EnsureCanCreateQuote(); err != nil {
+		log.Fatal(err)
+	}
+
+	quote, err := quoting.NewQuote("quote-001", quoting.CustomerID(customerAggregate.ID()))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -60,6 +69,7 @@ func main() {
 	}
 
 	snapshot := quote.Lines()[0]
+	fmt.Printf("customer domain object: id=%s tier=%s terms=%s active=%t\n", customerAggregate.ID(), customerAggregate.Tier(), customerAggregate.PaymentTerms(), customerAggregate.Active())
 	fmt.Printf("product domain object: sku=%s active=%t price=%d %s\n", product.SKU(), product.Active(), product.BasePrice().Cents(), product.BasePrice().Currency())
 	fmt.Printf("quote snapshot: sku=%s name=%s unit-price=%d %s\n", snapshot.ProductSKU(), snapshot.ProductName(), snapshot.UnitPrice().Cents(), snapshot.UnitPrice().Currency())
 	fmt.Printf("domain aggregate: id=%s customer=%s status=%s lines=%d total=%d %s\n", quote.ID(), quote.CustomerID(), quote.Status(), len(quote.Lines()), total.Cents(), total.Currency())
