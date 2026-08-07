@@ -11,6 +11,7 @@ import (
 	"rich-domain-model-architecture/internal/domain/ordering"
 	"rich-domain-model-architecture/internal/domain/payments"
 	"rich-domain-model-architecture/internal/domain/quoting"
+	domainreturns "rich-domain-model-architecture/internal/domain/returns"
 )
 
 func main() {
@@ -142,4 +143,22 @@ func main() {
 	if err := order.Cancel(); err != nil {
 		fmt.Printf("cancellation blocked: order=%s reason=%s\n", order.ID(), err)
 	}
+
+	returnRequest, err := domainreturns.NewReturnRequestFromShippedOrder("return-001", order, "damaged")
+	if err != nil {
+		log.Fatal(err)
+	}
+	refundAmount, err := domainreturns.NewMoney(orderTotal.Cents(), orderTotal.Currency())
+	if err != nil {
+		log.Fatal(err)
+	}
+	refund, err := domainreturns.NewRefund("refund-001", returnRequest.ID(), refundAmount)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := refund.Issue(); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("return request: id=%s status=%s lines=%d\n", returnRequest.ID(), returnRequest.Status(), len(returnRequest.Lines()))
+	fmt.Printf("refund aggregate: id=%s status=%s amount=%d\n", refund.ID(), refund.Status(), refund.Amount().Cents())
 }
