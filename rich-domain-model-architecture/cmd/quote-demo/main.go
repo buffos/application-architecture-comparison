@@ -232,11 +232,21 @@ func main() {
 		fmt.Printf("cancellation blocked: order=%s reason=%s\n", order.ID(), err)
 	}
 
-	returnRequest, err := domainreturns.NewReturnRequestFromShippedOrder("return-001", order, "damaged")
+	returnSelection := []domainreturns.ReturnSelection{{
+		ProductSKU: domainreturns.ProductSKU(product.SKU()),
+		Quantity:   1,
+	}}
+	returnRequest, err := domainreturns.NewReturnRequestFromOrderSelection("return-001", order, "damaged", returnSelection)
 	if err != nil {
 		log.Fatal(err)
 	}
-	refundAmount, err := domainreturns.NewMoney(orderTotal.Cents(), orderTotal.Currency())
+	refundCents := int64(0)
+	refundCurrency := ""
+	for _, line := range returnRequest.Lines() {
+		refundCents += line.UnitPrice().Cents() * int64(line.Quantity())
+		refundCurrency = line.UnitPrice().Currency()
+	}
+	refundAmount, err := domainreturns.NewMoney(refundCents, refundCurrency)
 	if err != nil {
 		log.Fatal(err)
 	}

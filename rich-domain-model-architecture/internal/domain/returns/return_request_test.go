@@ -101,3 +101,43 @@ func TestRefundCanBeIssuedOnlyOnce(t *testing.T) {
 		t.Fatalf("repeated issue returned %v", err)
 	}
 }
+
+func TestReturnRequestSupportsPartialSelection(t *testing.T) {
+	order := shippedOrderForReturn(t)
+	request, err := NewReturnRequestFromOrderSelection(
+		"return-001",
+		order,
+		"damaged",
+		[]ReturnSelection{{ProductSKU: "sku-001", Quantity: 1}},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(request.Lines()) != 1 || request.Lines()[0].Quantity() != 1 {
+		t.Fatalf("unexpected partial return request: %+v", request)
+	}
+	if _, err := NewReturnRequestFromOrderSelection(
+		"return-002",
+		order,
+		"damaged",
+		[]ReturnSelection{{ProductSKU: "sku-001", Quantity: 3}},
+	); !errors.Is(err, ErrReturnSelectionInvalid) {
+		t.Fatalf("oversized return selection returned %v", err)
+	}
+}
+
+func TestReturnRequestAggregatesDuplicateSelectionsBeforeValidation(t *testing.T) {
+	order := shippedOrderForReturn(t)
+	_, err := NewReturnRequestFromOrderSelection(
+		"return-001",
+		order,
+		"damaged",
+		[]ReturnSelection{
+			{ProductSKU: "sku-001", Quantity: 1},
+			{ProductSKU: "sku-001", Quantity: 2},
+		},
+	)
+	if !errors.Is(err, ErrReturnSelectionInvalid) {
+		t.Fatalf("duplicate oversized selection returned %v", err)
+	}
+}

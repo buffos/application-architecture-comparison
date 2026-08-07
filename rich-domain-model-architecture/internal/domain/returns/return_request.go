@@ -13,6 +13,7 @@ var (
 	ErrReturnNotReviewable     = errors.New("return request is not reviewable")
 	ErrReviewDecisionInvalid   = errors.New("review decision is invalid")
 	ErrActorRequired           = errors.New("actor is required")
+	ErrReturnSelectionInvalid  = errors.New("return selection is invalid")
 	ErrRefundIDRequired        = errors.New("refund id is required")
 	ErrRefundNotIssuable       = errors.New("refund is not issuable")
 )
@@ -52,10 +53,15 @@ type ReturnLine struct {
 	unitPrice Money
 }
 
-func (line ReturnLine) ProductSKU() ProductSKU { return line.sku }
+type ReturnSelection struct {
+	ProductSKU ProductSKU
+	Quantity   int
+}
+
+func (line ReturnLine) ProductSKU() ProductSKU           { return line.sku }
 func (line ReturnLine) ProductCategory() ProductCategory { return line.category }
-func (line ReturnLine) Quantity() int { return line.quantity }
-func (line ReturnLine) UnitPrice() Money { return line.unitPrice }
+func (line ReturnLine) Quantity() int                    { return line.quantity }
+func (line ReturnLine) UnitPrice() Money                 { return line.unitPrice }
 
 // ReturnRequest owns return intent and review state.
 type ReturnRequest struct {
@@ -71,6 +77,10 @@ type ReturnRequest struct {
 }
 
 func NewReturnRequestFromShippedOrder(id ReturnRequestID, order ordering.Order, reason string) (ReturnRequest, error) {
+	return NewReturnRequestFromOrderSelection(id, order, reason, nil)
+}
+
+func NewReturnRequestFromOrderSelection(id ReturnRequestID, order ordering.Order, reason string, selections []ReturnSelection) (ReturnRequest, error) {
 	if id == "" {
 		return ReturnRequest{}, ErrReturnRequestIDRequired
 	}
@@ -81,18 +91,55 @@ func NewReturnRequestFromShippedOrder(id ReturnRequestID, order ordering.Order, 
 		return ReturnRequest{}, ErrReturnReasonRequired
 	}
 
-	lines := make([]ReturnLine, 0, len(order.Lines()))
+	selected := make(map[ProductSKU]int)
+	if len(selections) == 0 {
+		for _, line := range order.Lines() {
+			quantity := line.ShippedQuantity()
+			if quantity == 0 {
+				quantity = line.Quantity()
+			}
+			selected[ProductSKU(line.ProductSKU())] = quantity
+		}
+	} else {
+		for _, selection := range selections {
+			if selection.Quantity <= 0 {
+				return ReturnRequest{}, ErrReturnSelectionInvalid
+			}
+			selected[selection.ProductSKU] += selection.Quantity
+		}
+	}
+
+	lines := make([]ReturnLine, 0, len(selected))
+	matched := make(map[ProductSKU]bool, len(selected))
 	for _, line := range order.Lines() {
+		sku := ProductSKU(line.ProductSKU())
+		quantity, ok := selected[sku]
+		if !ok {
+			continue
+		}
+		shippedQuantity := line.ShippedQuantity()
+		if shippedQuantity == 0 {
+			shippedQuantity = line.Quantity()
+		}
+		if quantity <= 0 || quantity > shippedQuantity {
+			return ReturnRequest{}, ErrReturnSelectionInvalid
+		}
 		price, err := NewMoney(line.UnitPrice().Cents(), line.UnitPrice().Currency())
 		if err != nil {
 			return ReturnRequest{}, err
 		}
 		lines = append(lines, ReturnLine{
-			sku:       ProductSKU(line.ProductSKU()),
+			sku:       sku,
 			category:  ProductCategory(line.ProductCategory()),
-			quantity:  line.Quantity(),
+			quantity:  quantity,
 			unitPrice: price,
 		})
+		matched[sku] = true
+	}
+	for sku := range selected {
+		if !matched[sku] {
+			return ReturnRequest{}, ErrReturnSelectionInvalid
+		}
 	}
 	return ReturnRequest{
 		id:         id,
@@ -104,15 +151,15 @@ func NewReturnRequestFromShippedOrder(id ReturnRequestID, order ordering.Order, 
 	}, nil
 }
 
-func (request ReturnRequest) ID() ReturnRequestID { return request.id }
-func (request ReturnRequest) OrderID() OrderID { return request.orderID }
+func (request ReturnRequest) ID() ReturnRequestID    { return request.id }
+func (request ReturnRequest) OrderID() OrderID       { return request.orderID }
 func (request ReturnRequest) CustomerID() CustomerID { return request.customerID }
-func (request ReturnRequest) Reason() string { return request.reason }
-func (request ReturnRequest) Status() ReturnStatus { return request.status }
-func (request ReturnRequest) Lines() []ReturnLine { return append([]ReturnLine(nil), request.lines...) }
-func (request ReturnRequest) RequestedBy() string { return request.requestedBy }
-func (request ReturnRequest) ReviewedBy() string { return request.reviewedBy }
-func (request ReturnRequest) ProcessedBy() string { return request.processedBy }
+func (request ReturnRequest) Reason() string         { return request.reason }
+func (request ReturnRequest) Status() ReturnStatus   { return request.status }
+func (request ReturnRequest) Lines() []ReturnLine    { return append([]ReturnLine(nil), request.lines...) }
+func (request ReturnRequest) RequestedBy() string    { return request.requestedBy }
+func (request ReturnRequest) ReviewedBy() string     { return request.reviewedBy }
+func (request ReturnRequest) ProcessedBy() string    { return request.processedBy }
 
 func (request *ReturnRequest) Review(decision ReviewDecision) error {
 	if request.status != ReturnStatusRequested {
@@ -194,10 +241,10 @@ func NewRefund(id RefundID, request ReturnRequestID, amount Money) (Refund, erro
 	return Refund{id: id, returnRequestID: request, amount: amount, status: RefundStatusPending}, nil
 }
 
-func (refund Refund) ID() RefundID { return refund.id }
+func (refund Refund) ID() RefundID                     { return refund.id }
 func (refund Refund) ReturnRequestID() ReturnRequestID { return refund.returnRequestID }
-func (refund Refund) Amount() Money { return refund.amount }
-func (refund Refund) Status() RefundStatus { return refund.status }
+func (refund Refund) Amount() Money                    { return refund.amount }
+func (refund Refund) Status() RefundStatus             { return refund.status }
 
 func (refund *Refund) Issue() error {
 	if refund.status != RefundStatusPending {
