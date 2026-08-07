@@ -13,6 +13,7 @@ import (
 	"rich-domain-model-architecture/internal/domain/payments"
 	"rich-domain-model-architecture/internal/domain/quoting"
 	domainreturns "rich-domain-model-architecture/internal/domain/returns"
+	applicationreturns "rich-domain-model-architecture/internal/application/returns"
 )
 
 func main() {
@@ -177,13 +178,12 @@ func main() {
 	if err := returnRequest.AssignRequester("customer-001"); err != nil {
 		log.Fatal(err)
 	}
-	if err := returnRequest.ReviewBy(domainreturns.ReviewDecisionAccept, "reviewer-001"); err != nil {
+	reviewService := applicationreturns.NewReviewService(applicationreturns.NewInMemoryIdempotencyStore())
+	reviewResult, err := reviewService.Review(&returnRequest, domainreturns.ReviewDecisionAccept, "reviewer-001", "processor-001", "return-review-001")
+	if err != nil {
 		log.Fatal(err)
 	}
-	if err := returnRequest.ProcessBy("processor-001"); err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("return actors: requested=%s reviewed=%s processed=%s\n", returnRequest.RequestedBy(), returnRequest.ReviewedBy(), returnRequest.ProcessedBy())
+	fmt.Printf("return review: id=%s status=%s reviewed=%s processed=%s\n", reviewResult.ReturnRequestID, reviewResult.Status, reviewResult.ReviewedBy, reviewResult.ProcessedBy)
 	restockRequests := make([]inventory.RestockRequest, 0, len(returnRequest.Lines()))
 	for _, line := range returnRequest.Lines() {
 		restockRequests = append(restockRequests, inventory.RestockRequest{SKU: inventory.ProductSKU(line.ProductSKU()), Quantity: line.Quantity()})
