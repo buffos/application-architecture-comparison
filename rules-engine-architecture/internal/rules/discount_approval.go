@@ -18,6 +18,10 @@ func (DiscountApprovalRule) Priority() int {
 	return 100
 }
 
+func (DiscountApprovalRule) ConflictGroup() string {
+	return "discount-outcome"
+}
+
 func (DiscountApprovalRule) Evaluate(memory *engine.WorkingMemory) bool {
 	return memory.Quote.DiscountPercent > 15
 }

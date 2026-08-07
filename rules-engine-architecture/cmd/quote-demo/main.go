@@ -53,6 +53,7 @@ func main() {
 	workingMemory := engine.NewWorkingMemory(customer, quote, products)
 	ruleEngine := engine.NewEngine()
 	ruleEngine.Register(rules.DiscountApprovalRule{})
+	ruleEngine.Register(rules.DiscountRejectionRule{})
 	fmt.Println("Executing registered Rules")
 	if err := ruleEngine.ExecuteAll(workingMemory); err != nil {
 		panic(err)

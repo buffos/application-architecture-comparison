@@ -4,6 +4,7 @@ package engine
 type Rule interface {
 	Name() string
 	Priority() int
+	ConflictGroup() string
 	Evaluate(memory *WorkingMemory) bool
 	Execute(memory *WorkingMemory) error
 }
