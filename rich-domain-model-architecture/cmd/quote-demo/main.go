@@ -6,6 +6,7 @@ import (
 
 	"rich-domain-model-architecture/internal/domain/catalog"
 	"rich-domain-model-architecture/internal/domain/customer"
+	"rich-domain-model-architecture/internal/domain/ordering"
 	"rich-domain-model-architecture/internal/domain/quoting"
 )
 
@@ -82,4 +83,14 @@ func main() {
 		}
 	}
 	fmt.Printf("approved aggregate: id=%s status=%s\n", quote.ID(), quote.Status())
+
+	order, err := ordering.NewOrderFromQuote("order-001", quote)
+	if err != nil {
+		log.Fatal(err)
+	}
+	orderTotal, err := order.Total()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("order aggregate: id=%s quote=%s status=%s total=%d %s\n", order.ID(), order.QuoteID(), order.Status(), orderTotal.Cents(), orderTotal.Currency())
 }
