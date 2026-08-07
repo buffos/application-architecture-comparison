@@ -68,6 +68,18 @@ func main() {
 		reloadedQuote.Status,
 	)
 
+	order, err := workflows.ConvertQuoteToOrder(db, reloadedQuote.ID, "sales-1")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf(
+		"converted quote: quote=%s order=%s status=%s total=%d\n",
+		reloadedQuote.ID,
+		order.ID,
+		order.Status,
+		order.Total,
+	)
+
 	customProduct := records.NewProduct(db, "sku-002", "Custom Desk", "CustomBuild", true, 45000)
 	if err := customProduct.Save(); err != nil {
 		log.Fatal(err)

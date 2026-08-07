@@ -1,12 +1,16 @@
 package records
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 const (
 	QuoteStatusDraft           = "Draft"
 	QuoteStatusPendingApproval = "PendingApproval"
 	QuoteStatusApproved        = "Approved"
 	QuoteStatusRejected        = "Rejected"
+	QuoteStatusConverted       = "Converted"
 )
 
 var (
@@ -20,6 +24,9 @@ var (
 	ErrReviewerRequired        = errors.New("reviewer is required")
 	ErrQuoteNotApprovable      = errors.New("quote must be pending approval")
 	ErrQuoteNotRejectable      = errors.New("quote must be pending approval")
+	ErrQuoteNotConvertible     = errors.New("quote must be approved")
+	ErrQuoteAlreadyConverted   = errors.New("quote is already converted")
+	ErrRequestedByRequired     = errors.New("requester is required")
 	ErrProductRequired         = errors.New("product is required")
 	ErrQuantityInvalid         = errors.New("quantity must be positive")
 )
@@ -143,6 +150,52 @@ func (quote *Quote) AddLine(product *Product, quantity int) error {
 		LineTotal:           product.UnitPrice * quantity,
 	})
 	return nil
+}
+
+// ConvertToOrder creates an unsaved order snapshot and marks the quote as
+// converted. Inventory reservation deliberately belongs to the next lesson.
+func (quote *Quote) ConvertToOrder(requestedBy string) (*Order, error) {
+	if quote == nil || quote.db == nil {
+		return nil, ErrDatabaseRequired
+	}
+	if requestedBy == "" {
+		return nil, ErrRequestedByRequired
+	}
+	if quote.Status == QuoteStatusConverted {
+		return nil, ErrQuoteAlreadyConverted
+	}
+	if quote.Status != QuoteStatusApproved {
+		return nil, ErrQuoteNotConvertible
+	}
+
+	order := &Order{
+		db:            quote.db,
+		ID:            quote.db.nextOrderID(),
+		SourceQuoteID: quote.ID,
+		CustomerID:    quote.CustomerID,
+		Status:        OrderStatusPendingReservation,
+		RequestedBy:   requestedBy,
+		PaymentStatus: PaymentStatusNotRequired,
+		Lines:         make([]OrderLine, 0, len(quote.Lines)),
+	}
+	for index, line := range quote.Lines {
+		order.Lines = append(order.Lines, OrderLine{
+			ID:                  fmt.Sprintf("%s-line-%03d", order.ID, index+1),
+			SKU:                 line.SKU,
+			ProductNameSnapshot: line.ProductNameSnapshot,
+			ProductCategory:     line.ProductCategory,
+			OrderedQuantity:     line.Quantity,
+			UnitPrice:           line.UnitPrice,
+			DiscountAmount:      line.DiscountAmount,
+			ReturnWindowDays:    line.ReturnWindowDays,
+			LineTotal:           line.LineTotal,
+		})
+		order.Total += line.LineTotal
+	}
+
+	quote.Status = QuoteStatusConverted
+	quote.ConvertedOrderID = order.ID
+	return order, nil
 }
 
 // SubmitForApproval applies the first quote lifecycle decision directly on
