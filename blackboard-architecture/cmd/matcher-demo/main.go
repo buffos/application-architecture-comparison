@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
+	"sync"
 )
 
 // Invoice is one unpaid invoice that may match the incoming payment.
@@ -27,19 +28,17 @@ type MatchHypothesis struct {
 }
 
 // Blackboard is the shared working memory of the matcher.
-//
-// For this first lesson it is deliberately a plain in-memory structure.
-// Concurrency protection will be introduced only when parallel Knowledge
-// Sources are added.
 type Blackboard struct {
+	mu         sync.RWMutex
 	Payment    Payment
 	Invoices   []Invoice
 	Hypotheses map[string]MatchHypothesis
 }
 
 func NewBlackboard(payment Payment, invoices []Invoice) *Blackboard {
+	invoiceCopy := append([]Invoice(nil), invoices...)
 	hypotheses := make(map[string]MatchHypothesis, len(invoices))
-	for _, invoice := range invoices {
+	for _, invoice := range invoiceCopy {
 		hypotheses[invoice.ID] = MatchHypothesis{
 			InvoiceID: invoice.ID,
 			Reasons:   []string{},
@@ -48,12 +47,15 @@ func NewBlackboard(payment Payment, invoices []Invoice) *Blackboard {
 
 	return &Blackboard{
 		Payment:    payment,
-		Invoices:   invoices,
+		Invoices:   invoiceCopy,
 		Hypotheses: hypotheses,
 	}
 }
 
 func (bb *Blackboard) AddEvidence(invoiceID string, points float64, reason string) {
+	bb.mu.Lock()
+	defer bb.mu.Unlock()
+
 	hypothesis, exists := bb.Hypotheses[invoiceID]
 	if !exists {
 		return
@@ -68,17 +70,42 @@ func (bb *Blackboard) AddEvidence(invoiceID string, points float64, reason strin
 }
 
 func (bb *Blackboard) BestHypothesis() (MatchHypothesis, bool) {
+	bb.mu.RLock()
+	defer bb.mu.RUnlock()
+
 	var best MatchHypothesis
 	found := false
 
 	for _, hypothesis := range bb.Hypotheses {
-		if !found || hypothesis.Score > best.Score {
-			best = hypothesis
+		candidate := hypothesis
+		candidate.Reasons = append([]string(nil), hypothesis.Reasons...)
+		if !found || candidate.Score > best.Score {
+			best = candidate
 			found = true
 		}
 	}
 
 	return best, found
+}
+
+func (bb *Blackboard) Inputs() (Payment, []Invoice) {
+	bb.mu.RLock()
+	defer bb.mu.RUnlock()
+
+	return bb.Payment, append([]Invoice(nil), bb.Invoices...)
+}
+
+func (bb *Blackboard) HypothesisFor(invoiceID string) (MatchHypothesis, bool) {
+	bb.mu.RLock()
+	defer bb.mu.RUnlock()
+
+	hypothesis, exists := bb.Hypotheses[invoiceID]
+	if !exists {
+		return MatchHypothesis{}, false
+	}
+
+	hypothesis.Reasons = append([]string(nil), hypothesis.Reasons...)
+	return hypothesis, true
 }
 
 func (bb *Blackboard) HasConverged(threshold float64) bool {
@@ -98,8 +125,10 @@ func (ExactAmountMatcher) Name() string {
 }
 
 func (ExactAmountMatcher) Execute(bb *Blackboard) {
-	for _, invoice := range bb.Invoices {
-		if invoice.AmountCents == bb.Payment.AmountCents {
+	payment, invoices := bb.Inputs()
+
+	for _, invoice := range invoices {
+		if invoice.AmountCents == payment.AmountCents {
 			bb.AddEvidence(
 				invoice.ID,
 				0.4,
@@ -116,9 +145,10 @@ func (ReferenceMatcher) Name() string {
 }
 
 func (ReferenceMatcher) Execute(bb *Blackboard) {
-	memo := strings.ToLower(bb.Payment.RawMemo)
+	payment, invoices := bb.Inputs()
+	memo := strings.ToLower(payment.RawMemo)
 
-	for _, invoice := range bb.Invoices {
+	for _, invoice := range invoices {
 		if strings.Contains(memo, strings.ToLower(invoice.ID)) {
 			bb.AddEvidence(
 				invoice.ID,
@@ -136,9 +166,10 @@ func (CustomerNameMatcher) Name() string {
 }
 
 func (CustomerNameMatcher) Execute(bb *Blackboard) {
-	memo := strings.ToLower(bb.Payment.RawMemo)
+	payment, invoices := bb.Inputs()
+	memo := strings.ToLower(payment.RawMemo)
 
-	for _, invoice := range bb.Invoices {
+	for _, invoice := range invoices {
 		parts := strings.Fields(invoice.CustomerName)
 		if len(parts) == 0 {
 			continue
@@ -187,6 +218,24 @@ func (c *Controller) Run(bb *Blackboard) (MatchHypothesis, bool) {
 	return best, found && best.Score >= c.confidenceThreshold
 }
 
+func (c *Controller) RunConcurrent(bb *Blackboard) (MatchHypothesis, bool) {
+	fmt.Printf("Controller executing %d sources concurrently\n", len(c.sources))
+
+	var wg sync.WaitGroup
+	for _, source := range c.sources {
+		wg.Add(1)
+		go func(source KnowledgeSource) {
+			defer wg.Done()
+			source.Execute(bb)
+		}(source)
+	}
+
+	wg.Wait()
+
+	best, found := bb.BestHypothesis()
+	return best, found && best.Score >= c.confidenceThreshold
+}
+
 func formatCents(amountCents int64) string {
 	return fmt.Sprintf("%d.%02d", amountCents/100, amountCents%100)
 }
@@ -208,14 +257,14 @@ func main() {
 	controller.RegisterKS(ReferenceMatcher{})
 	controller.RegisterKS(ExactAmountMatcher{})
 	controller.RegisterKS(CustomerNameMatcher{})
-	best, converged := controller.Run(blackboard)
+	best, converged := controller.RunConcurrent(blackboard)
 
-	fmt.Printf("Payment memo: %q\n", blackboard.Payment.RawMemo)
-	fmt.Printf("Payment amount: %s\n", formatCents(blackboard.Payment.AmountCents))
+	fmt.Printf("Payment memo: %q\n", incomingPayment.RawMemo)
+	fmt.Printf("Payment amount: %s\n", formatCents(incomingPayment.AmountCents))
 	fmt.Println("Candidate invoices:")
 
-	for _, invoice := range blackboard.Invoices {
-		hypothesis := blackboard.Hypotheses[invoice.ID]
+	for _, invoice := range unpaidInvoices {
+		hypothesis, _ := blackboard.HypothesisFor(invoice.ID)
 		fmt.Printf("- %s, %s, amount %s, score %.1f\n",
 			invoice.ID,
 			invoice.CustomerName,
