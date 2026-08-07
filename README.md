@@ -85,6 +85,7 @@ Architectures currently implemented in this repository:
 - Onion Architecture
 - Modular Monolith
 - Microkernel / Plugin Architecture
+- Transaction Script Architecture
 
 ## Lesson Index
 
@@ -300,6 +301,45 @@ Architectures currently implemented in this repository:
 - `031` Partial returns by line plugin: [031-partial-returns-by-line-plugin.md](microkernel-architecture/lessons/031-partial-returns-by-line-plugin.md)
 - `032` Plugin pricing extension point plugin: [032-plugin-pricing-extension-point-plugin.md](microkernel-architecture/lessons/032-plugin-pricing-extension-point-plugin.md)
 - `033` Why not stop at microkernel?: [033-why-not-stop-at-microkernel.md](microkernel-architecture/lessons/033-why-not-stop-at-microkernel.md)
+
+### Transaction Script Architecture
+
+#### Lessons
+
+- `000` From DDD to Transaction Script: [000-from-ddd-to-transaction-script.md](transaction-script-architecture/lessons/000-from-ddd-to-transaction-script.md)
+- `001` Transaction Script skeleton: [001-transaction-script-skeleton.md](transaction-script-architecture/lessons/001-transaction-script-skeleton.md)
+- `002` Add quote line transaction script: [002-add-quote-line-transaction-script.md](transaction-script-architecture/lessons/002-add-quote-line-transaction-script.md)
+- `003` Submit quote for approval: [003-submit-quote-for-approval-transaction-script.md](transaction-script-architecture/lessons/003-submit-quote-for-approval-transaction-script.md)
+- `004` Approve pending quote: [004-approve-pending-quote-transaction-script.md](transaction-script-architecture/lessons/004-approve-pending-quote-transaction-script.md)
+- `005` Approval rule procedure: [005-approval-rule-procedure.md](transaction-script-architecture/lessons/005-approval-rule-procedure.md)
+- `006` Reject pending quote: [006-reject-pending-quote-transaction-script.md](transaction-script-architecture/lessons/006-reject-pending-quote-transaction-script.md)
+- `007` Convert quote to order: [007-convert-quote-to-order-transaction-script.md](transaction-script-architecture/lessons/007-convert-quote-to-order-transaction-script.md)
+- `008` Order conversion with reservation: [008-order-conversion-with-reservation-transaction-script.md](transaction-script-architecture/lessons/008-order-conversion-with-reservation-transaction-script.md)
+- `009` Capture payment: [009-capture-payment-transaction-script.md](transaction-script-architecture/lessons/009-capture-payment-transaction-script.md)
+- `010` Create shipment: [010-create-shipment-transaction-script.md](transaction-script-architecture/lessons/010-create-shipment-transaction-script.md)
+- `011` Cancel order and release reservation: [011-cancel-order-and-release-transaction-script.md](transaction-script-architecture/lessons/011-cancel-order-and-release-transaction-script.md)
+- `012` Request return and create refund records: [012-request-return-and-refund-records.md](transaction-script-architecture/lessons/012-request-return-and-refund-records.md)
+- `013` Accept return and restock: [013-accept-return-and-restock-transaction-script.md](transaction-script-architecture/lessons/013-accept-return-and-restock-transaction-script.md)
+- `014` Return review boundary: [014-return-review-boundary.md](transaction-script-architecture/lessons/014-return-review-boundary.md)
+- `015` Return eligibility procedure: [015-return-eligibility-procedure.md](transaction-script-architecture/lessons/015-return-eligibility-procedure.md)
+- `016` Real return window procedure: [016-real-return-window-procedure.md](transaction-script-architecture/lessons/016-real-return-window-procedure.md)
+- `017` Return actor metadata: [017-return-actor-metadata.md](transaction-script-architecture/lessons/017-return-actor-metadata.md)
+- `018` Return command idempotency: [018-return-command-idempotency.md](transaction-script-architecture/lessons/018-return-command-idempotency.md)
+- `019` Return query surface: [019-return-query-surface.md](transaction-script-architecture/lessons/019-return-query-surface.md)
+- `020` Order query surface: [020-order-query-surface.md](transaction-script-architecture/lessons/020-order-query-surface.md)
+- `021` Shipment query surface: [021-shipment-query-surface.md](transaction-script-architecture/lessons/021-shipment-query-surface.md)
+- `022` Quote query surface: [022-quote-query-surface.md](transaction-script-architecture/lessons/022-quote-query-surface.md)
+- `023` Product query surface: [023-product-query-surface.md](transaction-script-architecture/lessons/023-product-query-surface.md)
+- `024` Customer query surface: [024-customer-query-surface.md](transaction-script-architecture/lessons/024-customer-query-surface.md)
+- `025` Quote conversion report: [025-quote-conversion-report.md](transaction-script-architecture/lessons/025-quote-conversion-report.md)
+- `026` Return rate by category report: [026-return-rate-by-category-report.md](transaction-script-architecture/lessons/026-return-rate-by-category-report.md)
+- `027` Low stock items report: [027-low-stock-items-report.md](transaction-script-architecture/lessons/027-low-stock-items-report.md)
+- `028` Orders awaiting approval report: [028-orders-awaiting-approval-report.md](transaction-script-architecture/lessons/028-orders-awaiting-approval-report.md)
+- `029` Payment review workflow: [029-payment-review-workflow.md](transaction-script-architecture/lessons/029-payment-review-workflow.md)
+- `030` Partial shipment support: [030-partial-shipment-support.md](transaction-script-architecture/lessons/030-partial-shipment-support.md)
+- `031` Partial returns by line: [031-partial-returns-by-line.md](transaction-script-architecture/lessons/031-partial-returns-by-line.md)
+- `032` Plugin pricing extension point: [032-plugin-pricing-extension-point.md](transaction-script-architecture/lessons/032-plugin-pricing-extension-point.md)
+- `033` Why not stop at Transaction Script?: [033-why-not-stop-at-transaction-script.md](transaction-script-architecture/lessons/033-why-not-stop-at-transaction-script.md)
 
 ## How To Maintain This File
 
