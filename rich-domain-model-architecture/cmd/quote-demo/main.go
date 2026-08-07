@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	applicationorders "rich-domain-model-architecture/internal/application/orders"
 	"rich-domain-model-architecture/internal/domain/catalog"
 	"rich-domain-model-architecture/internal/domain/customer"
 	"rich-domain-model-architecture/internal/domain/fulfillment"
@@ -99,6 +100,15 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("order aggregate: id=%s quote=%s status=%s total=%d %s\n", order.ID(), order.QuoteID(), order.Status(), orderTotal.Cents(), orderTotal.Currency())
+	orderReader := applicationorders.NewInMemoryReader()
+	if err := orderReader.Save(order); err != nil {
+		log.Fatal(err)
+	}
+	orderDetails, err := orderReader.GetOrder(string(order.ID()))
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("order query: id=%s status=%s lines=%d\n", orderDetails.OrderID, orderDetails.Status, len(orderDetails.Lines))
 
 	stock, err := inventory.NewStockRecord(inventory.ProductSKU(product.SKU()), 10, 2)
 	if err != nil {
