@@ -21,12 +21,13 @@ type quoteRow struct {
 }
 
 type productRow struct {
-	SKU              string
-	Name             string
-	Category         string
-	Active           bool
-	UnitPrice        int
-	ReturnWindowDays int
+	SKU                 string
+	Name                string
+	Category            string
+	Active              bool
+	UnitPrice           int
+	ReturnWindowDays    int
+	StockShortagePolicy string
 }
 
 type orderRow struct {
@@ -40,6 +41,13 @@ type orderRow struct {
 	Total         int
 }
 
+type stockRow struct {
+	SKU              string
+	OnHand           int
+	Reserved         int
+	ReorderThreshold int
+}
+
 // Database is the small persistence boundary used by this lesson. Its tables
 // stay private so callers must use the Active Record operations instead of
 // reaching into storage directly.
@@ -48,6 +56,7 @@ type Database struct {
 	quotes          map[string]quoteRow
 	products        map[string]productRow
 	orders          map[string]orderRow
+	stocks          map[string]stockRow
 	nextQuoteNumber int
 	nextOrderNumber int
 }
@@ -58,6 +67,7 @@ func NewDatabase() *Database {
 		quotes:    make(map[string]quoteRow),
 		products:  make(map[string]productRow),
 		orders:    make(map[string]orderRow),
+		stocks:    make(map[string]stockRow),
 	}
 }
 

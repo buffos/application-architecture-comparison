@@ -2,6 +2,11 @@ package records
 
 import "errors"
 
+const (
+	StockShortageRejectOrder    = "RejectOrder"
+	StockShortageAllowBackorder = "AllowBackorder"
+)
+
 var (
 	ErrProductSKURequired = errors.New("product sku is required")
 	ErrProductNotFound    = errors.New("product not found")
@@ -12,23 +17,25 @@ var (
 type Product struct {
 	db *Database
 
-	SKU              string
-	Name             string
-	Category         string
-	Active           bool
-	UnitPrice        int
-	ReturnWindowDays int
+	SKU                 string
+	Name                string
+	Category            string
+	Active              bool
+	UnitPrice           int
+	ReturnWindowDays    int
+	StockShortagePolicy string
 }
 
 // NewProduct creates a new, unsaved Product Active Record.
 func NewProduct(db *Database, sku string, name string, category string, active bool, unitPrice int) *Product {
 	return &Product{
-		db:        db,
-		SKU:       sku,
-		Name:      name,
-		Category:  category,
-		Active:    active,
-		UnitPrice: unitPrice,
+		db:                  db,
+		SKU:                 sku,
+		Name:                name,
+		Category:            category,
+		Active:              active,
+		UnitPrice:           unitPrice,
+		StockShortagePolicy: StockShortageRejectOrder,
 	}
 }
 
@@ -47,13 +54,14 @@ func FindProduct(db *Database, sku string) (*Product, error) {
 	}
 
 	return &Product{
-		db:               db,
-		SKU:              row.SKU,
-		Name:             row.Name,
-		Category:         row.Category,
-		Active:           row.Active,
-		UnitPrice:        row.UnitPrice,
-		ReturnWindowDays: row.ReturnWindowDays,
+		db:                  db,
+		SKU:                 row.SKU,
+		Name:                row.Name,
+		Category:            row.Category,
+		Active:              row.Active,
+		UnitPrice:           row.UnitPrice,
+		ReturnWindowDays:    row.ReturnWindowDays,
+		StockShortagePolicy: row.StockShortagePolicy,
 	}, nil
 }
 
@@ -67,12 +75,13 @@ func (product *Product) Save() error {
 	}
 
 	product.db.products[product.SKU] = productRow{
-		SKU:              product.SKU,
-		Name:             product.Name,
-		Category:         product.Category,
-		Active:           product.Active,
-		UnitPrice:        product.UnitPrice,
-		ReturnWindowDays: product.ReturnWindowDays,
+		SKU:                 product.SKU,
+		Name:                product.Name,
+		Category:            product.Category,
+		Active:              product.Active,
+		UnitPrice:           product.UnitPrice,
+		ReturnWindowDays:    product.ReturnWindowDays,
+		StockShortagePolicy: product.StockShortagePolicy,
 	}
 	return nil
 }

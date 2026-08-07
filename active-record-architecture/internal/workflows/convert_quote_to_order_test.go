@@ -12,6 +12,10 @@ func approvedQuote(t *testing.T) (*records.Database, *records.Quote) {
 	if _, err := SubmitQuoteForApproval(db, quote.ID); err != nil {
 		t.Fatalf("SubmitQuoteForApproval() error = %v", err)
 	}
+	stock := records.NewStockRecord(db, "sku-001", 5, 0, 2)
+	if err := stock.Save(); err != nil {
+		t.Fatalf("StockRecord.Save() error = %v", err)
+	}
 	return db, quote
 }
 
@@ -22,8 +26,8 @@ func TestConvertQuoteToOrderCopiesIndependentSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ConvertQuoteToOrder() error = %v", err)
 	}
-	if order.ID != "order-001" || order.Status != records.OrderStatusPendingReservation {
-		t.Fatalf("order = %#v, want pending order-001", order)
+	if order.ID != "order-001" || order.Status != records.OrderStatusReadyForPayment {
+		t.Fatalf("order = %#v, want ready-for-payment order-001", order)
 	}
 	if len(order.Lines) != 1 || order.Lines[0].SKU != "sku-001" || order.Lines[0].LineTotal != 15000 {
 		t.Fatalf("order lines = %#v, want copied quote line", order.Lines)
@@ -42,6 +46,13 @@ func TestConvertQuoteToOrderCopiesIndependentSnapshot(t *testing.T) {
 	}
 	if savedOrder.Lines[0] != order.Lines[0] {
 		t.Fatalf("saved order line = %#v, want %#v", savedOrder.Lines[0], order.Lines[0])
+	}
+	stock, err := records.FindStock(db, "sku-001")
+	if err != nil {
+		t.Fatalf("FindStock() error = %v", err)
+	}
+	if stock.Reserved != 1 {
+		t.Fatalf("reserved stock = %d, want 1", stock.Reserved)
 	}
 }
 

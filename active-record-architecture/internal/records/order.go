@@ -4,12 +4,17 @@ import "errors"
 
 const (
 	OrderStatusPendingReservation = "PendingReservation"
+	OrderStatusBackordered        = "Backordered"
+	OrderStatusReadyForPayment    = "ReadyForPayment"
 	PaymentStatusNotRequired      = "NotRequired"
+	PaymentStatusPending          = "Pending"
 )
 
 var (
-	ErrOrderIDRequired = errors.New("order id is required")
-	ErrOrderNotFound   = errors.New("order not found")
+	ErrOrderIDRequired    = errors.New("order id is required")
+	ErrOrderNotFound      = errors.New("order not found")
+	ErrOrderNotReservable = errors.New("order is not awaiting reservation")
+	ErrInsufficientStock  = errors.New("insufficient stock")
 )
 
 // OrderLine is a committed product snapshot embedded in an Order Active
@@ -41,6 +46,70 @@ type Order struct {
 	Lines         []OrderLine
 	Total         int
 	PaymentStatus string
+}
+
+// ReserveStock preflights every order line, then asks StockRecord Active
+// Records to persist reservations. A shortage can be rejected or backordered
+// according to the related Product Active Record.
+func (order *Order) ReserveStock() error {
+	if order == nil || order.db == nil {
+		return ErrDatabaseRequired
+	}
+	if order.Status != OrderStatusPendingReservation {
+		return ErrOrderNotReservable
+	}
+
+	type reservation struct {
+		lineIndex int
+		stock     *StockRecord
+		quantity  int
+	}
+	reservations := make([]reservation, 0, len(order.Lines))
+	planned := make(map[string]int)
+	backordered := false
+
+	for index, line := range order.Lines {
+		if line.OrderedQuantity <= 0 {
+			return ErrQuantityInvalid
+		}
+		stock, err := FindStock(order.db, line.SKU)
+		available := 0
+		if err == nil {
+			available = stock.Available() - planned[line.SKU]
+		}
+		if err != nil || available < line.OrderedQuantity {
+			policy := StockShortageRejectOrder
+			if product, productErr := FindProduct(order.db, line.SKU); productErr == nil && product.StockShortagePolicy != "" {
+				policy = product.StockShortagePolicy
+			}
+			if policy == StockShortageAllowBackorder {
+				backordered = true
+				continue
+			}
+			return ErrInsufficientStock
+		}
+		planned[line.SKU] += line.OrderedQuantity
+		reservations = append(reservations, reservation{lineIndex: index, stock: stock, quantity: line.OrderedQuantity})
+	}
+
+	for _, item := range reservations {
+		if err := item.stock.Reserve(item.quantity); err != nil {
+			return err
+		}
+		if err := item.stock.Save(); err != nil {
+			return err
+		}
+		order.Lines[item.lineIndex].ReservedQuantity = item.quantity
+	}
+
+	if backordered {
+		order.Status = OrderStatusBackordered
+		order.PaymentStatus = PaymentStatusNotRequired
+	} else {
+		order.Status = OrderStatusReadyForPayment
+		order.PaymentStatus = PaymentStatusPending
+	}
+	return nil
 }
 
 // FindOrder loads an Order Active Record from the order table.

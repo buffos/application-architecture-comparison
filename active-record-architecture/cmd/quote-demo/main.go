@@ -25,6 +25,10 @@ func main() {
 	if err := product.Save(); err != nil {
 		log.Fatal(err)
 	}
+	stock := records.NewStockRecord(db, product.SKU, 10, 0, 2)
+	if err := stock.Save(); err != nil {
+		log.Fatal(err)
+	}
 
 	quote, err := records.NewDraftQuote(db, loadedCustomer.ID)
 	if err != nil {

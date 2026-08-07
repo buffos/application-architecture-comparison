@@ -17,6 +17,9 @@ func ConvertQuoteToOrder(db *records.Database, quoteID string, requestedBy strin
 	if err != nil {
 		return nil, err
 	}
+	if err := order.ReserveStock(); err != nil {
+		return nil, err
+	}
 	if err := order.Save(); err != nil {
 		return nil, err
 	}
