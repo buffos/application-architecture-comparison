@@ -1,6 +1,9 @@
 package records
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // customerRow and quoteRow stand in for rows in separate database tables.
 // Active Record models translate between these private rows and the public
@@ -38,6 +41,7 @@ type orderRow struct {
 	RequestedBy   string
 	PaymentID     string
 	PaymentStatus string
+	ShippedAt     time.Time
 	Lines         []OrderLine
 	Total         int
 }
@@ -58,19 +62,30 @@ type paymentRow struct {
 	DecisionComment string
 }
 
+type shipmentRow struct {
+	ID        string
+	OrderID   string
+	Status    string
+	ShippedBy string
+	ShippedAt time.Time
+	Lines     []ShipmentLine
+}
+
 // Database is the small persistence boundary used by this lesson. Its tables
 // stay private so callers must use the Active Record operations instead of
 // reaching into storage directly.
 type Database struct {
-	customers         map[string]customerRow
-	quotes            map[string]quoteRow
-	products          map[string]productRow
-	orders            map[string]orderRow
-	stocks            map[string]stockRow
-	payments          map[string]paymentRow
-	nextQuoteNumber   int
-	nextOrderNumber   int
-	nextPaymentNumber int
+	customers          map[string]customerRow
+	quotes             map[string]quoteRow
+	products           map[string]productRow
+	orders             map[string]orderRow
+	stocks             map[string]stockRow
+	payments           map[string]paymentRow
+	shipments          map[string]shipmentRow
+	nextQuoteNumber    int
+	nextOrderNumber    int
+	nextPaymentNumber  int
+	nextShipmentNumber int
 }
 
 func NewDatabase() *Database {
@@ -81,6 +96,7 @@ func NewDatabase() *Database {
 		orders:    make(map[string]orderRow),
 		stocks:    make(map[string]stockRow),
 		payments:  make(map[string]paymentRow),
+		shipments: make(map[string]shipmentRow),
 	}
 }
 
@@ -97,4 +113,9 @@ func (db *Database) nextOrderID() string {
 func (db *Database) nextPaymentID() string {
 	db.nextPaymentNumber++
 	return fmt.Sprintf("payment-%03d", db.nextPaymentNumber)
+}
+
+func (db *Database) nextShipmentID() string {
+	db.nextShipmentNumber++
+	return fmt.Sprintf("shipment-%03d", db.nextShipmentNumber)
 }

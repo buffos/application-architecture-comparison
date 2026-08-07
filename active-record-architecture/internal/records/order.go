@@ -3,6 +3,7 @@ package records
 import (
 	"errors"
 	"strings"
+	"time"
 )
 
 const (
@@ -11,6 +12,7 @@ const (
 	OrderStatusReadyForPayment     = "ReadyForPayment"
 	OrderStatusPaymentReview       = "PaymentReview"
 	OrderStatusReadyForFulfillment = "ReadyForFulfillment"
+	OrderStatusShipped             = "Shipped"
 	PaymentStatusNotRequired       = "NotRequired"
 	PaymentStatusPending           = "Pending"
 	PaymentStatusAccepted          = "Accepted"
@@ -28,6 +30,9 @@ var (
 	ErrInsufficientStock     = errors.New("insufficient stock")
 	ErrOrderNotPayable       = errors.New("order is not ready for payment")
 	ErrPaymentOutcomeInvalid = errors.New("payment outcome is invalid")
+	ErrOrderNotShippable     = errors.New("order is not ready for fulfillment")
+	ErrNoShipmentLines       = errors.New("order has no remaining shippable lines")
+	ErrShippedByRequired     = errors.New("shipper is required")
 )
 
 // OrderLine is a committed product snapshot embedded in an Order Active
@@ -60,6 +65,7 @@ type Order struct {
 	Lines         []OrderLine
 	Total         int
 	PaymentStatus string
+	ShippedAt     time.Time
 }
 
 // CapturePayment creates and persists a payment attempt, then updates the
@@ -105,6 +111,76 @@ func (order *Order) CapturePayment(outcome string) (*Payment, error) {
 	order.PaymentStatus = paymentStatus
 	order.Status = orderStatus
 	return payment, nil
+}
+
+// CreateShipment creates and saves a full shipment, consumes the reserved
+// stock rows, and updates the order's shipped quantities.
+func (order *Order) CreateShipment(shippedBy string) (*Shipment, error) {
+	if order == nil || order.db == nil {
+		return nil, ErrDatabaseRequired
+	}
+	if shippedBy == "" {
+		return nil, ErrShippedByRequired
+	}
+	if order.Status != OrderStatusReadyForFulfillment {
+		return nil, ErrOrderNotShippable
+	}
+
+	shipmentLines := make([]ShipmentLine, 0, len(order.Lines))
+	for _, line := range order.Lines {
+		remaining := line.ReservedQuantity - line.ShippedQuantity
+		if remaining <= 0 {
+			continue
+		}
+		shipmentLines = append(shipmentLines, ShipmentLine{OrderLineID: line.ID, SKU: line.SKU, Quantity: remaining})
+	}
+	if len(shipmentLines) == 0 {
+		return nil, ErrNoShipmentLines
+	}
+
+	for _, shipmentLine := range shipmentLines {
+		stock, err := FindStock(order.db, shipmentLine.SKU)
+		if err != nil || stock.Reserved < shipmentLine.Quantity || stock.OnHand < shipmentLine.Quantity {
+			return nil, ErrInsufficientStock
+		}
+	}
+
+	shipment := &Shipment{
+		db:        order.db,
+		ID:        order.db.nextShipmentID(),
+		OrderID:   order.ID,
+		Status:    ShipmentStatusShipped,
+		ShippedBy: shippedBy,
+		ShippedAt: time.Now(),
+		Lines:     cloneShipmentLines(shipmentLines),
+	}
+
+	for _, shipmentLine := range shipmentLines {
+		for index := range order.Lines {
+			if order.Lines[index].ID != shipmentLine.OrderLineID {
+				continue
+			}
+			order.Lines[index].ShippedQuantity += shipmentLine.Quantity
+			stock, err := FindStock(order.db, shipmentLine.SKU)
+			if err != nil {
+				return nil, err
+			}
+			if err := stock.Consume(shipmentLine.Quantity); err != nil {
+				return nil, err
+			}
+			if err := stock.Save(); err != nil {
+				return nil, err
+			}
+			break
+		}
+	}
+
+	order.Status = OrderStatusShipped
+	order.ShippedAt = shipment.ShippedAt
+	if err := shipment.Save(); err != nil {
+		return nil, err
+	}
+	return shipment, nil
 }
 
 // ReserveStock preflights every order line, then asks StockRecord Active
@@ -194,6 +270,7 @@ func FindOrder(db *Database, id string) (*Order, error) {
 		RequestedBy:   row.RequestedBy,
 		PaymentID:     row.PaymentID,
 		PaymentStatus: row.PaymentStatus,
+		ShippedAt:     row.ShippedAt,
 		Lines:         cloneOrderLines(row.Lines),
 		Total:         row.Total,
 	}, nil
@@ -216,6 +293,7 @@ func (order *Order) Save() error {
 		RequestedBy:   order.RequestedBy,
 		PaymentID:     order.PaymentID,
 		PaymentStatus: order.PaymentStatus,
+		ShippedAt:     order.ShippedAt,
 		Lines:         cloneOrderLines(order.Lines),
 		Total:         order.Total,
 	}

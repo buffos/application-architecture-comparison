@@ -73,6 +73,19 @@ func (stock *StockRecord) Reserve(quantity int) error {
 	return nil
 }
 
+// Consume removes shipped quantity from both on-hand and reserved stock.
+func (stock *StockRecord) Consume(quantity int) error {
+	if stock == nil || stock.db == nil {
+		return ErrDatabaseRequired
+	}
+	if quantity <= 0 || stock.Reserved < quantity || stock.OnHand < quantity {
+		return ErrInsufficientStock
+	}
+	stock.OnHand -= quantity
+	stock.Reserved -= quantity
+	return nil
+}
+
 // Save writes the current StockRecord Active Record to its table.
 func (stock *StockRecord) Save() error {
 	if stock == nil || stock.db == nil {

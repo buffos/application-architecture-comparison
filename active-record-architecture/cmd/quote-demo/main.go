@@ -95,6 +95,17 @@ func main() {
 		order.PaymentID,
 	)
 
+	shipment, err := workflows.CreateShipment(db, order.ID, "warehouse-1")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf(
+		"created shipment: shipment=%s order=%s status=%s\n",
+		shipment.ID,
+		shipment.OrderID,
+		shipment.Status,
+	)
+
 	customProduct := records.NewProduct(db, "sku-002", "Custom Desk", "CustomBuild", true, 45000)
 	if err := customProduct.Save(); err != nil {
 		log.Fatal(err)
