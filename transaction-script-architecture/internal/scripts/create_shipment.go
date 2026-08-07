@@ -3,6 +3,7 @@ package scripts
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"transaction-script-architecture/internal/data"
 )
@@ -66,6 +67,7 @@ func CreateShipment(store *data.Store, orderID string, shippedBy string) (data.S
 		OrderID:   order.ID,
 		Status:    data.ShipmentStatusShipped,
 		ShippedBy: shippedBy,
+		ShippedAt: time.Now(),
 		Lines:     shipmentLines,
 	}
 
@@ -85,6 +87,7 @@ func CreateShipment(store *data.Store, orderID string, shippedBy string) (data.S
 	}
 
 	order.Status = data.OrderStatusShipped
+	order.ShippedAt = shipment.ShippedAt
 	store.Orders[order.ID] = order
 	store.Shipments[shipment.ID] = shipment
 

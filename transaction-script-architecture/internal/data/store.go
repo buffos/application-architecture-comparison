@@ -22,6 +22,7 @@ type Product struct {
 	Active              bool
 	UnitPrice           int
 	StockShortagePolicy string
+	ReturnWindowDays    int
 }
 
 // QuoteLine is a passive data record embedded in a Quote.
@@ -32,6 +33,7 @@ type QuoteLine struct {
 	Quantity            int
 	UnitPrice           int
 	DiscountAmount      int
+	ReturnWindowDays    int
 	LineTotal           int
 }
 

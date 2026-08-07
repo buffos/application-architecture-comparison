@@ -63,6 +63,7 @@ func ConvertQuoteToOrder(store *data.Store, quoteID string, requestedBy string) 
 			OrderedQuantity:     line.Quantity,
 			UnitPrice:           line.UnitPrice,
 			DiscountAmount:      line.DiscountAmount,
+			ReturnWindowDays:    line.ReturnWindowDays,
 			LineTotal:           line.LineTotal,
 		})
 		order.Total += line.LineTotal

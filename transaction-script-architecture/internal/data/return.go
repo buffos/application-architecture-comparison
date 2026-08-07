@@ -2,6 +2,8 @@ package data
 
 import "time"
 
+const DefaultReturnWindowDays = 30
+
 const (
 	ReturnStatusRequested     = "Requested"
 	ReturnStatusAccepted      = "Accepted"
@@ -12,11 +14,12 @@ const (
 
 // ReturnLine is a passive request for a quantity from an order line.
 type ReturnLine struct {
-	OrderLineID     string
-	SKU             string
-	ProductCategory string
-	Quantity        int
-	UnitPrice       int
+	OrderLineID      string
+	SKU              string
+	ProductCategory  string
+	Quantity         int
+	UnitPrice        int
+	ReturnWindowDays int
 }
 
 // ReturnRequest is a passive record coordinated by return transaction

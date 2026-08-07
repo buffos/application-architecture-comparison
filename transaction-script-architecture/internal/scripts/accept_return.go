@@ -3,6 +3,7 @@ package scripts
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"transaction-script-architecture/internal/data"
 )
@@ -19,6 +20,11 @@ var (
 // AcceptReturn records the review decision. It intentionally performs no
 // financial or inventory side effect until CompleteRefund runs.
 func AcceptReturn(store *data.Store, returnID string) (data.ReturnRequest, error) {
+	return AcceptReturnAt(store, returnID, time.Now())
+}
+
+// AcceptReturnAt is the deterministic form used by tests and demonstrations.
+func AcceptReturnAt(store *data.Store, returnID string, now time.Time) (data.ReturnRequest, error) {
 	if store == nil {
 		return data.ReturnRequest{}, ErrStoreRequired
 	}
@@ -40,7 +46,7 @@ func AcceptReturn(store *data.Store, returnID string) (data.ReturnRequest, error
 	if !ok {
 		return data.ReturnRequest{}, ErrReturnOrderMissing
 	}
-	if decision := EvaluateReturnEligibility(order, request); !decision.Eligible {
+	if decision := EvaluateReturnEligibilityAt(order, request, now); !decision.Eligible {
 		return data.ReturnRequest{}, ErrReturnNotEligible
 	}
 

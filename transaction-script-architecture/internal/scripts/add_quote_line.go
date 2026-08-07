@@ -59,6 +59,7 @@ func AddQuoteLine(store *data.Store, quoteID string, sku string, quantity int) (
 		ProductNameSnapshot: product.Name,
 		Quantity:            quantity,
 		UnitPrice:           product.UnitPrice,
+		ReturnWindowDays:    product.ReturnWindowDays,
 		LineTotal:           product.UnitPrice * quantity,
 	})
 

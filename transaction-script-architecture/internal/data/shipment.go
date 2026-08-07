@@ -1,5 +1,7 @@
 package data
 
+import "time"
+
 const ShipmentStatusShipped = "Shipped"
 
 // ShipmentLine is a passive shipped-quantity record.
@@ -15,5 +17,6 @@ type Shipment struct {
 	OrderID   string
 	Status    string
 	ShippedBy string
+	ShippedAt time.Time
 	Lines     []ShipmentLine
 }

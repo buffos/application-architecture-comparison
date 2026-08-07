@@ -18,6 +18,11 @@ var (
 // RequestReturn creates a return request after checking the order's shipped
 // and already-returned quantities. It does not refund or restock anything.
 func RequestReturn(store *data.Store, orderID string, lines []data.ReturnLine, reason string) (data.ReturnRequest, error) {
+	return RequestReturnAt(store, orderID, lines, reason, time.Now())
+}
+
+// RequestReturnAt is the deterministic form used by tests and demonstrations.
+func RequestReturnAt(store *data.Store, orderID string, lines []data.ReturnLine, reason string, requestedAt time.Time) (data.ReturnRequest, error) {
 	if store == nil {
 		return data.ReturnRequest{}, ErrStoreRequired
 	}
@@ -44,11 +49,12 @@ func RequestReturn(store *data.Store, orderID string, lines []data.ReturnLine, r
 				continue
 			}
 			requestLines = append(requestLines, data.ReturnLine{
-				OrderLineID:     orderLine.ID,
-				SKU:             orderLine.SKU,
-				ProductCategory: orderLine.ProductCategory,
-				Quantity:        remaining,
-				UnitPrice:       orderLine.UnitPrice,
+				OrderLineID:      orderLine.ID,
+				SKU:              orderLine.SKU,
+				ProductCategory:  orderLine.ProductCategory,
+				Quantity:         remaining,
+				UnitPrice:        orderLine.UnitPrice,
+				ReturnWindowDays: orderLine.ReturnWindowDays,
 			})
 		}
 	}
@@ -93,7 +99,7 @@ func RequestReturn(store *data.Store, orderID string, lines []data.ReturnLine, r
 		Lines:        requestLines,
 		RefundStatus: data.RefundStatusNotStarted,
 		RefundAmount: refundAmount,
-		RequestedAt:  time.Now(),
+		RequestedAt:  requestedAt,
 	}
 	store.Returns[request.ID] = request
 

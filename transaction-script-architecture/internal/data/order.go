@@ -1,5 +1,7 @@
 package data
 
+import "time"
+
 const (
 	OrderStatusPendingReservation  = "PendingReservation"
 	OrderStatusBackordered         = "Backordered"
@@ -28,6 +30,7 @@ type OrderLine struct {
 	ReturnedQuantity    int
 	UnitPrice           int
 	DiscountAmount      int
+	ReturnWindowDays    int
 	LineTotal           int
 }
 
@@ -44,4 +47,5 @@ type Order struct {
 	PaymentStatus      string
 	CancelledBy        string
 	CancellationReason string
+	ShippedAt          time.Time
 }
