@@ -4,6 +4,7 @@ const (
 	QuoteStatusDraft           = "Draft"
 	QuoteStatusPendingApproval = "PendingApproval"
 	QuoteStatusApproved        = "Approved"
+	QuoteStatusRejected        = "Rejected"
 )
 
 // Customer is a passive data record used by transaction scripts.

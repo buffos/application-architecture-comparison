@@ -99,4 +99,32 @@ func main() {
 		pendingQuote.DecisionComment,
 	)
 
+	rejectedQuote, err := scripts.CreateDraftQuote(store, "customer-001")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	rejectedQuote, err = scripts.AddQuoteLine(store, rejectedQuote.ID, "sku-002", 1)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	rejectedQuote, err = scripts.SubmitQuoteForApproval(store, rejectedQuote.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	rejectedQuote, err = scripts.RejectQuote(store, rejectedQuote.ID, "manager-2", "Customer credit limit exceeded")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf(
+		"rejected quote: quote=%s status=%s reviewedBy=%s comment=%s\n",
+		rejectedQuote.ID,
+		rejectedQuote.Status,
+		rejectedQuote.ReviewedBy,
+		rejectedQuote.DecisionComment,
+	)
+
 }
