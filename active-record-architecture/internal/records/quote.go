@@ -23,6 +23,15 @@ var (
 	ErrQuantityInvalid         = errors.New("quantity must be positive")
 )
 
+const ApprovalReasonCustomBuild = "custom_build_requires_review"
+
+// ApprovalDecision is a non-persistent result of evaluating a quote's stored
+// line snapshots.
+type ApprovalDecision struct {
+	Required bool
+	Reasons  []string
+}
+
 // QuoteLine is a product snapshot embedded in a Quote Active Record.
 type QuoteLine struct {
 	ProductCategory     string
@@ -149,14 +158,31 @@ func (quote *Quote) SubmitForApproval() error {
 		return ErrQuoteHasNoLines
 	}
 
+	decision := quote.EvaluateApproval()
 	quote.Status = QuoteStatusApproved
-	for _, line := range quote.Lines {
-		if line.ProductCategory == "CustomBuild" {
-			quote.Status = QuoteStatusPendingApproval
-			break
-		}
+	if decision.Required {
+		quote.Status = QuoteStatusPendingApproval
 	}
 	return nil
+}
+
+// EvaluateApproval inspects the persisted quote snapshot without changing the
+// Active Record. The returned reason codes are stable enough for later
+// workflows and reports to reuse.
+func (quote *Quote) EvaluateApproval() ApprovalDecision {
+	decision := ApprovalDecision{}
+	if quote == nil {
+		return decision
+	}
+	for _, line := range quote.Lines {
+		if line.ProductCategory != "CustomBuild" {
+			continue
+		}
+		decision.Required = true
+		decision.Reasons = append(decision.Reasons, ApprovalReasonCustomBuild)
+		break
+	}
+	return decision
 }
 
 // Approve moves a pending quote to Approved and records the reviewer on the
