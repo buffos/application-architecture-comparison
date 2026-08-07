@@ -78,6 +78,7 @@ type returnRow struct {
 	OrderID      string
 	Status       string
 	Reason       string
+	ReviewNote   string
 	Lines        []ReturnLine
 	RefundID     string
 	RefundStatus string

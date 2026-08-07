@@ -7,6 +7,8 @@ import (
 
 const (
 	ReturnStatusRequested  = "Requested"
+	ReturnStatusAccepted   = "Accepted"
+	ReturnStatusRejected   = "Rejected"
 	ReturnStatusRefunded   = "Refunded"
 	RefundStatusNotStarted = "NotStarted"
 	RefundStatusCompleted  = "Completed"
@@ -18,6 +20,7 @@ var (
 	ErrReturnNotFound      = errors.New("return request not found")
 	ErrReturnLinesInvalid  = errors.New("return lines are invalid")
 	ErrReturnNotAcceptable = errors.New("return is not requested")
+	ErrReturnNotRejectable = errors.New("return is not requested")
 	ErrReturnNotRefundable = errors.New("return refund cannot be completed")
 	ErrReturnOrderMissing  = errors.New("return order not found")
 	ErrReturnStockMissing  = errors.New("return stock record not found")
@@ -41,6 +44,7 @@ type ReturnRequest struct {
 	OrderID      string
 	Status       string
 	Reason       string
+	ReviewNote   string
 	Lines        []ReturnLine
 	RefundID     string
 	RefundStatus string
@@ -48,15 +52,41 @@ type ReturnRequest struct {
 	RequestedAt  time.Time
 }
 
-// Accept applies the first, intentionally compressed return workflow: it
-// marks order quantities returned, restocks inventory, and completes the
-// linked refund.
+// Accept records a positive review decision. Side effects wait for
+// CompleteRefund so the review boundary is explicit.
 func (request *ReturnRequest) Accept() error {
 	if request == nil || request.db == nil {
 		return ErrDatabaseRequired
 	}
 	if request.Status != ReturnStatusRequested {
 		return ErrReturnNotAcceptable
+	}
+	request.Status = ReturnStatusAccepted
+	return request.Save()
+}
+
+// Reject records a negative review decision without changing the order,
+// stock, or refund records.
+func (request *ReturnRequest) Reject(reviewNote string) error {
+	if request == nil || request.db == nil {
+		return ErrDatabaseRequired
+	}
+	if request.Status != ReturnStatusRequested {
+		return ErrReturnNotRejectable
+	}
+	request.Status = ReturnStatusRejected
+	request.ReviewNote = reviewNote
+	return request.Save()
+}
+
+// CompleteRefund applies the accepted return's reverse side effects and
+// completes its linked refund.
+func (request *ReturnRequest) CompleteRefund() error {
+	if request == nil || request.db == nil {
+		return ErrDatabaseRequired
+	}
+	if request.Status != ReturnStatusAccepted {
+		return ErrReturnNotRefundable
 	}
 
 	order, err := FindOrder(request.db, request.OrderID)
@@ -149,6 +179,7 @@ func FindReturnRequest(db *Database, id string) (*ReturnRequest, error) {
 		OrderID:      row.OrderID,
 		Status:       row.Status,
 		Reason:       row.Reason,
+		ReviewNote:   row.ReviewNote,
 		Lines:        cloneReturnLines(row.Lines),
 		RefundID:     row.RefundID,
 		RefundStatus: row.RefundStatus,
@@ -170,6 +201,7 @@ func (request *ReturnRequest) Save() error {
 		OrderID:      request.OrderID,
 		Status:       request.Status,
 		Reason:       request.Reason,
+		ReviewNote:   request.ReviewNote,
 		Lines:        cloneReturnLines(request.Lines),
 		RefundID:     request.RefundID,
 		RefundStatus: request.RefundStatus,
