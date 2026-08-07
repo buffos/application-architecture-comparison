@@ -36,6 +36,7 @@ type orderRow struct {
 	CustomerID    string
 	Status        string
 	RequestedBy   string
+	PaymentID     string
 	PaymentStatus string
 	Lines         []OrderLine
 	Total         int
@@ -48,17 +49,28 @@ type stockRow struct {
 	ReorderThreshold int
 }
 
+type paymentRow struct {
+	ID              string
+	OrderID         string
+	Amount          int
+	Status          string
+	ReviewedBy      string
+	DecisionComment string
+}
+
 // Database is the small persistence boundary used by this lesson. Its tables
 // stay private so callers must use the Active Record operations instead of
 // reaching into storage directly.
 type Database struct {
-	customers       map[string]customerRow
-	quotes          map[string]quoteRow
-	products        map[string]productRow
-	orders          map[string]orderRow
-	stocks          map[string]stockRow
-	nextQuoteNumber int
-	nextOrderNumber int
+	customers         map[string]customerRow
+	quotes            map[string]quoteRow
+	products          map[string]productRow
+	orders            map[string]orderRow
+	stocks            map[string]stockRow
+	payments          map[string]paymentRow
+	nextQuoteNumber   int
+	nextOrderNumber   int
+	nextPaymentNumber int
 }
 
 func NewDatabase() *Database {
@@ -68,6 +80,7 @@ func NewDatabase() *Database {
 		products:  make(map[string]productRow),
 		orders:    make(map[string]orderRow),
 		stocks:    make(map[string]stockRow),
+		payments:  make(map[string]paymentRow),
 	}
 }
 
@@ -79,4 +92,9 @@ func (db *Database) nextQuoteID() string {
 func (db *Database) nextOrderID() string {
 	db.nextOrderNumber++
 	return fmt.Sprintf("order-%03d", db.nextOrderNumber)
+}
+
+func (db *Database) nextPaymentID() string {
+	db.nextPaymentNumber++
+	return fmt.Sprintf("payment-%03d", db.nextPaymentNumber)
 }

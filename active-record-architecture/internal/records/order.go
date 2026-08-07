@@ -1,20 +1,33 @@
 package records
 
-import "errors"
+import (
+	"errors"
+	"strings"
+)
 
 const (
-	OrderStatusPendingReservation = "PendingReservation"
-	OrderStatusBackordered        = "Backordered"
-	OrderStatusReadyForPayment    = "ReadyForPayment"
-	PaymentStatusNotRequired      = "NotRequired"
-	PaymentStatusPending          = "Pending"
+	OrderStatusPendingReservation  = "PendingReservation"
+	OrderStatusBackordered         = "Backordered"
+	OrderStatusReadyForPayment     = "ReadyForPayment"
+	OrderStatusPaymentReview       = "PaymentReview"
+	OrderStatusReadyForFulfillment = "ReadyForFulfillment"
+	PaymentStatusNotRequired       = "NotRequired"
+	PaymentStatusPending           = "Pending"
+	PaymentStatusAccepted          = "Accepted"
+	PaymentStatusFailed            = "Failed"
+	PaymentStatusManualReview      = "ManualReview"
+	PaymentOutcomeAccept           = "accept"
+	PaymentOutcomeFail             = "fail"
+	PaymentOutcomeReview           = "review"
 )
 
 var (
-	ErrOrderIDRequired    = errors.New("order id is required")
-	ErrOrderNotFound      = errors.New("order not found")
-	ErrOrderNotReservable = errors.New("order is not awaiting reservation")
-	ErrInsufficientStock  = errors.New("insufficient stock")
+	ErrOrderIDRequired       = errors.New("order id is required")
+	ErrOrderNotFound         = errors.New("order not found")
+	ErrOrderNotReservable    = errors.New("order is not awaiting reservation")
+	ErrInsufficientStock     = errors.New("insufficient stock")
+	ErrOrderNotPayable       = errors.New("order is not ready for payment")
+	ErrPaymentOutcomeInvalid = errors.New("payment outcome is invalid")
 )
 
 // OrderLine is a committed product snapshot embedded in an Order Active
@@ -43,9 +56,55 @@ type Order struct {
 	CustomerID    string
 	Status        string
 	RequestedBy   string
+	PaymentID     string
 	Lines         []OrderLine
 	Total         int
 	PaymentStatus string
+}
+
+// CapturePayment creates and persists a payment attempt, then updates the
+// order lifecycle according to the simulated outcome.
+func (order *Order) CapturePayment(outcome string) (*Payment, error) {
+	if order == nil || order.db == nil {
+		return nil, ErrDatabaseRequired
+	}
+	if order.Status != OrderStatusReadyForPayment {
+		return nil, ErrOrderNotPayable
+	}
+
+	outcome = strings.ToLower(strings.TrimSpace(outcome))
+	if outcome == "" {
+		outcome = PaymentOutcomeAccept
+	}
+	paymentStatus := PaymentStatusAccepted
+	orderStatus := OrderStatusReadyForFulfillment
+	switch outcome {
+	case PaymentOutcomeAccept:
+		paymentStatus = PaymentStatusAccepted
+	case PaymentOutcomeFail:
+		paymentStatus = PaymentStatusFailed
+		orderStatus = OrderStatusReadyForPayment
+	case PaymentOutcomeReview:
+		paymentStatus = PaymentStatusManualReview
+		orderStatus = OrderStatusPaymentReview
+	default:
+		return nil, ErrPaymentOutcomeInvalid
+	}
+
+	payment := &Payment{
+		db:      order.db,
+		ID:      order.db.nextPaymentID(),
+		OrderID: order.ID,
+		Amount:  order.Total,
+		Status:  paymentStatus,
+	}
+	if err := payment.Save(); err != nil {
+		return nil, err
+	}
+	order.PaymentID = payment.ID
+	order.PaymentStatus = paymentStatus
+	order.Status = orderStatus
+	return payment, nil
 }
 
 // ReserveStock preflights every order line, then asks StockRecord Active
@@ -133,6 +192,7 @@ func FindOrder(db *Database, id string) (*Order, error) {
 		CustomerID:    row.CustomerID,
 		Status:        row.Status,
 		RequestedBy:   row.RequestedBy,
+		PaymentID:     row.PaymentID,
 		PaymentStatus: row.PaymentStatus,
 		Lines:         cloneOrderLines(row.Lines),
 		Total:         row.Total,
@@ -154,6 +214,7 @@ func (order *Order) Save() error {
 		CustomerID:    order.CustomerID,
 		Status:        order.Status,
 		RequestedBy:   order.RequestedBy,
+		PaymentID:     order.PaymentID,
 		PaymentStatus: order.PaymentStatus,
 		Lines:         cloneOrderLines(order.Lines),
 		Total:         order.Total,

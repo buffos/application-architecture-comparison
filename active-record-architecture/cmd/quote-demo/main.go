@@ -84,6 +84,17 @@ func main() {
 		order.Total,
 	)
 
+	order, err = workflows.CapturePayment(db, order.ID, records.PaymentOutcomeAccept)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf(
+		"captured payment: order=%s status=%s payment=%s\n",
+		order.ID,
+		order.Status,
+		order.PaymentID,
+	)
+
 	customProduct := records.NewProduct(db, "sku-002", "Custom Desk", "CustomBuild", true, 45000)
 	if err := customProduct.Save(); err != nil {
 		log.Fatal(err)
