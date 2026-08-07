@@ -51,12 +51,11 @@ func main() {
 	}
 
 	workingMemory := engine.NewWorkingMemory(customer, quote, products)
-	rule := rules.DiscountApprovalRule{}
-	fmt.Printf("Directly evaluating: %s\n", rule.Name())
-	if rule.Evaluate(workingMemory) {
-		if err := rule.Execute(workingMemory); err != nil {
-			panic(err)
-		}
+	ruleEngine := engine.NewEngine()
+	ruleEngine.Register(rules.DiscountApprovalRule{})
+	fmt.Println("Executing registered Rules")
+	if err := ruleEngine.ExecuteAll(workingMemory); err != nil {
+		panic(err)
 	}
 
 	fmt.Println("=== Working Memory ===")
