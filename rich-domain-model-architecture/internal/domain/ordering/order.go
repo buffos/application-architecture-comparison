@@ -11,6 +11,7 @@ var (
 	ErrQuoteNotApproved        = errors.New("quote is not approved")
 	ErrOrderHasNoLines         = errors.New("order must contain at least one line")
 	ErrOrderNotAwaitingPayment = errors.New("order is not awaiting payment")
+	ErrOrderNotShippable       = errors.New("order is not shippable")
 )
 
 type OrderID string
@@ -24,6 +25,7 @@ type OrderStatus string
 const (
 	OrderStatusPendingPayment OrderStatus = "PendingPayment"
 	OrderStatusPaid           OrderStatus = "Paid"
+	OrderStatusShipped        OrderStatus = "Shipped"
 )
 
 type OrderLine struct {
@@ -117,5 +119,13 @@ func (order *Order) MarkPaid() error {
 		return ErrOrderNotAwaitingPayment
 	}
 	order.status = OrderStatusPaid
+	return nil
+}
+
+func (order *Order) MarkShipped() error {
+	if order.status != OrderStatusPaid {
+		return ErrOrderNotShippable
+	}
+	order.status = OrderStatusShipped
 	return nil
 }

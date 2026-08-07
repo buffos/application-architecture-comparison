@@ -6,6 +6,7 @@ import (
 
 	"rich-domain-model-architecture/internal/domain/catalog"
 	"rich-domain-model-architecture/internal/domain/customer"
+	"rich-domain-model-architecture/internal/domain/fulfillment"
 	"rich-domain-model-architecture/internal/domain/inventory"
 	"rich-domain-model-architecture/internal/domain/ordering"
 	"rich-domain-model-architecture/internal/domain/payments"
@@ -125,4 +126,17 @@ func main() {
 	}
 	fmt.Printf("payment aggregate: id=%s status=%s order=%s\n", payment.ID(), payment.Status(), payment.OrderID())
 	fmt.Printf("paid order aggregate: id=%s status=%s\n", order.ID(), order.Status())
+
+	shipment, err := fulfillment.NewShipmentFromPaidOrder("shipment-001", order)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := shipment.Dispatch(); err != nil {
+		log.Fatal(err)
+	}
+	if err := order.MarkShipped(); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("shipment aggregate: id=%s status=%s lines=%d\n", shipment.ID(), shipment.Status(), len(shipment.Lines()))
+	fmt.Printf("shipped order aggregate: id=%s status=%s\n", order.ID(), order.Status())
 }
