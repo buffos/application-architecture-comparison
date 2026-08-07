@@ -19,18 +19,22 @@ var (
 
 // AcceptReturn records the review decision. It intentionally performs no
 // financial or inventory side effect until CompleteRefund runs.
-func AcceptReturn(store *data.Store, returnID string) (data.ReturnRequest, error) {
-	return AcceptReturnAt(store, returnID, time.Now())
+func AcceptReturn(store *data.Store, returnID string, reviewedBy string) (data.ReturnRequest, error) {
+	return AcceptReturnAt(store, returnID, time.Now(), reviewedBy)
 }
 
 // AcceptReturnAt is the deterministic form used by tests and demonstrations.
-func AcceptReturnAt(store *data.Store, returnID string, now time.Time) (data.ReturnRequest, error) {
+func AcceptReturnAt(store *data.Store, returnID string, now time.Time, reviewedBy string) (data.ReturnRequest, error) {
 	if store == nil {
 		return data.ReturnRequest{}, ErrStoreRequired
 	}
 
 	if returnID == "" {
 		return data.ReturnRequest{}, ErrReturnIDRequired
+	}
+
+	if reviewedBy == "" {
+		return data.ReturnRequest{}, ErrActorRequired
 	}
 
 	request, ok := store.Returns[returnID]
@@ -51,6 +55,7 @@ func AcceptReturnAt(store *data.Store, returnID string, now time.Time) (data.Ret
 	}
 
 	request.Status = data.ReturnStatusAccepted
+	request.ReviewedBy = reviewedBy
 	store.Returns[request.ID] = request
 
 	return request, nil
@@ -58,13 +63,17 @@ func AcceptReturnAt(store *data.Store, returnID string, now time.Time) (data.Ret
 
 // RejectReturn records a negative review decision and blocks later refund
 // processing.
-func RejectReturn(store *data.Store, returnID string, reviewNote string) (data.ReturnRequest, error) {
+func RejectReturn(store *data.Store, returnID string, reviewedBy string, reviewNote string) (data.ReturnRequest, error) {
 	if store == nil {
 		return data.ReturnRequest{}, ErrStoreRequired
 	}
 
 	if returnID == "" {
 		return data.ReturnRequest{}, ErrReturnIDRequired
+	}
+
+	if reviewedBy == "" {
+		return data.ReturnRequest{}, ErrActorRequired
 	}
 
 	request, ok := store.Returns[returnID]
@@ -77,6 +86,7 @@ func RejectReturn(store *data.Store, returnID string, reviewNote string) (data.R
 	}
 
 	request.Status = data.ReturnStatusRejected
+	request.ReviewedBy = reviewedBy
 	request.ReviewNote = reviewNote
 	store.Returns[request.ID] = request
 
@@ -85,13 +95,17 @@ func RejectReturn(store *data.Store, returnID string, reviewNote string) (data.R
 
 // CompleteRefund applies the accepted return's order, inventory, and refund
 // writes as one procedural transaction.
-func CompleteRefund(store *data.Store, returnID string) (data.ReturnRequest, error) {
+func CompleteRefund(store *data.Store, returnID string, processedBy string) (data.ReturnRequest, error) {
 	if store == nil {
 		return data.ReturnRequest{}, ErrStoreRequired
 	}
 
 	if returnID == "" {
 		return data.ReturnRequest{}, ErrReturnIDRequired
+	}
+
+	if processedBy == "" {
+		return data.ReturnRequest{}, ErrActorRequired
 	}
 
 	request, ok := store.Returns[returnID]
@@ -138,6 +152,7 @@ func CompleteRefund(store *data.Store, returnID string) (data.ReturnRequest, err
 		OrderID:         order.ID,
 		Amount:          request.RefundAmount,
 		Status:          data.RefundStatusCompleted,
+		ProcessedBy:     processedBy,
 	}
 
 	for _, returnLine := range request.Lines {
@@ -157,6 +172,7 @@ func CompleteRefund(store *data.Store, returnID string) (data.ReturnRequest, err
 	request.Status = data.ReturnStatusRefunded
 	request.RefundID = refund.ID
 	request.RefundStatus = refund.Status
+	request.ProcessedBy = processedBy
 	store.Orders[order.ID] = order
 	store.Refunds[refund.ID] = refund
 	store.Returns[request.ID] = request

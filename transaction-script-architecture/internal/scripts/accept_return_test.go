@@ -9,12 +9,15 @@ import (
 func TestAcceptReturnRecordsReviewBeforeSideEffects(t *testing.T) {
 	store := requestedReturnStore()
 
-	got, err := AcceptReturn(store, "return-001")
+	got, err := AcceptReturn(store, "return-001", "manager-1")
 	if err != nil {
 		t.Fatalf("AcceptReturn() error = %v", err)
 	}
 	if got.Status != data.ReturnStatusAccepted {
 		t.Fatalf("status = %q, want %q", got.Status, data.ReturnStatusAccepted)
+	}
+	if got.ReviewedBy != "manager-1" {
+		t.Fatalf("reviewed by = %q, want %q", got.ReviewedBy, "manager-1")
 	}
 	if store.Stocks["sku-001"].OnHand != 3 {
 		t.Fatalf("on-hand stock = %d, want 3 before refund completion", store.Stocks["sku-001"].OnHand)
@@ -27,15 +30,18 @@ func TestAcceptReturnRecordsReviewBeforeSideEffects(t *testing.T) {
 func TestRejectReturnBlocksRefundAndRestock(t *testing.T) {
 	store := requestedReturnStore()
 
-	got, err := RejectReturn(store, "return-001", "Product not eligible")
+	got, err := RejectReturn(store, "return-001", "manager-1", "Product not eligible")
 	if err != nil {
 		t.Fatalf("RejectReturn() error = %v", err)
 	}
 	if got.Status != data.ReturnStatusRejected {
 		t.Fatalf("status = %q, want %q", got.Status, data.ReturnStatusRejected)
 	}
+	if got.ReviewedBy != "manager-1" {
+		t.Fatalf("reviewed by = %q, want %q", got.ReviewedBy, "manager-1")
+	}
 
-	if _, err := CompleteRefund(store, "return-001"); err != ErrReturnNotRefundable {
+	if _, err := CompleteRefund(store, "return-001", "finance-1"); err != ErrReturnNotRefundable {
 		t.Fatalf("CompleteRefund() error = %v, want %v", err, ErrReturnNotRefundable)
 	}
 	if store.Stocks["sku-001"].OnHand != 3 || len(store.Refunds) != 0 {
@@ -45,16 +51,19 @@ func TestRejectReturnBlocksRefundAndRestock(t *testing.T) {
 
 func TestCompleteRefundAppliesAcceptedReturn(t *testing.T) {
 	store := requestedReturnStore()
-	if _, err := AcceptReturn(store, "return-001"); err != nil {
+	if _, err := AcceptReturn(store, "return-001", "manager-1"); err != nil {
 		t.Fatalf("AcceptReturn() error = %v", err)
 	}
 
-	got, err := CompleteRefund(store, "return-001")
+	got, err := CompleteRefund(store, "return-001", "finance-1")
 	if err != nil {
 		t.Fatalf("CompleteRefund() error = %v", err)
 	}
 	if got.Status != data.ReturnStatusRefunded || got.RefundStatus != data.RefundStatusCompleted {
 		t.Fatalf("return = %#v, want refunded and completed", got)
+	}
+	if got.ProcessedBy != "finance-1" || store.Refunds[got.RefundID].ProcessedBy != "finance-1" {
+		t.Fatalf("processed by metadata = %#v, want finance-1", got)
 	}
 	if got.RefundID == "" || store.Refunds[got.RefundID].Amount != 30000 {
 		t.Fatalf("refund = %#v, want amount 30000", store.Refunds[got.RefundID])
@@ -67,11 +76,27 @@ func TestCompleteRefundAppliesAcceptedReturn(t *testing.T) {
 	}
 }
 
+func TestReturnReviewAndRefundRequireActors(t *testing.T) {
+	store := requestedReturnStore()
+	if _, err := AcceptReturn(store, "return-001", ""); err != ErrActorRequired {
+		t.Fatalf("reviewer error = %v, want %v", err, ErrActorRequired)
+	}
+	if _, err := RejectReturn(store, "return-001", "", "Rejected"); err != ErrActorRequired {
+		t.Fatalf("reject reviewer error = %v, want %v", err, ErrActorRequired)
+	}
+	request := store.Returns["return-001"]
+	request.Status = data.ReturnStatusAccepted
+	store.Returns["return-001"] = request
+	if _, err := CompleteRefund(store, "return-001", ""); err != ErrActorRequired {
+		t.Fatalf("processor error = %v, want %v", err, ErrActorRequired)
+	}
+}
+
 func TestAcceptReturnRejectsAlreadyProcessedReturn(t *testing.T) {
 	store := data.NewStore()
 	store.Returns["return-001"] = data.ReturnRequest{ID: "return-001", Status: data.ReturnStatusRefunded}
 
-	_, err := AcceptReturn(store, "return-001")
+	_, err := AcceptReturn(store, "return-001", "manager-1")
 	if err != ErrReturnNotAcceptable {
 		t.Fatalf("error = %v, want %v", err, ErrReturnNotAcceptable)
 	}
@@ -97,6 +122,7 @@ func requestedReturnStore() *data.Store {
 		ID:           "return-001",
 		OrderID:      "order-001",
 		Status:       data.ReturnStatusRequested,
+		RequestedBy:  "customer-1",
 		Lines:        []data.ReturnLine{{OrderLineID: "order-001-line-001", SKU: "sku-001", Quantity: 2}},
 		RefundStatus: data.RefundStatusNotStarted,
 		RefundAmount: 30000,

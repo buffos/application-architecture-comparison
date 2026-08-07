@@ -13,22 +13,27 @@ var (
 	ErrReturnLinesInvalid = errors.New("return lines are invalid")
 	ErrReturnIDRequired   = errors.New("return id is required")
 	ErrReturnNotFound     = errors.New("return request not found")
+	ErrActorRequired      = errors.New("return actor is required")
 )
 
 // RequestReturn creates a return request after checking the order's shipped
 // and already-returned quantities. It does not refund or restock anything.
-func RequestReturn(store *data.Store, orderID string, lines []data.ReturnLine, reason string) (data.ReturnRequest, error) {
-	return RequestReturnAt(store, orderID, lines, reason, time.Now())
+func RequestReturn(store *data.Store, orderID string, lines []data.ReturnLine, reason string, requestedBy string) (data.ReturnRequest, error) {
+	return RequestReturnAt(store, orderID, lines, reason, requestedBy, time.Now())
 }
 
 // RequestReturnAt is the deterministic form used by tests and demonstrations.
-func RequestReturnAt(store *data.Store, orderID string, lines []data.ReturnLine, reason string, requestedAt time.Time) (data.ReturnRequest, error) {
+func RequestReturnAt(store *data.Store, orderID string, lines []data.ReturnLine, reason string, requestedBy string, requestedAt time.Time) (data.ReturnRequest, error) {
 	if store == nil {
 		return data.ReturnRequest{}, ErrStoreRequired
 	}
 
 	if orderID == "" {
 		return data.ReturnRequest{}, ErrOrderIDRequired
+	}
+
+	if requestedBy == "" {
+		return data.ReturnRequest{}, ErrActorRequired
 	}
 
 	order, ok := store.Orders[orderID]
@@ -100,6 +105,7 @@ func RequestReturnAt(store *data.Store, orderID string, lines []data.ReturnLine,
 		RefundStatus: data.RefundStatusNotStarted,
 		RefundAmount: refundAmount,
 		RequestedAt:  requestedAt,
+		RequestedBy:  requestedBy,
 	}
 	store.Returns[request.ID] = request
 

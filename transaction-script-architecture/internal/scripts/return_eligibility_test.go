@@ -81,7 +81,7 @@ func TestAcceptReturnRejectsClearanceBeforeSideEffects(t *testing.T) {
 		}},
 	}
 
-	_, err := AcceptReturn(store, "return-001")
+	_, err := AcceptReturn(store, "return-001", "manager-1")
 	if err != ErrReturnNotEligible {
 		t.Fatalf("error = %v, want %v", err, ErrReturnNotEligible)
 	}
@@ -121,7 +121,7 @@ func TestAcceptReturnRejectsExpiredWindowBeforeSideEffects(t *testing.T) {
 		}},
 	}
 
-	_, err := AcceptReturnAt(store, "return-001", shippedAt.AddDate(0, 0, 8))
+	_, err := AcceptReturnAt(store, "return-001", shippedAt.AddDate(0, 0, 8), "manager-1")
 	if err != ErrReturnNotEligible {
 		t.Fatalf("error = %v, want %v", err, ErrReturnNotEligible)
 	}
