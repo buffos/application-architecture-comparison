@@ -8,6 +8,7 @@ import (
 	"rich-domain-model-architecture/internal/domain/customer"
 	"rich-domain-model-architecture/internal/domain/inventory"
 	"rich-domain-model-architecture/internal/domain/ordering"
+	"rich-domain-model-architecture/internal/domain/payments"
 	"rich-domain-model-architecture/internal/domain/quoting"
 )
 
@@ -107,4 +108,21 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("inventory reservation: sku=%s quantity=%d available=%d\n", reservations[0].SKU, reservations[0].Quantity, stock.Available())
+
+	paymentAmount, err := payments.NewMoney(orderTotal.Cents(), orderTotal.Currency())
+	if err != nil {
+		log.Fatal(err)
+	}
+	payment, err := payments.NewPayment("payment-001", payments.OrderID(order.ID()), paymentAmount)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := payment.Capture(); err != nil {
+		log.Fatal(err)
+	}
+	if err := order.MarkPaid(); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("payment aggregate: id=%s status=%s order=%s\n", payment.ID(), payment.Status(), payment.OrderID())
+	fmt.Printf("paid order aggregate: id=%s status=%s\n", order.ID(), order.Status())
 }

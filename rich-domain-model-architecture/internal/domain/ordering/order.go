@@ -21,7 +21,10 @@ type ProductCategory string
 
 type OrderStatus string
 
-const OrderStatusPendingPayment OrderStatus = "PendingPayment"
+const (
+	OrderStatusPendingPayment OrderStatus = "PendingPayment"
+	OrderStatusPaid           OrderStatus = "Paid"
+)
 
 type OrderLine struct {
 	sku         ProductSKU
@@ -107,4 +110,12 @@ func (order Order) Total() (Money, error) {
 		}
 	}
 	return total, nil
+}
+
+func (order *Order) MarkPaid() error {
+	if order.status != OrderStatusPendingPayment {
+		return ErrOrderNotAwaitingPayment
+	}
+	order.status = OrderStatusPaid
+	return nil
 }
