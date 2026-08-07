@@ -70,10 +70,15 @@ func RequestReturnAt(store *data.Store, orderID string, lines []data.ReturnLine,
 	}
 
 	refundAmount := 0
+	seenLines := make(map[string]struct{}, len(requestLines))
 	for _, requestedLine := range requestLines {
 		if requestedLine.Quantity <= 0 {
 			return data.ReturnRequest{}, ErrReturnLinesInvalid
 		}
+		if _, seen := seenLines[requestedLine.OrderLineID]; seen {
+			return data.ReturnRequest{}, ErrReturnLinesInvalid
+		}
+		seenLines[requestedLine.OrderLineID] = struct{}{}
 
 		matched := false
 		for _, orderLine := range order.Lines {
