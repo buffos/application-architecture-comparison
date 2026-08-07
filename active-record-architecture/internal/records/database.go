@@ -11,10 +11,13 @@ type customerRow struct {
 }
 
 type quoteRow struct {
-	ID         string
-	CustomerID string
-	Status     string
-	Lines      []QuoteLine
+	ID               string
+	CustomerID       string
+	Status           string
+	ConvertedOrderID string
+	ReviewedBy       string
+	DecisionComment  string
+	Lines            []QuoteLine
 }
 
 type productRow struct {

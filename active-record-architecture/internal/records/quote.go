@@ -6,6 +6,7 @@ const (
 	QuoteStatusDraft           = "Draft"
 	QuoteStatusPendingApproval = "PendingApproval"
 	QuoteStatusApproved        = "Approved"
+	QuoteStatusRejected        = "Rejected"
 )
 
 var (
@@ -16,6 +17,8 @@ var (
 	ErrQuoteNotEditable        = errors.New("quote is no longer editable")
 	ErrQuoteNotSubmittable     = errors.New("quote must be in draft status")
 	ErrQuoteHasNoLines         = errors.New("quote must have at least one line")
+	ErrReviewerRequired        = errors.New("reviewer is required")
+	ErrQuoteNotApprovable      = errors.New("quote must be pending approval")
 	ErrProductRequired         = errors.New("product is required")
 	ErrQuantityInvalid         = errors.New("quantity must be positive")
 )
@@ -37,10 +40,13 @@ type QuoteLine struct {
 type Quote struct {
 	db *Database
 
-	ID         string
-	CustomerID string
-	Status     string
-	Lines      []QuoteLine
+	ID               string
+	CustomerID       string
+	Status           string
+	ConvertedOrderID string
+	ReviewedBy       string
+	DecisionComment  string
+	Lines            []QuoteLine
 }
 
 // NewDraftQuote creates an unsaved draft quote for an existing active
@@ -86,11 +92,14 @@ func FindQuote(db *Database, id string) (*Quote, error) {
 	}
 
 	return &Quote{
-		db:         db,
-		ID:         row.ID,
-		CustomerID: row.CustomerID,
-		Status:     row.Status,
-		Lines:      cloneQuoteLines(row.Lines),
+		db:               db,
+		ID:               row.ID,
+		CustomerID:       row.CustomerID,
+		Status:           row.Status,
+		ConvertedOrderID: row.ConvertedOrderID,
+		ReviewedBy:       row.ReviewedBy,
+		DecisionComment:  row.DecisionComment,
+		Lines:            cloneQuoteLines(row.Lines),
 	}, nil
 }
 
@@ -150,6 +159,25 @@ func (quote *Quote) SubmitForApproval() error {
 	return nil
 }
 
+// Approve moves a pending quote to Approved and records the reviewer on the
+// same Active Record row.
+func (quote *Quote) Approve(reviewedBy string, decisionComment string) error {
+	if quote == nil || quote.db == nil {
+		return ErrDatabaseRequired
+	}
+	if reviewedBy == "" {
+		return ErrReviewerRequired
+	}
+	if quote.Status != QuoteStatusPendingApproval {
+		return ErrQuoteNotApprovable
+	}
+
+	quote.Status = QuoteStatusApproved
+	quote.ReviewedBy = reviewedBy
+	quote.DecisionComment = decisionComment
+	return nil
+}
+
 // Save writes the current Quote Active Record to its table.
 func (quote *Quote) Save() error {
 	if quote == nil || quote.db == nil {
@@ -169,10 +197,13 @@ func (quote *Quote) Save() error {
 	}
 
 	quote.db.quotes[quote.ID] = quoteRow{
-		ID:         quote.ID,
-		CustomerID: quote.CustomerID,
-		Status:     quote.Status,
-		Lines:      cloneQuoteLines(quote.Lines),
+		ID:               quote.ID,
+		CustomerID:       quote.CustomerID,
+		Status:           quote.Status,
+		ConvertedOrderID: quote.ConvertedOrderID,
+		ReviewedBy:       quote.ReviewedBy,
+		DecisionComment:  quote.DecisionComment,
+		Lines:            cloneQuoteLines(quote.Lines),
 	}
 	return nil
 }
