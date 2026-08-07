@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // Invoice is one unpaid invoice that may match the incoming payment.
 type Invoice struct {
@@ -101,6 +104,52 @@ func (ExactAmountMatcher) Execute(bb *Blackboard) {
 	}
 }
 
+type ReferenceMatcher struct{}
+
+func (ReferenceMatcher) Name() string {
+	return "Invoice Reference Matcher"
+}
+
+func (ReferenceMatcher) Execute(bb *Blackboard) {
+	memo := strings.ToLower(bb.Payment.RawMemo)
+
+	for _, invoice := range bb.Invoices {
+		if strings.Contains(memo, strings.ToLower(invoice.ID)) {
+			bb.AddEvidence(
+				invoice.ID,
+				0.5,
+				fmt.Sprintf("Found invoice reference %q in memo (+0.5)", invoice.ID),
+			)
+		}
+	}
+}
+
+type CustomerNameMatcher struct{}
+
+func (CustomerNameMatcher) Name() string {
+	return "Customer Name Matcher"
+}
+
+func (CustomerNameMatcher) Execute(bb *Blackboard) {
+	memo := strings.ToLower(bb.Payment.RawMemo)
+
+	for _, invoice := range bb.Invoices {
+		parts := strings.Fields(invoice.CustomerName)
+		if len(parts) == 0 {
+			continue
+		}
+
+		lastName := parts[len(parts)-1]
+		if strings.Contains(memo, strings.ToLower(lastName)) {
+			bb.AddEvidence(
+				invoice.ID,
+				0.3,
+				fmt.Sprintf("Found customer surname %q in memo (+0.3)", lastName),
+			)
+		}
+	}
+}
+
 func formatCents(amountCents int64) string {
 	return fmt.Sprintf("%d.%02d", amountCents/100, amountCents%100)
 }
@@ -118,9 +167,15 @@ func main() {
 	}
 
 	blackboard := NewBlackboard(incomingPayment, unpaidInvoices)
-	source := ExactAmountMatcher{}
-	fmt.Printf("Executing: %s\n", source.Name())
-	source.Execute(blackboard)
+	sources := []KnowledgeSource{
+		ExactAmountMatcher{},
+		ReferenceMatcher{},
+		CustomerNameMatcher{},
+	}
+	for _, source := range sources {
+		fmt.Printf("Executing: %s\n", source.Name())
+		source.Execute(blackboard)
+	}
 
 	fmt.Printf("Payment memo: %q\n", blackboard.Payment.RawMemo)
 	fmt.Printf("Payment amount: %s\n", formatCents(blackboard.Payment.AmountCents))
@@ -140,6 +195,6 @@ func main() {
 	}
 
 	if best, ok := blackboard.BestHypothesis(); ok {
-		fmt.Printf("Highest current score: %.1f (the exact amount leaves a tie)\n", best.Score)
+		fmt.Printf("Highest current score: %.1f\n", best.Score)
 	}
 }
