@@ -1,11 +1,11 @@
 # Commit Lesson
 
-feat(transaction-script): complete lesson 002 add quote line transaction script
+feat(transaction-script): complete lesson 003 submit quote for approval transaction script
 
 # Add tag
 
-git tag -a transaction-script-002 -m "Transaction Script Lesson 002" && git push origin --tags
-git push origin transaction-script-002
+git tag -a transaction-script-003 -m "Transaction Script Lesson 003" && git push origin --tags
+git push origin transaction-script-003
 
 or
 

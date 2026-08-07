@@ -47,4 +47,15 @@ func main() {
 		quote.Lines[0].LineTotal,
 	)
 
+	quote, err = scripts.SubmitQuoteForApproval(store, quote.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf(
+		"submitted quote for approval: quote=%s status=%s\n",
+		quote.ID,
+		quote.Status,
+	)
+
 }

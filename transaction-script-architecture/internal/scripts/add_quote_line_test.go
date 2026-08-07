@@ -34,6 +34,9 @@ func TestAddQuoteLineAppendsAndPersistsLine(t *testing.T) {
 	if line.SKU != "sku-001" {
 		t.Fatalf("line SKU = %q, want %q", line.SKU, "sku-001")
 	}
+	if line.ProductCategory != "Standard" {
+		t.Fatalf("line product category = %q, want %q", line.ProductCategory, "Standard")
+	}
 	if line.ProductNameSnapshot != "Desk" {
 		t.Fatalf("line product snapshot = %q, want %q", line.ProductNameSnapshot, "Desk")
 	}

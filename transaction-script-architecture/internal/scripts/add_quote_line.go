@@ -54,6 +54,7 @@ func AddQuoteLine(store *data.Store, quoteID string, sku string, quantity int) (
 	}
 
 	quote.Lines = append(quote.Lines, data.QuoteLine{
+		ProductCategory:     product.Category,
 		SKU:                 product.SKU,
 		ProductNameSnapshot: product.Name,
 		Quantity:            quantity,

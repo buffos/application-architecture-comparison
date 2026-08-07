@@ -1,6 +1,10 @@
 package data
 
-const QuoteStatusDraft = "Draft"
+const (
+	QuoteStatusDraft           = "Draft"
+	QuoteStatusPendingApproval = "PendingApproval"
+	QuoteStatusApproved        = "Approved"
+)
 
 // Customer is a passive data record used by transaction scripts.
 type Customer struct {
@@ -19,6 +23,7 @@ type Product struct {
 
 // QuoteLine is a passive data record embedded in a Quote.
 type QuoteLine struct {
+	ProductCategory     string
 	SKU                 string
 	ProductNameSnapshot string
 	Quantity            int
