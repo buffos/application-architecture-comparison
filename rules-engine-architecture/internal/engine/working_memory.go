@@ -59,3 +59,7 @@ func NewWorkingMemory(customer CustomerFact, quote QuoteFact, products []Product
 		Findings: []Finding{},
 	}
 }
+
+func (memory *WorkingMemory) AddFinding(finding Finding) {
+	memory.Findings = append(memory.Findings, finding)
+}

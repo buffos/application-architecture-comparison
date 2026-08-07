@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"rules-engine-architecture/internal/engine"
+	"rules-engine-architecture/internal/rules"
 )
 
 func formatCents(amountCents int64) string {
@@ -50,6 +51,13 @@ func main() {
 	}
 
 	workingMemory := engine.NewWorkingMemory(customer, quote, products)
+	rule := rules.DiscountApprovalRule{}
+	fmt.Printf("Directly evaluating: %s\n", rule.Name())
+	if rule.Evaluate(workingMemory) {
+		if err := rule.Execute(workingMemory); err != nil {
+			panic(err)
+		}
+	}
 
 	fmt.Println("=== Working Memory ===")
 	fmt.Printf("Customer: %s (%s, tier %s)\n",
@@ -83,4 +91,7 @@ func main() {
 	}
 
 	fmt.Printf("Rule findings: %d\n", len(workingMemory.Findings))
+	for _, finding := range workingMemory.Findings {
+		fmt.Printf("- [%s] %s: %s\n", finding.Severity, finding.RuleName, finding.Message)
+	}
 }
