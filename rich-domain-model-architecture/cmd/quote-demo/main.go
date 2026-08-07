@@ -6,6 +6,7 @@ import (
 	"time"
 
 	applicationorders "rich-domain-model-architecture/internal/application/orders"
+	applicationquotes "rich-domain-model-architecture/internal/application/quotes"
 	applicationshipments "rich-domain-model-architecture/internal/application/shipments"
 	"rich-domain-model-architecture/internal/domain/catalog"
 	"rich-domain-model-architecture/internal/domain/customer"
@@ -91,6 +92,15 @@ func main() {
 		}
 	}
 	fmt.Printf("approved aggregate: id=%s status=%s\n", quote.ID(), quote.Status())
+	quoteReader := applicationquotes.NewInMemoryReader()
+	if err := quoteReader.Save(quote); err != nil {
+		log.Fatal(err)
+	}
+	quoteDetails, err := quoteReader.GetQuote(string(quote.ID()))
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("quote query: id=%s status=%s total=%d\n", quoteDetails.QuoteID, quoteDetails.Status, quoteDetails.TotalCents)
 
 	order, err := ordering.NewOrderFromQuote("order-001", quote)
 	if err != nil {
