@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"rich-domain-model-architecture/internal/domain/catalog"
 	"rich-domain-model-architecture/internal/domain/quoting"
 )
 
@@ -13,15 +14,40 @@ func main() {
 		log.Fatal(err)
 	}
 
-	price, err := quoting.NewMoney(15000, "USD")
+	catalogPrice, err := catalog.NewPrice(15000, "USD")
 	if err != nil {
 		log.Fatal(err)
 	}
-	line, err := quoting.NewQuoteLine("sku-001", 2, price)
+	product, err := catalog.NewProduct("sku-001", "Desk", catalog.ProductCategoryStandard, catalogPrice)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := product.EnsureSellable(); err != nil {
+		log.Fatal(err)
+	}
+
+	quotePrice, err := quoting.NewMoney(product.BasePrice().Cents(), product.BasePrice().Currency())
+	if err != nil {
+		log.Fatal(err)
+	}
+	line, err := quoting.NewQuoteLineFromProductSnapshot(
+		quoting.ProductSKU(product.SKU()),
+		product.Name(),
+		2,
+		quotePrice,
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
 	if err := quote.AddLine(line); err != nil {
+		log.Fatal(err)
+	}
+
+	newCatalogPrice, err := catalog.NewPrice(18000, "USD")
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := product.ChangePrice(newCatalogPrice); err != nil {
 		log.Fatal(err)
 	}
 
@@ -33,6 +59,9 @@ func main() {
 		log.Fatal(err)
 	}
 
+	snapshot := quote.Lines()[0]
+	fmt.Printf("product domain object: sku=%s active=%t price=%d %s\n", product.SKU(), product.Active(), product.BasePrice().Cents(), product.BasePrice().Currency())
+	fmt.Printf("quote snapshot: sku=%s name=%s unit-price=%d %s\n", snapshot.ProductSKU(), snapshot.ProductName(), snapshot.UnitPrice().Cents(), snapshot.UnitPrice().Currency())
 	fmt.Printf("domain aggregate: id=%s customer=%s status=%s lines=%d total=%d %s\n", quote.ID(), quote.CustomerID(), quote.Status(), len(quote.Lines()), total.Cents(), total.Currency())
 
 	if err := quote.Approve(); err != nil {

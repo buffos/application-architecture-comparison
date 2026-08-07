@@ -1,11 +1,15 @@
 package quoting
 
-import "errors"
+import (
+	"errors"
+	"strings"
+)
 
 var (
 	ErrQuoteIDRequired        = errors.New("quote id is required")
 	ErrCustomerIDRequired     = errors.New("customer id is required")
 	ErrProductSKURequired     = errors.New("product sku is required")
+	ErrProductNameRequired    = errors.New("product name is required")
 	ErrQuantityMustBePositive = errors.New("quantity must be positive")
 	ErrQuoteNotEditable       = errors.New("quote is no longer editable")
 	ErrQuoteHasNoLines        = errors.New("quote must contain at least one line")
@@ -30,31 +34,57 @@ const (
 // QuoteLine is a validated part of a Quote aggregate. Its fields remain
 // private so a caller cannot make a line invalid after construction.
 type QuoteLine struct {
-	sku       ProductSKU
-	quantity  int
-	unitPrice Money
+	sku         ProductSKU
+	productName string
+	quantity    int
+	unitPrice   Money
 }
 
 func NewQuoteLine(sku ProductSKU, quantity int, unitPrice Money) (QuoteLine, error) {
-	if sku == "" {
-		return QuoteLine{}, ErrProductSKURequired
-	}
-	if quantity <= 0 {
-		return QuoteLine{}, ErrQuantityMustBePositive
-	}
-	if unitPrice.Currency() == "" {
-		return QuoteLine{}, ErrCurrencyRequired
+	return newQuoteLine(sku, "", quantity, unitPrice)
+}
+
+func NewQuoteLineFromProductSnapshot(sku ProductSKU, productName string, quantity int, unitPrice Money) (QuoteLine, error) {
+	if strings.TrimSpace(productName) == "" {
+		return QuoteLine{}, ErrProductNameRequired
 	}
 
-	return QuoteLine{sku: sku, quantity: quantity, unitPrice: unitPrice}, nil
+	return newQuoteLine(sku, strings.TrimSpace(productName), quantity, unitPrice)
 }
 
 func (line QuoteLine) ProductSKU() ProductSKU { return line.sku }
+func (line QuoteLine) ProductName() string    { return line.productName }
 func (line QuoteLine) Quantity() int          { return line.quantity }
 func (line QuoteLine) UnitPrice() Money       { return line.unitPrice }
 
 func (line QuoteLine) Total() (Money, error) {
+	if err := line.validate(); err != nil {
+		return Money{}, err
+	}
+
 	return line.unitPrice.Multiply(line.quantity)
+}
+
+func newQuoteLine(sku ProductSKU, productName string, quantity int, unitPrice Money) (QuoteLine, error) {
+	line := QuoteLine{sku: sku, productName: productName, quantity: quantity, unitPrice: unitPrice}
+	if err := line.validate(); err != nil {
+		return QuoteLine{}, err
+	}
+
+	return line, nil
+}
+
+func (line QuoteLine) validate() error {
+	if line.sku == "" {
+		return ErrProductSKURequired
+	}
+	if line.quantity <= 0 {
+		return ErrQuantityMustBePositive
+	}
+	if line.unitPrice.Currency() == "" {
+		return ErrCurrencyRequired
+	}
+	return nil
 }
 
 // Quote is the aggregate root for the Quoting domain. It owns the quote
@@ -97,6 +127,9 @@ func (quote Quote) Currency() string {
 func (quote *Quote) AddLine(line QuoteLine) error {
 	if quote.status != QuoteStatusDraft {
 		return ErrQuoteNotEditable
+	}
+	if err := line.validate(); err != nil {
+		return err
 	}
 	if len(quote.lines) > 0 && quote.Currency() != line.unitPrice.Currency() {
 		return ErrCurrencyMismatch
