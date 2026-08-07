@@ -22,7 +22,7 @@ func requestedReturn(t *testing.T) (*records.Database, *records.ReturnRequest) {
 func TestAcceptReturnRecordsReviewWithoutSideEffects(t *testing.T) {
 	db, request := requestedReturn(t)
 
-	accepted, err := AcceptReturn(db, request.ID, "reviewer-1")
+	accepted, err := AcceptReturn(db, request.ID, "reviewer-1", "accept-1")
 	if err != nil {
 		t.Fatalf("AcceptReturn() error = %v", err)
 	}
@@ -48,10 +48,12 @@ func TestAcceptReturnRecordsReviewWithoutSideEffects(t *testing.T) {
 
 func TestAcceptReturnCannotRepeatReview(t *testing.T) {
 	db, request := requestedReturn(t)
-	if _, err := AcceptReturn(db, request.ID, "reviewer-1"); err != nil {
+	if _, err := AcceptReturn(db, request.ID, "reviewer-1", "accept-1"); err != nil {
 		t.Fatalf("first AcceptReturn() error = %v", err)
 	}
-	if _, err := AcceptReturn(db, request.ID, "reviewer-1"); err != records.ErrReturnNotAcceptable {
-		t.Fatalf("repeated AcceptReturn() error = %v, want %v", err, records.ErrReturnNotAcceptable)
+	if repeated, err := AcceptReturn(db, request.ID, "reviewer-1", "accept-1"); err != nil {
+		t.Fatalf("repeated AcceptReturn() error = %v", err)
+	} else if repeated.Status != records.ReturnStatusAccepted {
+		t.Fatalf("repeated AcceptReturn() result = %#v", repeated)
 	}
 }

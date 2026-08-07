@@ -79,7 +79,7 @@ func TestAcceptReturnAtAllowsInsideWindow(t *testing.T) {
 		t.Fatalf("Order.Save() error = %v", err)
 	}
 
-	accepted, err := AcceptReturnAt(db, request.ID, shippedAt.AddDate(0, 0, records.DefaultReturnWindowDays), "reviewer-1")
+	accepted, err := AcceptReturnAt(db, request.ID, shippedAt.AddDate(0, 0, records.DefaultReturnWindowDays), "reviewer-1", "accept-1")
 	if err != nil {
 		t.Fatalf("AcceptReturnAt() error = %v", err)
 	}
@@ -100,7 +100,7 @@ func TestAcceptReturnAtRejectsExpiredWindow(t *testing.T) {
 		t.Fatalf("Order.Save() error = %v", err)
 	}
 
-	if _, err := AcceptReturnAt(db, request.ID, shippedAt.AddDate(0, 0, records.DefaultReturnWindowDays+1), "reviewer-1"); err != records.ErrReturnNotEligible {
+	if _, err := AcceptReturnAt(db, request.ID, shippedAt.AddDate(0, 0, records.DefaultReturnWindowDays+1), "reviewer-1", "accept-1"); err != records.ErrReturnNotEligible {
 		t.Fatalf("expired return error = %v, want %v", err, records.ErrReturnNotEligible)
 	}
 	saved, err := records.FindReturnRequest(db, request.ID)
@@ -129,7 +129,7 @@ func TestLegacyReturnLineUsesThirtyDayDefault(t *testing.T) {
 		t.Fatalf("ReturnRequest.Save() error = %v", err)
 	}
 
-	if _, err := AcceptReturnAt(db, request.ID, shippedAt.AddDate(0, 0, records.DefaultReturnWindowDays+1), "reviewer-1"); err != records.ErrReturnNotEligible {
+	if _, err := AcceptReturnAt(db, request.ID, shippedAt.AddDate(0, 0, records.DefaultReturnWindowDays+1), "reviewer-1", "accept-1"); err != records.ErrReturnNotEligible {
 		t.Fatalf("legacy expired return error = %v, want %v", err, records.ErrReturnNotEligible)
 	}
 }

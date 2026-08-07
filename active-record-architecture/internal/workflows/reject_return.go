@@ -4,7 +4,7 @@ import "active-record-architecture/internal/records"
 
 // RejectReturn loads a return, records the review note, and persists the
 // rejected state without applying inventory or refund side effects.
-func RejectReturn(db *records.Database, returnID string, reviewedBy string, reviewNote string) (*records.ReturnRequest, error) {
+func RejectReturn(db *records.Database, returnID string, reviewedBy string, reviewNote string, idempotencyKey string) (*records.ReturnRequest, error) {
 	if db == nil {
 		return nil, records.ErrDatabaseRequired
 	}
@@ -13,8 +13,5 @@ func RejectReturn(db *records.Database, returnID string, reviewedBy string, revi
 	if err != nil {
 		return nil, err
 	}
-	if err := request.Reject(reviewedBy, reviewNote); err != nil {
-		return nil, err
-	}
-	return request, nil
+	return request.Reject(reviewedBy, reviewNote, idempotencyKey)
 }

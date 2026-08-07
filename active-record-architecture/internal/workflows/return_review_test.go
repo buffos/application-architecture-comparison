@@ -9,14 +9,14 @@ import (
 func TestRejectReturnBlocksRefundAndRestock(t *testing.T) {
 	db, request := requestedReturn(t)
 
-	rejected, err := RejectReturn(db, request.ID, "reviewer-1", "outside service policy")
+	rejected, err := RejectReturn(db, request.ID, "reviewer-1", "outside service policy", "reject-1")
 	if err != nil {
 		t.Fatalf("RejectReturn() error = %v", err)
 	}
 	if rejected.Status != records.ReturnStatusRejected || rejected.ReviewNote != "outside service policy" {
 		t.Fatalf("rejected return = %#v", rejected)
 	}
-	if _, err := CompleteRefund(db, request.ID, "processor-1"); err != records.ErrReturnNotRefundable {
+	if _, err := CompleteRefund(db, request.ID, "processor-1", "refund-1"); err != records.ErrReturnNotRefundable {
 		t.Fatalf("rejected refund error = %v, want %v", err, records.ErrReturnNotRefundable)
 	}
 	stock, err := records.FindStock(db, "sku-001")
@@ -30,14 +30,14 @@ func TestRejectReturnBlocksRefundAndRestock(t *testing.T) {
 
 func TestCompleteRefundAppliesEffectsOnlyAfterAcceptance(t *testing.T) {
 	db, request := requestedReturn(t)
-	if _, err := CompleteRefund(db, request.ID, "processor-1"); err != records.ErrReturnNotRefundable {
+	if _, err := CompleteRefund(db, request.ID, "processor-1", "refund-1"); err != records.ErrReturnNotRefundable {
 		t.Fatalf("requested refund error = %v, want %v", err, records.ErrReturnNotRefundable)
 	}
-	if _, err := AcceptReturn(db, request.ID, "reviewer-1"); err != nil {
+	if _, err := AcceptReturn(db, request.ID, "reviewer-1", "accept-1"); err != nil {
 		t.Fatalf("AcceptReturn() error = %v", err)
 	}
 
-	completed, err := CompleteRefund(db, request.ID, "processor-1")
+	completed, err := CompleteRefund(db, request.ID, "processor-1", "refund-1")
 	if err != nil {
 		t.Fatalf("CompleteRefund() error = %v", err)
 	}
@@ -62,7 +62,7 @@ func TestCompleteRefundAppliesEffectsOnlyAfterAcceptance(t *testing.T) {
 
 func TestCompleteRefundRejectsInvalidLinesWithoutSideEffects(t *testing.T) {
 	db, request := requestedReturn(t)
-	if _, err := AcceptReturn(db, request.ID, "reviewer-1"); err != nil {
+	if _, err := AcceptReturn(db, request.ID, "reviewer-1", "accept-1"); err != nil {
 		t.Fatalf("AcceptReturn() error = %v", err)
 	}
 	request, err := records.FindReturnRequest(db, request.ID)
@@ -74,7 +74,7 @@ func TestCompleteRefundRejectsInvalidLinesWithoutSideEffects(t *testing.T) {
 		t.Fatalf("ReturnRequest.Save() error = %v", err)
 	}
 
-	if _, err := CompleteRefund(db, request.ID, "processor-1"); err != records.ErrReturnLinesInvalid {
+	if _, err := CompleteRefund(db, request.ID, "processor-1", "refund-1"); err != records.ErrReturnLinesInvalid {
 		t.Fatalf("invalid quantity error = %v, want %v", err, records.ErrReturnLinesInvalid)
 	}
 	order, err := records.FindOrder(db, request.OrderID)
@@ -88,10 +88,12 @@ func TestCompleteRefundRejectsInvalidLinesWithoutSideEffects(t *testing.T) {
 
 func TestRejectReturnRequiresRequestedState(t *testing.T) {
 	db, request := requestedReturn(t)
-	if _, err := RejectReturn(db, request.ID, "reviewer-1", "no"); err != nil {
+	if _, err := RejectReturn(db, request.ID, "reviewer-1", "no", "reject-1"); err != nil {
 		t.Fatalf("RejectReturn() error = %v", err)
 	}
-	if _, err := RejectReturn(db, request.ID, "reviewer-1", "again"); err != records.ErrReturnNotRejectable {
-		t.Fatalf("repeated RejectReturn() error = %v, want %v", err, records.ErrReturnNotRejectable)
+	if repeated, err := RejectReturn(db, request.ID, "reviewer-1", "again", "reject-1"); err != nil {
+		t.Fatalf("repeated RejectReturn() error = %v", err)
+	} else if repeated.Status != records.ReturnStatusRejected || repeated.ReviewNote != "no" {
+		t.Fatalf("repeated RejectReturn() result = %#v", repeated)
 	}
 }

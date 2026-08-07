@@ -12,10 +12,10 @@ func TestReturnActorsPersistAcrossRequestReviewAndRefund(t *testing.T) {
 		t.Fatalf("requester = %q, want customer-1", request.RequestedBy)
 	}
 
-	if _, err := AcceptReturn(db, request.ID, "reviewer-1"); err != nil {
+	if _, err := AcceptReturn(db, request.ID, "reviewer-1", "accept-1"); err != nil {
 		t.Fatalf("AcceptReturn() error = %v", err)
 	}
-	if _, err := CompleteRefund(db, request.ID, "processor-1"); err != nil {
+	if _, err := CompleteRefund(db, request.ID, "processor-1", "refund-1"); err != nil {
 		t.Fatalf("CompleteRefund() error = %v", err)
 	}
 
@@ -37,7 +37,7 @@ func TestReturnActorsPersistAcrossRequestReviewAndRefund(t *testing.T) {
 
 func TestRejectedReturnPersistsReviewerWithoutCompletingRefund(t *testing.T) {
 	db, request := requestedReturn(t)
-	rejected, err := RejectReturn(db, request.ID, "reviewer-2", "not covered")
+	rejected, err := RejectReturn(db, request.ID, "reviewer-2", "not covered", "reject-1")
 	if err != nil {
 		t.Fatalf("RejectReturn() error = %v", err)
 	}
@@ -66,16 +66,16 @@ func TestMissingReturnActorsAreRejectedBeforeMutation(t *testing.T) {
 	}
 
 	db, request := requestedReturn(t)
-	if _, err := AcceptReturn(db, request.ID, ""); err != records.ErrActorRequired {
+	if _, err := AcceptReturn(db, request.ID, "", "accept-1"); err != records.ErrActorRequired {
 		t.Fatalf("missing reviewer on accept = %v, want %v", err, records.ErrActorRequired)
 	}
-	if _, err := RejectReturn(db, request.ID, "", "missing reviewer"); err != records.ErrActorRequired {
+	if _, err := RejectReturn(db, request.ID, "", "missing reviewer", "reject-1"); err != records.ErrActorRequired {
 		t.Fatalf("missing reviewer on reject = %v, want %v", err, records.ErrActorRequired)
 	}
-	if _, err := AcceptReturn(db, request.ID, "reviewer-1"); err != nil {
+	if _, err := AcceptReturn(db, request.ID, "reviewer-1", "accept-1"); err != nil {
 		t.Fatalf("AcceptReturn() error = %v", err)
 	}
-	if _, err := CompleteRefund(db, request.ID, ""); err != records.ErrActorRequired {
+	if _, err := CompleteRefund(db, request.ID, "", "refund-1"); err != records.ErrActorRequired {
 		t.Fatalf("missing processor = %v, want %v", err, records.ErrActorRequired)
 	}
 	stock, err := records.FindStock(db, "sku-001")

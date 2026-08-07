@@ -111,6 +111,7 @@ type Database struct {
 	shipments          map[string]shipmentRow
 	returns            map[string]returnRow
 	refunds            map[string]refundRow
+	idempotency        map[string]string
 	nextQuoteNumber    int
 	nextOrderNumber    int
 	nextPaymentNumber  int
@@ -121,15 +122,16 @@ type Database struct {
 
 func NewDatabase() *Database {
 	return &Database{
-		customers: make(map[string]customerRow),
-		quotes:    make(map[string]quoteRow),
-		products:  make(map[string]productRow),
-		orders:    make(map[string]orderRow),
-		stocks:    make(map[string]stockRow),
-		payments:  make(map[string]paymentRow),
-		shipments: make(map[string]shipmentRow),
-		returns:   make(map[string]returnRow),
-		refunds:   make(map[string]refundRow),
+		customers:   make(map[string]customerRow),
+		quotes:      make(map[string]quoteRow),
+		products:    make(map[string]productRow),
+		orders:      make(map[string]orderRow),
+		stocks:      make(map[string]stockRow),
+		payments:    make(map[string]paymentRow),
+		shipments:   make(map[string]shipmentRow),
+		returns:     make(map[string]returnRow),
+		refunds:     make(map[string]refundRow),
+		idempotency: make(map[string]string),
 	}
 }
 

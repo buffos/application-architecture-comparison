@@ -16,17 +16,18 @@ const (
 )
 
 var (
-	ErrOrderNotReturnable  = errors.New("order is not returnable")
-	ErrReturnIDRequired    = errors.New("return id is required")
-	ErrReturnNotFound      = errors.New("return request not found")
-	ErrReturnLinesInvalid  = errors.New("return lines are invalid")
-	ErrReturnNotAcceptable = errors.New("return is not requested")
-	ErrReturnNotRejectable = errors.New("return is not requested")
-	ErrReturnNotRefundable = errors.New("return refund cannot be completed")
-	ErrReturnNotEligible   = errors.New("return is not eligible")
-	ErrReturnOrderMissing  = errors.New("return order not found")
-	ErrReturnStockMissing  = errors.New("return stock record not found")
-	ErrActorRequired       = errors.New("return actor is required")
+	ErrOrderNotReturnable     = errors.New("order is not returnable")
+	ErrReturnIDRequired       = errors.New("return id is required")
+	ErrReturnNotFound         = errors.New("return request not found")
+	ErrReturnLinesInvalid     = errors.New("return lines are invalid")
+	ErrReturnNotAcceptable    = errors.New("return is not requested")
+	ErrReturnNotRejectable    = errors.New("return is not requested")
+	ErrReturnNotRefundable    = errors.New("return refund cannot be completed")
+	ErrReturnNotEligible      = errors.New("return is not eligible")
+	ErrReturnOrderMissing     = errors.New("return order not found")
+	ErrReturnStockMissing     = errors.New("return stock record not found")
+	ErrActorRequired          = errors.New("return actor is required")
+	ErrIdempotencyKeyRequired = errors.New("idempotency key is required")
 )
 
 // ReturnLine is a passive request for a quantity from an order-line snapshot.
@@ -61,75 +62,101 @@ type ReturnRequest struct {
 
 // Accept records a positive review decision. Side effects wait for
 // CompleteRefund so the review boundary is explicit.
-func (request *ReturnRequest) Accept(reviewedBy string) error {
-	return request.AcceptAt(time.Now(), reviewedBy)
+func (request *ReturnRequest) Accept(reviewedBy string, idempotencyKey string) (*ReturnRequest, error) {
+	return request.AcceptAt(time.Now(), reviewedBy, idempotencyKey)
 }
 
 // AcceptAt is the deterministic form of Accept used by tests and
 // demonstrations.
-func (request *ReturnRequest) AcceptAt(now time.Time, reviewedBy string) error {
+func (request *ReturnRequest) AcceptAt(now time.Time, reviewedBy string, idempotencyKey string) (*ReturnRequest, error) {
 	if request == nil || request.db == nil {
-		return ErrDatabaseRequired
+		return nil, ErrDatabaseRequired
 	}
 	if reviewedBy == "" {
-		return ErrActorRequired
+		return nil, ErrActorRequired
+	}
+	if idempotencyKey == "" {
+		return nil, ErrIdempotencyKeyRequired
+	}
+	if existing, found := findIdempotentReturn(request.db, "accept-return", idempotencyKey); found {
+		return existing, nil
 	}
 	if request.Status != ReturnStatusRequested {
-		return ErrReturnNotAcceptable
+		return nil, ErrReturnNotAcceptable
 	}
 	order, err := FindOrder(request.db, request.OrderID)
 	if err != nil {
-		return ErrReturnOrderMissing
+		return nil, ErrReturnOrderMissing
 	}
 	if decision := request.EvaluateEligibilityAt(order, now); !decision.Eligible {
-		return ErrReturnNotEligible
+		return nil, ErrReturnNotEligible
 	}
 	request.Status = ReturnStatusAccepted
 	request.ReviewedBy = reviewedBy
-	return request.Save()
+	if err := request.Save(); err != nil {
+		return nil, err
+	}
+	saveIdempotentReturn(request.db, "accept-return", idempotencyKey, request)
+	return request, nil
 }
 
 // Reject records a negative review decision without changing the order,
 // stock, or refund records.
-func (request *ReturnRequest) Reject(reviewedBy string, reviewNote string) error {
+func (request *ReturnRequest) Reject(reviewedBy string, reviewNote string, idempotencyKey string) (*ReturnRequest, error) {
 	if request == nil || request.db == nil {
-		return ErrDatabaseRequired
+		return nil, ErrDatabaseRequired
 	}
 	if reviewedBy == "" {
-		return ErrActorRequired
+		return nil, ErrActorRequired
+	}
+	if idempotencyKey == "" {
+		return nil, ErrIdempotencyKeyRequired
+	}
+	if existing, found := findIdempotentReturn(request.db, "reject-return", idempotencyKey); found {
+		return existing, nil
 	}
 	if request.Status != ReturnStatusRequested {
-		return ErrReturnNotRejectable
+		return nil, ErrReturnNotRejectable
 	}
 	request.Status = ReturnStatusRejected
 	request.ReviewedBy = reviewedBy
 	request.ReviewNote = reviewNote
-	return request.Save()
+	if err := request.Save(); err != nil {
+		return nil, err
+	}
+	saveIdempotentReturn(request.db, "reject-return", idempotencyKey, request)
+	return request, nil
 }
 
 // CompleteRefund applies the accepted return's reverse side effects and
 // completes its linked refund.
-func (request *ReturnRequest) CompleteRefund(processedBy string) error {
+func (request *ReturnRequest) CompleteRefund(processedBy string, idempotencyKey string) (*ReturnRequest, error) {
 	if request == nil || request.db == nil {
-		return ErrDatabaseRequired
+		return nil, ErrDatabaseRequired
 	}
 	if processedBy == "" {
-		return ErrActorRequired
+		return nil, ErrActorRequired
+	}
+	if idempotencyKey == "" {
+		return nil, ErrIdempotencyKeyRequired
+	}
+	if existing, found := findIdempotentReturn(request.db, "complete-refund", idempotencyKey); found {
+		return existing, nil
 	}
 	if request.Status != ReturnStatusAccepted {
-		return ErrReturnNotRefundable
+		return nil, ErrReturnNotRefundable
 	}
 
 	order, err := FindOrder(request.db, request.OrderID)
 	if err != nil {
-		return ErrReturnOrderMissing
+		return nil, ErrReturnOrderMissing
 	}
 	refund, err := FindRefund(request.db, request.RefundID)
 	if err != nil {
-		return ErrReturnNotRefundable
+		return nil, ErrReturnNotRefundable
 	}
 	if refund.Status != RefundStatusNotStarted {
-		return ErrReturnNotRefundable
+		return nil, ErrReturnNotRefundable
 	}
 
 	type validatedLine struct {
@@ -140,7 +167,7 @@ func (request *ReturnRequest) CompleteRefund(processedBy string) error {
 	validated := make([]validatedLine, 0, len(request.Lines))
 	for _, returnLine := range request.Lines {
 		if returnLine.Quantity <= 0 {
-			return ErrReturnLinesInvalid
+			return nil, ErrReturnLinesInvalid
 		}
 
 		orderLineIndex := -1
@@ -150,18 +177,18 @@ func (request *ReturnRequest) CompleteRefund(processedBy string) error {
 			}
 			remaining := orderLine.ShippedQuantity - orderLine.ReturnedQuantity
 			if returnLine.Quantity > remaining {
-				return ErrReturnLinesInvalid
+				return nil, ErrReturnLinesInvalid
 			}
 			orderLineIndex = index
 			break
 		}
 		if orderLineIndex < 0 {
-			return ErrReturnLinesInvalid
+			return nil, ErrReturnLinesInvalid
 		}
 
 		stock, err := FindStock(request.db, order.Lines[orderLineIndex].SKU)
 		if err != nil {
-			return ErrReturnStockMissing
+			return nil, ErrReturnStockMissing
 		}
 		validated = append(validated, validatedLine{
 			orderLineIndex: orderLineIndex,
@@ -174,22 +201,26 @@ func (request *ReturnRequest) CompleteRefund(processedBy string) error {
 		order.Lines[line.orderLineIndex].ReturnedQuantity += line.quantity
 		line.stock.OnHand += line.quantity
 		if err := line.stock.Save(); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	refund.Status = RefundStatusCompleted
 	refund.ProcessedBy = processedBy
 	if err := refund.Save(); err != nil {
-		return err
+		return nil, err
 	}
 	request.Status = ReturnStatusRefunded
 	request.RefundStatus = RefundStatusCompleted
 	request.ProcessedBy = processedBy
 	if err := order.Save(); err != nil {
-		return err
+		return nil, err
 	}
-	return request.Save()
+	if err := request.Save(); err != nil {
+		return nil, err
+	}
+	saveIdempotentReturn(request.db, "complete-refund", idempotencyKey, request)
+	return request, nil
 }
 
 // FindReturnRequest loads a return request Active Record from the returns
