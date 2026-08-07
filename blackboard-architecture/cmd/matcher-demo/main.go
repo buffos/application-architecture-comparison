@@ -81,6 +81,11 @@ func (bb *Blackboard) BestHypothesis() (MatchHypothesis, bool) {
 	return best, found
 }
 
+func (bb *Blackboard) HasConverged(threshold float64) bool {
+	best, found := bb.BestHypothesis()
+	return found && best.Score >= threshold
+}
+
 type KnowledgeSource interface {
 	Name() string
 	Execute(bb *Blackboard)
@@ -150,6 +155,38 @@ func (CustomerNameMatcher) Execute(bb *Blackboard) {
 	}
 }
 
+type Controller struct {
+	sources             []KnowledgeSource
+	confidenceThreshold float64
+}
+
+func NewController(confidenceThreshold float64) *Controller {
+	return &Controller{
+		sources:             []KnowledgeSource{},
+		confidenceThreshold: confidenceThreshold,
+	}
+}
+
+func (c *Controller) RegisterKS(source KnowledgeSource) {
+	c.sources = append(c.sources, source)
+}
+
+func (c *Controller) Run(bb *Blackboard) (MatchHypothesis, bool) {
+	for index, source := range c.sources {
+		if bb.HasConverged(c.confidenceThreshold) {
+			best, _ := bb.BestHypothesis()
+			fmt.Printf("Converged at %.1f; skipped %d source(s)\n", best.Score, len(c.sources)-index)
+			break
+		}
+
+		fmt.Printf("Controller executing: %s\n", source.Name())
+		source.Execute(bb)
+	}
+
+	best, found := bb.BestHypothesis()
+	return best, found && best.Score >= c.confidenceThreshold
+}
+
 func formatCents(amountCents int64) string {
 	return fmt.Sprintf("%d.%02d", amountCents/100, amountCents%100)
 }
@@ -167,15 +204,11 @@ func main() {
 	}
 
 	blackboard := NewBlackboard(incomingPayment, unpaidInvoices)
-	sources := []KnowledgeSource{
-		ExactAmountMatcher{},
-		ReferenceMatcher{},
-		CustomerNameMatcher{},
-	}
-	for _, source := range sources {
-		fmt.Printf("Executing: %s\n", source.Name())
-		source.Execute(blackboard)
-	}
+	controller := NewController(0.7)
+	controller.RegisterKS(ReferenceMatcher{})
+	controller.RegisterKS(ExactAmountMatcher{})
+	controller.RegisterKS(CustomerNameMatcher{})
+	best, converged := controller.Run(blackboard)
 
 	fmt.Printf("Payment memo: %q\n", blackboard.Payment.RawMemo)
 	fmt.Printf("Payment amount: %s\n", formatCents(blackboard.Payment.AmountCents))
@@ -194,7 +227,6 @@ func main() {
 		}
 	}
 
-	if best, ok := blackboard.BestHypothesis(); ok {
-		fmt.Printf("Highest current score: %.1f\n", best.Score)
-	}
+	fmt.Printf("Controller result: %s with score %.1f\n", best.InvoiceID, best.Score)
+	fmt.Printf("Converged: %t\n", converged)
 }
