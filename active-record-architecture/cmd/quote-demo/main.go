@@ -39,6 +39,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	quote, err = workflows.SubmitQuoteForApproval(db, quote.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	reloadedQuote, err := records.FindQuote(db, quote.ID)
 	if err != nil {
 		log.Fatal(err)
@@ -56,5 +61,10 @@ func main() {
 		reloadedQuote.Lines[0].SKU,
 		reloadedQuote.Lines[0].Quantity,
 		reloadedQuote.Lines[0].LineTotal,
+	)
+	fmt.Printf(
+		"submitted quote for approval: quote=%s status=%s\n",
+		reloadedQuote.ID,
+		reloadedQuote.Status,
 	)
 }

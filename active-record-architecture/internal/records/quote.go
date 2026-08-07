@@ -2,7 +2,11 @@ package records
 
 import "errors"
 
-const QuoteStatusDraft = "Draft"
+const (
+	QuoteStatusDraft           = "Draft"
+	QuoteStatusPendingApproval = "PendingApproval"
+	QuoteStatusApproved        = "Approved"
+)
 
 var (
 	ErrQuoteIDRequired         = errors.New("quote id is required")
@@ -10,6 +14,8 @@ var (
 	ErrQuoteStatusRequired     = errors.New("quote status is required")
 	ErrQuoteNotFound           = errors.New("quote not found")
 	ErrQuoteNotEditable        = errors.New("quote is no longer editable")
+	ErrQuoteNotSubmittable     = errors.New("quote must be in draft status")
+	ErrQuoteHasNoLines         = errors.New("quote must have at least one line")
 	ErrProductRequired         = errors.New("product is required")
 	ErrQuantityInvalid         = errors.New("quantity must be positive")
 )
@@ -117,6 +123,30 @@ func (quote *Quote) AddLine(product *Product, quantity int) error {
 		ReturnWindowDays:    product.ReturnWindowDays,
 		LineTotal:           product.UnitPrice * quantity,
 	})
+	return nil
+}
+
+// SubmitForApproval applies the first quote lifecycle decision directly on
+// the Active Record. Custom-build lines require a review; other quotes can be
+// approved automatically.
+func (quote *Quote) SubmitForApproval() error {
+	if quote == nil || quote.db == nil {
+		return ErrDatabaseRequired
+	}
+	if quote.Status != QuoteStatusDraft {
+		return ErrQuoteNotSubmittable
+	}
+	if len(quote.Lines) == 0 {
+		return ErrQuoteHasNoLines
+	}
+
+	quote.Status = QuoteStatusApproved
+	for _, line := range quote.Lines {
+		if line.ProductCategory == "CustomBuild" {
+			quote.Status = QuoteStatusPendingApproval
+			break
+		}
+	}
 	return nil
 }
 
