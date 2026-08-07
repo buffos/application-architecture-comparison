@@ -26,7 +26,7 @@ func approvedQuoteForShipment(t *testing.T) quoting.Quote {
 	if err != nil {
 		t.Fatal(err)
 	}
-	line, err := quoting.NewQuoteLine("sku-001", 1, price)
+	line, err := quoting.NewQuoteLine("sku-001", 2, price)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,5 +71,51 @@ func TestShipmentRejectsUnpaidOrder(t *testing.T) {
 	}
 	if _, err := NewShipmentFromPaidOrder("shipment-001", order); !errors.Is(err, ErrOrderNotPaid) {
 		t.Fatalf("unpaid shipment creation returned %v", err)
+	}
+}
+
+func TestShipmentCanContainPartialSelection(t *testing.T) {
+	order := paidOrder(t)
+	selection := []ordering.ShipmentSelection{{ProductSKU: "sku-001", Quantity: 1}}
+	shipment, err := NewShipmentFromOrderSelection("shipment-001", order, selection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(shipment.Lines()) != 1 || shipment.Lines()[0].Quantity() != 1 {
+		t.Fatalf("unexpected shipment: %+v", shipment)
+	}
+	if err := shipment.Dispatch(); err != nil {
+		t.Fatal(err)
+	}
+	if err := order.ApplyShipment(selection); err != nil {
+		t.Fatal(err)
+	}
+	if order.Status() != ordering.OrderStatusPartiallyShipped || order.Lines()[0].ShippedQuantity() != 1 {
+		t.Fatalf("unexpected partial order: status=%s line=%+v", order.Status(), order.Lines()[0])
+	}
+
+	remaining, err := NewShipmentFromOrderSelection("shipment-002", order, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(remaining.Lines()) != 1 || remaining.Lines()[0].Quantity() != 1 {
+		t.Fatalf("unexpected remaining shipment: %+v", remaining)
+	}
+	if err := order.ApplyShipment(nil); err != nil {
+		t.Fatal(err)
+	}
+	if order.Status() != ordering.OrderStatusShipped || order.Lines()[0].ShippedQuantity() != 2 {
+		t.Fatalf("unexpected completed order: status=%s line=%+v", order.Status(), order.Lines()[0])
+	}
+	if err := order.Cancel(); !errors.Is(err, ordering.ErrOrderNotCancellable) {
+		t.Fatalf("partial shipment cancellation returned %v", err)
+	}
+}
+
+func TestShipmentRejectsQuantityBeyondRemainingOrderQuantity(t *testing.T) {
+	order := paidOrder(t)
+	_, err := NewShipmentFromOrderSelection("shipment-001", order, []ordering.ShipmentSelection{{ProductSKU: "sku-001", Quantity: 3}})
+	if !errors.Is(err, ErrShipmentSelectionInvalid) {
+		t.Fatalf("invalid selection returned %v", err)
 	}
 }

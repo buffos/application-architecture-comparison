@@ -5,10 +5,12 @@ import (
 	"log"
 	"time"
 
-	applicationorders "rich-domain-model-architecture/internal/application/orders"
 	applicationcustomers "rich-domain-model-architecture/internal/application/customers"
+	applicationorders "rich-domain-model-architecture/internal/application/orders"
 	applicationproducts "rich-domain-model-architecture/internal/application/products"
 	applicationquotes "rich-domain-model-architecture/internal/application/quotes"
+	"rich-domain-model-architecture/internal/application/reports"
+	applicationreturns "rich-domain-model-architecture/internal/application/returns"
 	applicationshipments "rich-domain-model-architecture/internal/application/shipments"
 	"rich-domain-model-architecture/internal/domain/catalog"
 	"rich-domain-model-architecture/internal/domain/customer"
@@ -18,8 +20,6 @@ import (
 	"rich-domain-model-architecture/internal/domain/payments"
 	"rich-domain-model-architecture/internal/domain/quoting"
 	domainreturns "rich-domain-model-architecture/internal/domain/returns"
-	applicationreturns "rich-domain-model-architecture/internal/application/returns"
-	"rich-domain-model-architecture/internal/application/reports"
 )
 
 func main() {
@@ -193,18 +193,22 @@ func main() {
 	fmt.Printf("payment aggregate: id=%s status=%s order=%s\n", payment.ID(), payment.Status(), payment.OrderID())
 	fmt.Printf("paid order aggregate: id=%s status=%s\n", order.ID(), order.Status())
 
-	shipment, err := fulfillment.NewShipmentFromPaidOrder("shipment-001", order)
+	shipmentSelection := []ordering.ShipmentSelection{{
+		ProductSKU: ordering.ProductSKU(product.SKU()),
+		Quantity:   1,
+	}}
+	shipment, err := fulfillment.NewShipmentFromOrderSelection("shipment-001", order, shipmentSelection)
 	if err != nil {
 		log.Fatal(err)
 	}
 	if err := shipment.Dispatch(); err != nil {
 		log.Fatal(err)
 	}
-	if err := order.MarkShipped(); err != nil {
+	if err := order.ApplyShipment(shipmentSelection); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("shipment aggregate: id=%s status=%s lines=%d\n", shipment.ID(), shipment.Status(), len(shipment.Lines()))
-	fmt.Printf("shipped order aggregate: id=%s status=%s\n", order.ID(), order.Status())
+	fmt.Printf("partially shipped order: id=%s status=%s shipped=%d\n", order.ID(), order.Status(), order.Lines()[0].ShippedQuantity())
 	shipmentReader := applicationshipments.NewInMemoryReader()
 	shipmentReader.Save(shipment)
 	shipmentDetails, err := shipmentReader.GetShipment(string(shipment.ID()))
@@ -212,6 +216,18 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("shipment query: id=%s status=%s lines=%d\n", shipmentDetails.ShipmentID, shipmentDetails.Status, len(shipmentDetails.Lines))
+	remainingShipment, err := fulfillment.NewShipmentFromOrderSelection("shipment-002", order, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := remainingShipment.Dispatch(); err != nil {
+		log.Fatal(err)
+	}
+	if err := order.ApplyShipment(nil); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("remaining shipment: id=%s status=%s lines=%d\n", remainingShipment.ID(), remainingShipment.Status(), len(remainingShipment.Lines()))
+	fmt.Printf("shipped order aggregate: id=%s status=%s\n", order.ID(), order.Status())
 	if err := order.Cancel(); err != nil {
 		fmt.Printf("cancellation blocked: order=%s reason=%s\n", order.ID(), err)
 	}

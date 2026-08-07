@@ -25,19 +25,21 @@ type ProductCategory string
 type OrderStatus string
 
 const (
-	OrderStatusPendingPayment OrderStatus = "PendingPayment"
-	OrderStatusPaymentReview  OrderStatus = "PaymentReview"
-	OrderStatusPaid           OrderStatus = "Paid"
-	OrderStatusShipped        OrderStatus = "Shipped"
-	OrderStatusCancelled      OrderStatus = "Cancelled"
+	OrderStatusPendingPayment   OrderStatus = "PendingPayment"
+	OrderStatusPaymentReview    OrderStatus = "PaymentReview"
+	OrderStatusPartiallyShipped OrderStatus = "PartiallyShipped"
+	OrderStatusPaid             OrderStatus = "Paid"
+	OrderStatusShipped          OrderStatus = "Shipped"
+	OrderStatusCancelled        OrderStatus = "Cancelled"
 )
 
 type OrderLine struct {
-	sku         ProductSKU
-	productName string
-	category    ProductCategory
-	quantity    int
-	unitPrice   Money
+	sku             ProductSKU
+	productName     string
+	category        ProductCategory
+	quantity        int
+	unitPrice       Money
+	shippedQuantity int
 }
 
 func (line OrderLine) ProductSKU() ProductSKU           { return line.sku }
@@ -45,6 +47,12 @@ func (line OrderLine) ProductName() string              { return line.productNam
 func (line OrderLine) ProductCategory() ProductCategory { return line.category }
 func (line OrderLine) Quantity() int                    { return line.quantity }
 func (line OrderLine) UnitPrice() Money                 { return line.unitPrice }
+func (line OrderLine) ShippedQuantity() int             { return line.shippedQuantity }
+
+type ShipmentSelection struct {
+	ProductSKU ProductSKU
+	Quantity   int
+}
 
 // Order is the aggregate root for committed commercial transactions.
 type Order struct {
@@ -143,8 +151,58 @@ func (order *Order) ApprovePaymentReview() error {
 }
 
 func (order *Order) MarkShipped() error {
-	if order.status != OrderStatusPaid {
+	return order.ApplyShipment(nil)
+}
+
+func (order *Order) ApplyShipment(selections []ShipmentSelection) error {
+	if order.status != OrderStatusPaid && order.status != OrderStatusPartiallyShipped {
 		return ErrOrderNotShippable
+	}
+	if len(selections) == 0 {
+		selections = make([]ShipmentSelection, 0, len(order.lines))
+		for _, line := range order.lines {
+			if remaining := line.quantity - line.shippedQuantity; remaining > 0 {
+				selections = append(selections, ShipmentSelection{ProductSKU: line.sku, Quantity: remaining})
+			}
+		}
+	}
+
+	requested := make(map[ProductSKU]int, len(selections))
+	for _, selection := range selections {
+		if selection.Quantity <= 0 {
+			return ErrOrderNotShippable
+		}
+		requested[selection.ProductSKU] += selection.Quantity
+	}
+	for sku, quantity := range requested {
+		matched := false
+		for _, line := range order.lines {
+			if line.sku != sku {
+				continue
+			}
+			if quantity > line.quantity-line.shippedQuantity {
+				return ErrOrderNotShippable
+			}
+			matched = true
+			break
+		}
+		if !matched {
+			return ErrOrderNotShippable
+		}
+	}
+
+	for sku, quantity := range requested {
+		for index := range order.lines {
+			if order.lines[index].sku == sku {
+				order.lines[index].shippedQuantity += quantity
+			}
+		}
+	}
+	for _, line := range order.lines {
+		if line.shippedQuantity < line.quantity {
+			order.status = OrderStatusPartiallyShipped
+			return nil
+		}
 	}
 	order.status = OrderStatusShipped
 	return nil
