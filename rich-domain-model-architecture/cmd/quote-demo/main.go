@@ -231,6 +231,8 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("return review: id=%s status=%s reviewed=%s processed=%s\n", reviewResult.ReturnRequestID, reviewResult.Status, reviewResult.ReviewedBy, reviewResult.ProcessedBy)
+	returnRateReport := reports.BuildReturnRateByCategoryReport([]ordering.Order{order}, []domainreturns.ReturnRequest{returnRequest})
+	fmt.Printf("return rate report: categories=%d rate=%.2f\n", len(returnRateReport.Rows), returnRateReport.Rows[0].ReturnRate)
 	returnReader := applicationreturns.NewInMemoryReader()
 	returnReader.Save(returnRequest)
 	returnDetails, err := returnReader.GetReturnRequest(string(returnRequest.ID()))
