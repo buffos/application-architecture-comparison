@@ -53,14 +53,20 @@ func AddQuoteLine(store *data.Store, quoteID string, sku string, quantity int) (
 		return data.Quote{}, ErrProductInactive
 	}
 
+	unitPrice, discountAmount, lineTotal, err := PriceQuoteLine(store, product, quantity)
+	if err != nil {
+		return data.Quote{}, err
+	}
+
 	quote.Lines = append(quote.Lines, data.QuoteLine{
 		ProductCategory:     product.Category,
 		SKU:                 product.SKU,
 		ProductNameSnapshot: product.Name,
 		Quantity:            quantity,
-		UnitPrice:           product.UnitPrice,
+		UnitPrice:           unitPrice,
+		DiscountAmount:      discountAmount,
 		ReturnWindowDays:    product.ReturnWindowDays,
-		LineTotal:           product.UnitPrice * quantity,
+		LineTotal:           lineTotal,
 	})
 
 	store.Quotes[quote.ID] = quote

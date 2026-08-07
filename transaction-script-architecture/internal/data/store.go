@@ -61,6 +61,7 @@ type Store struct {
 	Returns            map[string]ReturnRequest
 	Refunds            map[string]Refund
 	Idempotency        map[string]string
+	Plugins            map[string]PluginRegistration
 	NextQuoteNumber    int
 	NextOrderNumber    int
 	NextPaymentNumber  int
@@ -81,5 +82,6 @@ func NewStore() *Store {
 		Returns:     make(map[string]ReturnRequest),
 		Refunds:     make(map[string]Refund),
 		Idempotency: make(map[string]string),
+		Plugins:     make(map[string]PluginRegistration),
 	}
 }
