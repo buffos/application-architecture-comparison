@@ -65,6 +65,19 @@ func main() {
 		quote.Status,
 	)
 
+	order, err := scripts.ConvertQuoteToOrder(store, quote.ID, "sales-1")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf(
+		"converted quote: quote=%s order=%s status=%s total=%d\n",
+		quote.ID,
+		order.ID,
+		order.Status,
+		order.Total,
+	)
+
 	pendingQuote, err := scripts.CreateDraftQuote(store, "customer-001")
 	if err != nil {
 		log.Fatal(err)
