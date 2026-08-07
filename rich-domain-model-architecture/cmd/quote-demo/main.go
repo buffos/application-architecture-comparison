@@ -39,12 +39,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	line, err := quoting.NewQuoteLineFromProductSnapshot(
-		quoting.ProductSKU(product.SKU()),
-		product.Name(),
-		2,
-		quotePrice,
-	)
+	line, err := quoting.NewQuotePricingService().PriceLine(quoting.ProductPricingInput{
+		SKU:         quoting.ProductSKU(product.SKU()),
+		ProductName: product.Name(),
+		Category:    quoting.ProductCategory(product.Category()),
+		BasePrice:   quotePrice,
+	}, quoting.CustomerPricingTier(customerAggregate.Tier()), 2)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -10,6 +10,7 @@ var (
 	ErrCustomerIDRequired     = errors.New("customer id is required")
 	ErrProductSKURequired     = errors.New("product sku is required")
 	ErrProductNameRequired    = errors.New("product name is required")
+	ErrProductCategoryInvalid = errors.New("product category is invalid")
 	ErrQuantityMustBePositive = errors.New("quantity must be positive")
 	ErrQuoteNotEditable       = errors.New("quote is no longer editable")
 	ErrQuoteHasNoLines        = errors.New("quote must contain at least one line")
@@ -21,6 +22,13 @@ var (
 type QuoteID string
 type CustomerID string
 type ProductSKU string
+type ProductCategory string
+
+const (
+	ProductCategoryStandard    ProductCategory = "Standard"
+	ProductCategoryCustomBuild ProductCategory = "CustomBuild"
+	ProductCategoryClearance   ProductCategory = "Clearance"
+)
 
 type QuoteStatus string
 
@@ -36,24 +44,34 @@ const (
 type QuoteLine struct {
 	sku         ProductSKU
 	productName string
+	category    ProductCategory
 	quantity    int
 	unitPrice   Money
 }
 
 func NewQuoteLine(sku ProductSKU, quantity int, unitPrice Money) (QuoteLine, error) {
-	return newQuoteLine(sku, "", quantity, unitPrice)
+	return NewQuoteLineWithCategory(sku, ProductCategoryStandard, quantity, unitPrice)
 }
 
 func NewQuoteLineFromProductSnapshot(sku ProductSKU, productName string, quantity int, unitPrice Money) (QuoteLine, error) {
+	return NewQuoteLineFromProductSnapshotWithCategory(sku, productName, ProductCategoryStandard, quantity, unitPrice)
+}
+
+func NewQuoteLineWithCategory(sku ProductSKU, category ProductCategory, quantity int, unitPrice Money) (QuoteLine, error) {
+	return newQuoteLine(sku, "", category, quantity, unitPrice)
+}
+
+func NewQuoteLineFromProductSnapshotWithCategory(sku ProductSKU, productName string, category ProductCategory, quantity int, unitPrice Money) (QuoteLine, error) {
 	if strings.TrimSpace(productName) == "" {
 		return QuoteLine{}, ErrProductNameRequired
 	}
 
-	return newQuoteLine(sku, strings.TrimSpace(productName), quantity, unitPrice)
+	return newQuoteLine(sku, strings.TrimSpace(productName), category, quantity, unitPrice)
 }
 
 func (line QuoteLine) ProductSKU() ProductSKU { return line.sku }
 func (line QuoteLine) ProductName() string    { return line.productName }
+func (line QuoteLine) ProductCategory() ProductCategory { return line.category }
 func (line QuoteLine) Quantity() int          { return line.quantity }
 func (line QuoteLine) UnitPrice() Money       { return line.unitPrice }
 
@@ -65,8 +83,8 @@ func (line QuoteLine) Total() (Money, error) {
 	return line.unitPrice.Multiply(line.quantity)
 }
 
-func newQuoteLine(sku ProductSKU, productName string, quantity int, unitPrice Money) (QuoteLine, error) {
-	line := QuoteLine{sku: sku, productName: productName, quantity: quantity, unitPrice: unitPrice}
+func newQuoteLine(sku ProductSKU, productName string, category ProductCategory, quantity int, unitPrice Money) (QuoteLine, error) {
+	line := QuoteLine{sku: sku, productName: productName, category: category, quantity: quantity, unitPrice: unitPrice}
 	if err := line.validate(); err != nil {
 		return QuoteLine{}, err
 	}
@@ -78,6 +96,9 @@ func (line QuoteLine) validate() error {
 	if line.sku == "" {
 		return ErrProductSKURequired
 	}
+	if !validProductCategory(line.category) {
+		return ErrProductCategoryInvalid
+	}
 	if line.quantity <= 0 {
 		return ErrQuantityMustBePositive
 	}
@@ -85,6 +106,15 @@ func (line QuoteLine) validate() error {
 		return ErrCurrencyRequired
 	}
 	return nil
+}
+
+func validProductCategory(category ProductCategory) bool {
+	switch category {
+	case ProductCategoryStandard, ProductCategoryCustomBuild, ProductCategoryClearance:
+		return true
+	default:
+		return false
+	}
 }
 
 // Quote is the aggregate root for the Quoting domain. It owns the quote
