@@ -19,6 +19,7 @@ import (
 	"rich-domain-model-architecture/internal/domain/quoting"
 	domainreturns "rich-domain-model-architecture/internal/domain/returns"
 	applicationreturns "rich-domain-model-architecture/internal/application/returns"
+	"rich-domain-model-architecture/internal/application/reports"
 )
 
 func main() {
@@ -127,6 +128,8 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("order aggregate: id=%s quote=%s status=%s total=%d %s\n", order.ID(), order.QuoteID(), order.Status(), orderTotal.Cents(), orderTotal.Currency())
+	conversionReport := reports.BuildQuoteConversionReport([]quoting.Quote{quote}, []ordering.Order{order})
+	fmt.Printf("quote conversion report: converted=%d rate=%.2f\n", conversionReport.ConvertedQuotes, conversionReport.ConversionRate)
 	orderReader := applicationorders.NewInMemoryReader()
 	if err := orderReader.Save(order); err != nil {
 		log.Fatal(err)
