@@ -7,6 +7,7 @@ import (
 
 	applicationcustomers "rich-domain-model-architecture/internal/application/customers"
 	applicationorders "rich-domain-model-architecture/internal/application/orders"
+	applicationpricing "rich-domain-model-architecture/internal/application/pricing"
 	applicationproducts "rich-domain-model-architecture/internal/application/products"
 	applicationquotes "rich-domain-model-architecture/internal/application/quotes"
 	"rich-domain-model-architecture/internal/application/reports"
@@ -66,15 +67,23 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	line, err := quoting.NewQuotePricingService().PriceLine(quoting.ProductPricingInput{
+	pricingInput := quoting.ProductPricingInput{
 		SKU:         quoting.ProductSKU(product.SKU()),
 		ProductName: product.Name(),
 		Category:    quoting.ProductCategory(product.Category()),
 		BasePrice:   quotePrice,
-	}, quoting.CustomerPricingTier(customerAggregate.Tier()), 2)
+	}
+	line, err := quoting.NewQuotePricingService().PriceLine(pricingInput, quoting.CustomerPricingTier(customerAggregate.Tier()), 2)
 	if err != nil {
 		log.Fatal(err)
 	}
+	seasonalLine, err := quoting.NewQuotePricingServiceWithPolicy(
+		applicationpricing.NewSeasonalPolicy(quoting.TierPricingPolicy{}, 10),
+	).PriceLine(pricingInput, quoting.CustomerPricingTier(customerAggregate.Tier()), 2)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("seasonal pricing plugin: default=%d seasonal=%d\n", line.UnitPrice().Cents(), seasonalLine.UnitPrice().Cents())
 	if err := quote.AddLine(line); err != nil {
 		log.Fatal(err)
 	}
