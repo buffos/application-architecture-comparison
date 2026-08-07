@@ -6,6 +6,7 @@ import (
 	"time"
 
 	applicationorders "rich-domain-model-architecture/internal/application/orders"
+	applicationcustomers "rich-domain-model-architecture/internal/application/customers"
 	applicationproducts "rich-domain-model-architecture/internal/application/products"
 	applicationquotes "rich-domain-model-architecture/internal/application/quotes"
 	applicationshipments "rich-domain-model-architecture/internal/application/shipments"
@@ -28,6 +29,13 @@ func main() {
 	if err := customerAggregate.EnsureCanCreateQuote(); err != nil {
 		log.Fatal(err)
 	}
+	customerReader := applicationcustomers.NewInMemoryReader()
+	customerReader.Save(customerAggregate)
+	customerDetails, err := customerReader.GetCustomer(string(customerAggregate.ID()))
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("customer query: id=%s tier=%s active=%t\n", customerDetails.CustomerID, customerDetails.Tier, customerDetails.Active)
 
 	quote, err := quoting.NewQuote("quote-001", quoting.CustomerID(customerAggregate.ID()))
 	if err != nil {
