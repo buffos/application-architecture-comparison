@@ -56,10 +56,14 @@ type Store struct {
 	Orders             map[string]Order
 	Payments           map[string]Payment
 	Shipments          map[string]Shipment
+	Returns            map[string]ReturnRequest
+	Refunds            map[string]Refund
 	NextQuoteNumber    int
 	NextOrderNumber    int
 	NextPaymentNumber  int
 	NextShipmentNumber int
+	NextReturnNumber   int
+	NextRefundNumber   int
 }
 
 func NewStore() *Store {
@@ -71,5 +75,7 @@ func NewStore() *Store {
 		Orders:    make(map[string]Order),
 		Payments:  make(map[string]Payment),
 		Shipments: make(map[string]Shipment),
+		Returns:   make(map[string]ReturnRequest),
+		Refunds:   make(map[string]Refund),
 	}
 }
