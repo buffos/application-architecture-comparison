@@ -9,12 +9,14 @@ import (
 
 var (
 	ErrReturnNotAcceptable = errors.New("return is not requested")
+	ErrReturnNotRejectable = errors.New("return is not requested")
+	ErrReturnNotRefundable = errors.New("return must be accepted before refund")
 	ErrReturnOrderMissing  = errors.New("return order not found")
 	ErrReturnStockMissing  = errors.New("return stock record not found")
 )
 
-// AcceptReturn completes the initial return workflow: it updates the order,
-// restocks inventory, and creates a completed refund.
+// AcceptReturn records the review decision. It intentionally performs no
+// financial or inventory side effect until CompleteRefund runs.
 func AcceptReturn(store *data.Store, returnID string) (data.ReturnRequest, error) {
 	if store == nil {
 		return data.ReturnRequest{}, ErrStoreRequired
@@ -33,14 +35,66 @@ func AcceptReturn(store *data.Store, returnID string) (data.ReturnRequest, error
 		return data.ReturnRequest{}, ErrReturnNotAcceptable
 	}
 
+	request.Status = data.ReturnStatusAccepted
+	store.Returns[request.ID] = request
+
+	return request, nil
+}
+
+// RejectReturn records a negative review decision and blocks later refund
+// processing.
+func RejectReturn(store *data.Store, returnID string, reviewNote string) (data.ReturnRequest, error) {
+	if store == nil {
+		return data.ReturnRequest{}, ErrStoreRequired
+	}
+
+	if returnID == "" {
+		return data.ReturnRequest{}, ErrReturnIDRequired
+	}
+
+	request, ok := store.Returns[returnID]
+	if !ok {
+		return data.ReturnRequest{}, ErrReturnNotFound
+	}
+
+	if request.Status != data.ReturnStatusRequested {
+		return data.ReturnRequest{}, ErrReturnNotRejectable
+	}
+
+	request.Status = data.ReturnStatusRejected
+	request.ReviewNote = reviewNote
+	store.Returns[request.ID] = request
+
+	return request, nil
+}
+
+// CompleteRefund applies the accepted return's order, inventory, and refund
+// writes as one procedural transaction.
+func CompleteRefund(store *data.Store, returnID string) (data.ReturnRequest, error) {
+	if store == nil {
+		return data.ReturnRequest{}, ErrStoreRequired
+	}
+
+	if returnID == "" {
+		return data.ReturnRequest{}, ErrReturnIDRequired
+	}
+
+	request, ok := store.Returns[returnID]
+	if !ok {
+		return data.ReturnRequest{}, ErrReturnNotFound
+	}
+
+	if request.Status != data.ReturnStatusAccepted {
+		return data.ReturnRequest{}, ErrReturnNotRefundable
+	}
+
 	order, ok := store.Orders[request.OrderID]
 	if !ok {
 		return data.ReturnRequest{}, ErrReturnOrderMissing
 	}
 
 	for _, returnLine := range request.Lines {
-		stock, ok := store.Stocks[returnLine.SKU]
-		if !ok {
+		if _, ok := store.Stocks[returnLine.SKU]; !ok {
 			return data.ReturnRequest{}, ErrReturnStockMissing
 		}
 
@@ -49,12 +103,12 @@ func AcceptReturn(store *data.Store, returnID string) (data.ReturnRequest, error
 			if orderLine.ID != returnLine.OrderLineID {
 				continue
 			}
+
 			remaining := orderLine.ShippedQuantity - orderLine.ReturnedQuantity
 			if returnLine.Quantity > remaining {
 				return data.ReturnRequest{}, ErrReturnLinesInvalid
 			}
 			matched = true
-			_ = stock
 			break
 		}
 		if !matched {
