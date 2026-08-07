@@ -152,6 +152,8 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("inventory reservation: sku=%s quantity=%d available=%d\n", reservations[0].SKU, reservations[0].Quantity, stock.Available())
+	lowStockReport := reports.BuildLowStockItemsReport([]inventory.StockRecord{stock}, 8)
+	fmt.Printf("low-stock report: items=%d\n", len(lowStockReport.Items))
 
 	paymentAmount, err := payments.NewMoney(orderTotal.Cents(), orderTotal.Currency())
 	if err != nil {
