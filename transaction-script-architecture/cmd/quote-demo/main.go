@@ -80,6 +80,18 @@ func main() {
 		order.Total,
 	)
 
+	order, err = scripts.CapturePayment(store, order.ID, scripts.PaymentOutcomeAccept)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf(
+		"captured payment: order=%s status=%s payment=%s\n",
+		order.ID,
+		order.Status,
+		order.PaymentID,
+	)
+
 	pendingQuote, err := scripts.CreateDraftQuote(store, "customer-001")
 	if err != nil {
 		log.Fatal(err)

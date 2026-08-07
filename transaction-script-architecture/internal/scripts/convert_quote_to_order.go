@@ -136,6 +136,7 @@ func reserveOrderStock(store *data.Store, order *data.Order) error {
 		order.Status = data.OrderStatusBackordered
 	} else {
 		order.Status = data.OrderStatusReadyForPayment
+		order.PaymentStatus = data.PaymentStatusPending
 	}
 
 	return nil

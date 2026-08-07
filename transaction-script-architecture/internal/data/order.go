@@ -10,6 +10,10 @@ const (
 	OrderStatusShipped             = "Shipped"
 	OrderStatusCancelled           = "Cancelled"
 	PaymentStatusNotRequired       = "NotRequired"
+	PaymentStatusPending           = "Pending"
+	PaymentStatusAccepted          = "Accepted"
+	PaymentStatusFailed            = "Failed"
+	PaymentStatusManualReview      = "ManualReview"
 )
 
 // OrderLine is a passive committed snapshot copied from a quote line.
