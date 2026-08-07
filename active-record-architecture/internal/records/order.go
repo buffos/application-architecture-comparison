@@ -23,6 +23,8 @@ const (
 	PaymentOutcomeAccept           = "accept"
 	PaymentOutcomeFail             = "fail"
 	PaymentOutcomeReview           = "review"
+	PaymentReviewDecisionAccept    = "accept"
+	PaymentReviewDecisionReject    = "reject"
 )
 
 var (
@@ -39,6 +41,10 @@ var (
 	ErrCancelledByRequired        = errors.New("cancelling actor is required")
 	ErrCancellationReasonRequired = errors.New("cancellation reason is required")
 	ErrStockReleaseInvalid        = errors.New("reserved stock cannot be released")
+	ErrOrderNotInPaymentReview    = errors.New("order is not in payment review")
+	ErrPaymentReviewMissing       = errors.New("payment review record not found")
+	ErrPaymentReviewerRequired    = errors.New("payment reviewer is required")
+	ErrPaymentDecisionInvalid     = errors.New("payment review decision is invalid")
 )
 
 // OrderLine is a committed product snapshot embedded in an Order Active
@@ -283,6 +289,49 @@ func (order *Order) CapturePayment(outcome string) (*Payment, error) {
 	order.PaymentStatus = paymentStatus
 	order.Status = orderStatus
 	return payment, nil
+}
+
+// ResolvePaymentReview records a manual payment decision and advances the
+// order to fulfillment or payment retry.
+func (order *Order) ResolvePaymentReview(reviewedBy string, decision string, comment string) error {
+	if order == nil || order.db == nil {
+		return ErrDatabaseRequired
+	}
+	if reviewedBy == "" {
+		return ErrPaymentReviewerRequired
+	}
+	if order.Status != OrderStatusPaymentReview {
+		return ErrOrderNotInPaymentReview
+	}
+
+	payment, err := FindPayment(order.db, order.PaymentID)
+	if err != nil || payment.Status != PaymentStatusManualReview {
+		return ErrPaymentReviewMissing
+	}
+
+	decision = strings.ToLower(strings.TrimSpace(decision))
+	nextPaymentStatus := ""
+	nextOrderStatus := ""
+	switch decision {
+	case PaymentReviewDecisionAccept:
+		nextPaymentStatus = PaymentStatusAccepted
+		nextOrderStatus = OrderStatusReadyForFulfillment
+	case PaymentReviewDecisionReject:
+		nextPaymentStatus = PaymentStatusFailed
+		nextOrderStatus = OrderStatusReadyForPayment
+	default:
+		return ErrPaymentDecisionInvalid
+	}
+
+	payment.Status = nextPaymentStatus
+	payment.ReviewedBy = reviewedBy
+	payment.DecisionComment = comment
+	if err := payment.Save(); err != nil {
+		return err
+	}
+	order.Status = nextOrderStatus
+	order.PaymentStatus = nextPaymentStatus
+	return nil
 }
 
 // CreateShipment creates and saves a full shipment, consumes the reserved
