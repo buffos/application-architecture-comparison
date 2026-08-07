@@ -67,4 +67,33 @@ func main() {
 		reloadedQuote.ID,
 		reloadedQuote.Status,
 	)
+
+	customProduct := records.NewProduct(db, "sku-002", "Custom Desk", "CustomBuild", true, 45000)
+	if err := customProduct.Save(); err != nil {
+		log.Fatal(err)
+	}
+	pendingQuote, err := records.NewDraftQuote(db, loadedCustomer.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := pendingQuote.Save(); err != nil {
+		log.Fatal(err)
+	}
+	if _, err := workflows.AddQuoteLine(db, pendingQuote.ID, customProduct.SKU, 1); err != nil {
+		log.Fatal(err)
+	}
+	if _, err := workflows.SubmitQuoteForApproval(db, pendingQuote.ID); err != nil {
+		log.Fatal(err)
+	}
+	rejectedQuote, err := workflows.RejectQuote(db, pendingQuote.ID, "manager-2", "Customer credit limit exceeded")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf(
+		"rejected quote: quote=%s status=%s reviewedBy=%s comment=%s\n",
+		rejectedQuote.ID,
+		rejectedQuote.Status,
+		rejectedQuote.ReviewedBy,
+		rejectedQuote.DecisionComment,
+	)
 }

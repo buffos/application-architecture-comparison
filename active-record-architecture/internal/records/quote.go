@@ -19,6 +19,7 @@ var (
 	ErrQuoteHasNoLines         = errors.New("quote must have at least one line")
 	ErrReviewerRequired        = errors.New("reviewer is required")
 	ErrQuoteNotApprovable      = errors.New("quote must be pending approval")
+	ErrQuoteNotRejectable      = errors.New("quote must be pending approval")
 	ErrProductRequired         = errors.New("product is required")
 	ErrQuantityInvalid         = errors.New("quantity must be positive")
 )
@@ -199,6 +200,25 @@ func (quote *Quote) Approve(reviewedBy string, decisionComment string) error {
 	}
 
 	quote.Status = QuoteStatusApproved
+	quote.ReviewedBy = reviewedBy
+	quote.DecisionComment = decisionComment
+	return nil
+}
+
+// Reject moves a pending quote to Rejected and records the reviewer decision
+// on the same Active Record row.
+func (quote *Quote) Reject(reviewedBy string, decisionComment string) error {
+	if quote == nil || quote.db == nil {
+		return ErrDatabaseRequired
+	}
+	if reviewedBy == "" {
+		return ErrReviewerRequired
+	}
+	if quote.Status != QuoteStatusPendingApproval {
+		return ErrQuoteNotRejectable
+	}
+
+	quote.Status = QuoteStatusRejected
 	quote.ReviewedBy = reviewedBy
 	quote.DecisionComment = decisionComment
 	return nil
