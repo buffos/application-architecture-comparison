@@ -33,10 +33,12 @@ type QuoteLine struct {
 
 // Quote is a passive data record used by transaction scripts.
 type Quote struct {
-	ID         string
-	CustomerID string
-	Status     string
-	Lines      []QuoteLine
+	ID              string
+	CustomerID      string
+	Status          string
+	ReviewedBy      string
+	DecisionComment string
+	Lines           []QuoteLine
 }
 
 // Store exposes the in-memory data shape directly so scripts can coordinate a

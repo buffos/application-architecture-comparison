@@ -21,6 +21,13 @@ func main() {
 		Active:    true,
 		UnitPrice: 15000,
 	}
+	store.Products["sku-002"] = data.Product{
+		SKU:       "sku-002",
+		Name:      "Custom Desk",
+		Category:  "CustomBuild",
+		Active:    true,
+		UnitPrice: 45000,
+	}
 
 	quote, err := scripts.CreateDraftQuote(store, "customer-001")
 	if err != nil {
@@ -56,6 +63,40 @@ func main() {
 		"submitted quote for approval: quote=%s status=%s\n",
 		quote.ID,
 		quote.Status,
+	)
+
+	pendingQuote, err := scripts.CreateDraftQuote(store, "customer-001")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	pendingQuote, err = scripts.AddQuoteLine(store, pendingQuote.ID, "sku-002", 1)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	pendingQuote, err = scripts.SubmitQuoteForApproval(store, pendingQuote.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf(
+		"submitted custom quote: quote=%s status=%s\n",
+		pendingQuote.ID,
+		pendingQuote.Status,
+	)
+
+	pendingQuote, err = scripts.ApproveQuote(store, pendingQuote.ID, "manager-1", "Approved after review")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf(
+		"approved quote: quote=%s status=%s reviewedBy=%s comment=%s\n",
+		pendingQuote.ID,
+		pendingQuote.Status,
+		pendingQuote.ReviewedBy,
+		pendingQuote.DecisionComment,
 	)
 
 }
