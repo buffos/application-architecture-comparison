@@ -16,11 +16,12 @@ type Customer struct {
 
 // Product is a passive data record used by transaction scripts.
 type Product struct {
-	SKU       string
-	Name      string
-	Category  string
-	Active    bool
-	UnitPrice int
+	SKU                 string
+	Name                string
+	Category            string
+	Active              bool
+	UnitPrice           int
+	StockShortagePolicy string
 }
 
 // QuoteLine is a passive data record embedded in a Quote.
@@ -50,6 +51,7 @@ type Quote struct {
 type Store struct {
 	Customers       map[string]Customer
 	Products        map[string]Product
+	Stocks          map[string]StockRecord
 	Quotes          map[string]Quote
 	Orders          map[string]Order
 	NextQuoteNumber int
@@ -60,6 +62,7 @@ func NewStore() *Store {
 	return &Store{
 		Customers: make(map[string]Customer),
 		Products:  make(map[string]Product),
+		Stocks:    make(map[string]StockRecord),
 		Quotes:    make(map[string]Quote),
 		Orders:    make(map[string]Order),
 	}

@@ -15,12 +15,14 @@ func main() {
 		Active: true,
 	}
 	store.Products["sku-001"] = data.Product{
-		SKU:       "sku-001",
-		Name:      "Desk",
-		Category:  "Standard",
-		Active:    true,
-		UnitPrice: 15000,
+		SKU:                 "sku-001",
+		Name:                "Desk",
+		Category:            "Standard",
+		Active:              true,
+		UnitPrice:           15000,
+		StockShortagePolicy: data.StockShortageRejectOrder,
 	}
+	store.Stocks["sku-001"] = data.StockRecord{SKU: "sku-001", OnHand: 10}
 	store.Products["sku-002"] = data.Product{
 		SKU:       "sku-002",
 		Name:      "Custom Desk",
