@@ -78,6 +78,29 @@ func (bb *Blackboard) BestHypothesis() (MatchHypothesis, bool) {
 	return best, found
 }
 
+type KnowledgeSource interface {
+	Name() string
+	Execute(bb *Blackboard)
+}
+
+type ExactAmountMatcher struct{}
+
+func (ExactAmountMatcher) Name() string {
+	return "Exact Amount Matcher"
+}
+
+func (ExactAmountMatcher) Execute(bb *Blackboard) {
+	for _, invoice := range bb.Invoices {
+		if invoice.AmountCents == bb.Payment.AmountCents {
+			bb.AddEvidence(
+				invoice.ID,
+				0.4,
+				fmt.Sprintf("Exact amount match for %s (+0.4)", formatCents(invoice.AmountCents)),
+			)
+		}
+	}
+}
+
 func formatCents(amountCents int64) string {
 	return fmt.Sprintf("%d.%02d", amountCents/100, amountCents%100)
 }
@@ -95,11 +118,9 @@ func main() {
 	}
 
 	blackboard := NewBlackboard(incomingPayment, unpaidInvoices)
-	blackboard.AddEvidence(
-		"INV-102",
-		0.4,
-		"Temporary exact amount observation (+0.4)",
-	)
+	source := ExactAmountMatcher{}
+	fmt.Printf("Executing: %s\n", source.Name())
+	source.Execute(blackboard)
 
 	fmt.Printf("Payment memo: %q\n", blackboard.Payment.RawMemo)
 	fmt.Printf("Payment amount: %s\n", formatCents(blackboard.Payment.AmountCents))
@@ -107,19 +128,18 @@ func main() {
 
 	for _, invoice := range blackboard.Invoices {
 		hypothesis := blackboard.Hypotheses[invoice.ID]
-		fmt.Printf("- %s, %s, amount %s, initial score %.1f\n",
+		fmt.Printf("- %s, %s, amount %s, score %.1f\n",
 			invoice.ID,
 			invoice.CustomerName,
 			formatCents(invoice.AmountCents),
 			hypothesis.Score,
 		)
+		for _, reason := range hypothesis.Reasons {
+			fmt.Printf("  reason: %s\n", reason)
+		}
 	}
 
 	if best, ok := blackboard.BestHypothesis(); ok {
-		fmt.Printf("Best hypothesis: %s with score %.1f\n", best.InvoiceID, best.Score)
-		fmt.Println("Reasons:")
-		for _, reason := range best.Reasons {
-			fmt.Printf("- %s\n", reason)
-		}
+		fmt.Printf("Highest current score: %.1f (the exact amount leaves a tie)\n", best.Score)
 	}
 }
