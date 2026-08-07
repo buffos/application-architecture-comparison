@@ -6,6 +6,7 @@ import (
 	"time"
 
 	applicationorders "rich-domain-model-architecture/internal/application/orders"
+	applicationproducts "rich-domain-model-architecture/internal/application/products"
 	applicationquotes "rich-domain-model-architecture/internal/application/quotes"
 	applicationshipments "rich-domain-model-architecture/internal/application/shipments"
 	"rich-domain-model-architecture/internal/domain/catalog"
@@ -44,6 +45,13 @@ func main() {
 	if err := product.EnsureSellable(); err != nil {
 		log.Fatal(err)
 	}
+	productReader := applicationproducts.NewInMemoryReader()
+	productReader.Save(product)
+	productDetails, err := productReader.GetProduct(string(product.SKU()))
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("product query: sku=%s active=%t return-window=%d\n", productDetails.SKU, productDetails.Active, productDetails.ReturnWindowDays)
 
 	quotePrice, err := quoting.NewMoney(product.BasePrice().Cents(), product.BasePrice().Currency())
 	if err != nil {
