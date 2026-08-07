@@ -12,6 +12,7 @@ var (
 	ErrOrderNotShipped         = errors.New("order is not shipped")
 	ErrReturnNotReviewable     = errors.New("return request is not reviewable")
 	ErrReviewDecisionInvalid   = errors.New("review decision is invalid")
+	ErrActorRequired           = errors.New("actor is required")
 	ErrRefundIDRequired        = errors.New("refund id is required")
 	ErrRefundNotIssuable       = errors.New("refund is not issuable")
 )
@@ -134,6 +135,36 @@ func (request *ReturnRequest) Accept() error {
 
 func (request *ReturnRequest) Reject() error {
 	return request.Review(ReviewDecisionReject)
+}
+
+func (request *ReturnRequest) AssignRequester(actor string) error {
+	if actor == "" {
+		return ErrActorRequired
+	}
+	request.requestedBy = actor
+	return nil
+}
+
+func (request *ReturnRequest) ReviewBy(decision ReviewDecision, actor string) error {
+	if actor == "" {
+		return ErrActorRequired
+	}
+	if err := request.Review(decision); err != nil {
+		return err
+	}
+	request.reviewedBy = actor
+	return nil
+}
+
+func (request *ReturnRequest) ProcessBy(actor string) error {
+	if actor == "" {
+		return ErrActorRequired
+	}
+	if request.status != ReturnStatusAccepted {
+		return ErrReturnNotReviewable
+	}
+	request.processedBy = actor
+	return nil
 }
 
 type RefundStatus string

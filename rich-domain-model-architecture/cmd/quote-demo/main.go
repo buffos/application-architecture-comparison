@@ -174,9 +174,16 @@ func main() {
 	fmt.Printf("refund aggregate: id=%s status=%s amount=%d\n", refund.ID(), refund.Status(), refund.Amount().Cents())
 	fmt.Printf("return eligibility: eligible=%t reason=%s\n", eligibilityDecision.Eligible, eligibilityDecision.Reason)
 	fmt.Printf("return window: eligible=%t reason=%s\n", windowDecision.Eligible, windowDecision.Reason)
-	if err := returnRequest.Accept(); err != nil {
+	if err := returnRequest.AssignRequester("customer-001"); err != nil {
 		log.Fatal(err)
 	}
+	if err := returnRequest.ReviewBy(domainreturns.ReviewDecisionAccept, "reviewer-001"); err != nil {
+		log.Fatal(err)
+	}
+	if err := returnRequest.ProcessBy("processor-001"); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("return actors: requested=%s reviewed=%s processed=%s\n", returnRequest.RequestedBy(), returnRequest.ReviewedBy(), returnRequest.ProcessedBy())
 	restockRequests := make([]inventory.RestockRequest, 0, len(returnRequest.Lines()))
 	for _, line := range returnRequest.Lines() {
 		restockRequests = append(restockRequests, inventory.RestockRequest{SKU: inventory.ProductSKU(line.ProductSKU()), Quantity: line.Quantity()})
