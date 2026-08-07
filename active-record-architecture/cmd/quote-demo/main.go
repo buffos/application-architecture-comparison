@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"active-record-architecture/internal/records"
+	"active-record-architecture/internal/workflows"
 )
 
 func main() {
@@ -20,11 +21,21 @@ func main() {
 		log.Fatal(err)
 	}
 
+	product := records.NewProduct(db, "sku-001", "Desk", "Standard", true, 15000)
+	if err := product.Save(); err != nil {
+		log.Fatal(err)
+	}
+
 	quote, err := records.NewDraftQuote(db, loadedCustomer.ID)
 	if err != nil {
 		log.Fatal(err)
 	}
 	if err := quote.Save(); err != nil {
+		log.Fatal(err)
+	}
+
+	quote, err = workflows.AddQuoteLine(db, quote.ID, product.SKU, 2)
+	if err != nil {
 		log.Fatal(err)
 	}
 
@@ -38,5 +49,12 @@ func main() {
 		reloadedQuote.ID,
 		reloadedQuote.CustomerID,
 		reloadedQuote.Status,
+	)
+	fmt.Printf(
+		"added quote line: quote=%s sku=%s quantity=%d total=%d\n",
+		reloadedQuote.ID,
+		reloadedQuote.Lines[0].SKU,
+		reloadedQuote.Lines[0].Quantity,
+		reloadedQuote.Lines[0].LineTotal,
 	)
 }

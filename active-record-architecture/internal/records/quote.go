@@ -9,7 +9,22 @@ var (
 	ErrQuoteCustomerIDRequired = errors.New("quote customer id is required")
 	ErrQuoteStatusRequired     = errors.New("quote status is required")
 	ErrQuoteNotFound           = errors.New("quote not found")
+	ErrQuoteNotEditable        = errors.New("quote is no longer editable")
+	ErrProductRequired         = errors.New("product is required")
+	ErrQuantityInvalid         = errors.New("quantity must be positive")
 )
+
+// QuoteLine is a product snapshot embedded in a Quote Active Record.
+type QuoteLine struct {
+	ProductCategory     string
+	SKU                 string
+	ProductNameSnapshot string
+	Quantity            int
+	UnitPrice           int
+	DiscountAmount      int
+	ReturnWindowDays    int
+	LineTotal           int
+}
 
 // Quote is an Active Record. It contains the quote fields and the database
 // connection used by Save and FindQuote.
@@ -19,6 +34,7 @@ type Quote struct {
 	ID         string
 	CustomerID string
 	Status     string
+	Lines      []QuoteLine
 }
 
 // NewDraftQuote creates an unsaved draft quote for an existing active
@@ -45,6 +61,7 @@ func NewDraftQuote(db *Database, customerID string) (*Quote, error) {
 		ID:         db.nextQuoteID(),
 		CustomerID: customer.ID,
 		Status:     QuoteStatusDraft,
+		Lines:      []QuoteLine{},
 	}, nil
 }
 
@@ -67,7 +84,40 @@ func FindQuote(db *Database, id string) (*Quote, error) {
 		ID:         row.ID,
 		CustomerID: row.CustomerID,
 		Status:     row.Status,
+		Lines:      cloneQuoteLines(row.Lines),
 	}, nil
+}
+
+// AddLine applies the first quote-editing behavior directly on the Active
+// Record. The product is copied into the line so later catalog changes do not
+// rewrite the commercial snapshot.
+func (quote *Quote) AddLine(product *Product, quantity int) error {
+	if quote == nil || quote.db == nil {
+		return ErrDatabaseRequired
+	}
+	if quote.Status != QuoteStatusDraft {
+		return ErrQuoteNotEditable
+	}
+	if product == nil {
+		return ErrProductRequired
+	}
+	if quantity <= 0 {
+		return ErrQuantityInvalid
+	}
+	if !product.Active {
+		return ErrProductInactive
+	}
+
+	quote.Lines = append(quote.Lines, QuoteLine{
+		ProductCategory:     product.Category,
+		SKU:                 product.SKU,
+		ProductNameSnapshot: product.Name,
+		Quantity:            quantity,
+		UnitPrice:           product.UnitPrice,
+		ReturnWindowDays:    product.ReturnWindowDays,
+		LineTotal:           product.UnitPrice * quantity,
+	})
+	return nil
 }
 
 // Save writes the current Quote Active Record to its table.
@@ -92,6 +142,16 @@ func (quote *Quote) Save() error {
 		ID:         quote.ID,
 		CustomerID: quote.CustomerID,
 		Status:     quote.Status,
+		Lines:      cloneQuoteLines(quote.Lines),
 	}
 	return nil
+}
+
+func cloneQuoteLines(lines []QuoteLine) []QuoteLine {
+	if lines == nil {
+		return nil
+	}
+	clone := make([]QuoteLine, len(lines))
+	copy(clone, lines)
+	return clone
 }

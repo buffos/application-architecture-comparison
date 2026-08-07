@@ -14,6 +14,16 @@ type quoteRow struct {
 	ID         string
 	CustomerID string
 	Status     string
+	Lines      []QuoteLine
+}
+
+type productRow struct {
+	SKU              string
+	Name             string
+	Category         string
+	Active           bool
+	UnitPrice        int
+	ReturnWindowDays int
 }
 
 // Database is the small persistence boundary used by this lesson. Its tables
@@ -22,6 +32,7 @@ type quoteRow struct {
 type Database struct {
 	customers       map[string]customerRow
 	quotes          map[string]quoteRow
+	products        map[string]productRow
 	nextQuoteNumber int
 }
 
@@ -29,6 +40,7 @@ func NewDatabase() *Database {
 	return &Database{
 		customers: make(map[string]customerRow),
 		quotes:    make(map[string]quoteRow),
+		products:  make(map[string]productRow),
 	}
 }
 
