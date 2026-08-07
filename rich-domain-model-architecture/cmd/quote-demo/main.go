@@ -6,6 +6,7 @@ import (
 
 	"rich-domain-model-architecture/internal/domain/catalog"
 	"rich-domain-model-architecture/internal/domain/customer"
+	"rich-domain-model-architecture/internal/domain/inventory"
 	"rich-domain-model-architecture/internal/domain/ordering"
 	"rich-domain-model-architecture/internal/domain/quoting"
 )
@@ -93,4 +94,17 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("order aggregate: id=%s quote=%s status=%s total=%d %s\n", order.ID(), order.QuoteID(), order.Status(), orderTotal.Cents(), orderTotal.Currency())
+
+	stock, err := inventory.NewStockRecord(inventory.ProductSKU(product.SKU()), 10, 2)
+	if err != nil {
+		log.Fatal(err)
+	}
+	reservations, err := inventory.NewInventoryReservationService().ReserveAll(
+		map[inventory.ProductSKU]*inventory.StockRecord{stock.SKU(): &stock},
+		[]inventory.ReservationRequest{{SKU: stock.SKU(), Quantity: order.Lines()[0].Quantity()}},
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("inventory reservation: sku=%s quantity=%d available=%d\n", reservations[0].SKU, reservations[0].Quantity, stock.Available())
 }
