@@ -35,6 +35,7 @@ func NewProduct(db *Database, sku string, name string, category string, active b
 		Category:            category,
 		Active:              active,
 		UnitPrice:           unitPrice,
+		ReturnWindowDays:    DefaultReturnWindowDays,
 		StockShortagePolicy: StockShortageRejectOrder,
 	}
 }

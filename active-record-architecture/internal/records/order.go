@@ -79,6 +79,12 @@ type Order struct {
 // RequestReturn validates shipped quantities and creates the passive return
 // and refund records. It does not restock inventory or complete the refund.
 func (order *Order) RequestReturn(lines []ReturnLine, reason string) (*ReturnRequest, error) {
+	return order.RequestReturnAt(lines, reason, time.Now())
+}
+
+// RequestReturnAt is the deterministic form of RequestReturn used by tests
+// and demonstrations.
+func (order *Order) RequestReturnAt(lines []ReturnLine, reason string, requestedAt time.Time) (*ReturnRequest, error) {
 	if order == nil || order.db == nil {
 		return nil, ErrDatabaseRequired
 	}
@@ -95,11 +101,12 @@ func (order *Order) RequestReturn(lines []ReturnLine, reason string) (*ReturnReq
 				continue
 			}
 			requestLines = append(requestLines, ReturnLine{
-				OrderLineID:     orderLine.ID,
-				SKU:             orderLine.SKU,
-				ProductCategory: orderLine.ProductCategory,
-				Quantity:        remaining,
-				UnitPrice:       orderLine.UnitPrice,
+				OrderLineID:      orderLine.ID,
+				SKU:              orderLine.SKU,
+				ProductCategory:  orderLine.ProductCategory,
+				Quantity:         remaining,
+				UnitPrice:        orderLine.UnitPrice,
+				ReturnWindowDays: orderLine.ReturnWindowDays,
 			})
 		}
 	}
@@ -129,11 +136,12 @@ func (order *Order) RequestReturn(lines []ReturnLine, reason string) (*ReturnReq
 				return nil, ErrReturnLinesInvalid
 			}
 			normalizedLines = append(normalizedLines, ReturnLine{
-				OrderLineID:     orderLine.ID,
-				SKU:             orderLine.SKU,
-				ProductCategory: orderLine.ProductCategory,
-				Quantity:        requestedLine.Quantity,
-				UnitPrice:       orderLine.UnitPrice,
+				OrderLineID:      orderLine.ID,
+				SKU:              orderLine.SKU,
+				ProductCategory:  orderLine.ProductCategory,
+				Quantity:         requestedLine.Quantity,
+				UnitPrice:        orderLine.UnitPrice,
+				ReturnWindowDays: orderLine.ReturnWindowDays,
 			})
 			refundAmount += requestedLine.Quantity * orderLine.UnitPrice
 			matched = true
@@ -153,7 +161,7 @@ func (order *Order) RequestReturn(lines []ReturnLine, reason string) (*ReturnReq
 		Lines:        cloneReturnLines(normalizedLines),
 		RefundStatus: RefundStatusNotStarted,
 		RefundAmount: refundAmount,
-		RequestedAt:  time.Now(),
+		RequestedAt:  requestedAt,
 	}
 	refund := &Refund{
 		db:              order.db,

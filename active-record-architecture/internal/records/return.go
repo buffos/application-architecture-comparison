@@ -6,12 +6,13 @@ import (
 )
 
 const (
-	ReturnStatusRequested  = "Requested"
-	ReturnStatusAccepted   = "Accepted"
-	ReturnStatusRejected   = "Rejected"
-	ReturnStatusRefunded   = "Refunded"
-	RefundStatusNotStarted = "NotStarted"
-	RefundStatusCompleted  = "Completed"
+	DefaultReturnWindowDays = 30
+	ReturnStatusRequested   = "Requested"
+	ReturnStatusAccepted    = "Accepted"
+	ReturnStatusRejected    = "Rejected"
+	ReturnStatusRefunded    = "Refunded"
+	RefundStatusNotStarted  = "NotStarted"
+	RefundStatusCompleted   = "Completed"
 )
 
 var (
@@ -29,11 +30,12 @@ var (
 
 // ReturnLine is a passive request for a quantity from an order-line snapshot.
 type ReturnLine struct {
-	OrderLineID     string
-	SKU             string
-	ProductCategory string
-	Quantity        int
-	UnitPrice       int
+	OrderLineID      string
+	SKU              string
+	ProductCategory  string
+	Quantity         int
+	UnitPrice        int
+	ReturnWindowDays int
 }
 
 // ReturnRequest is an Active Record for the requested reverse flow. Its
@@ -56,6 +58,12 @@ type ReturnRequest struct {
 // Accept records a positive review decision. Side effects wait for
 // CompleteRefund so the review boundary is explicit.
 func (request *ReturnRequest) Accept() error {
+	return request.AcceptAt(time.Now())
+}
+
+// AcceptAt is the deterministic form of Accept used by tests and
+// demonstrations.
+func (request *ReturnRequest) AcceptAt(now time.Time) error {
 	if request == nil || request.db == nil {
 		return ErrDatabaseRequired
 	}
@@ -66,7 +74,7 @@ func (request *ReturnRequest) Accept() error {
 	if err != nil {
 		return ErrReturnOrderMissing
 	}
-	if decision := request.EvaluateEligibility(order); !decision.Eligible {
+	if decision := request.EvaluateEligibilityAt(order, now); !decision.Eligible {
 		return ErrReturnNotEligible
 	}
 	request.Status = ReturnStatusAccepted
