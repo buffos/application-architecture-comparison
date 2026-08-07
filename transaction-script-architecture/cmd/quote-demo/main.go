@@ -92,6 +92,18 @@ func main() {
 		order.PaymentID,
 	)
 
+	shipment, err := scripts.CreateShipment(store, order.ID, "warehouse-1")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf(
+		"created shipment: shipment=%s order=%s status=%s\n",
+		shipment.ID,
+		shipment.OrderID,
+		shipment.Status,
+	)
+
 	pendingQuote, err := scripts.CreateDraftQuote(store, "customer-001")
 	if err != nil {
 		log.Fatal(err)

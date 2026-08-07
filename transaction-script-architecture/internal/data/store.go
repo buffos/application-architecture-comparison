@@ -49,15 +49,17 @@ type Quote struct {
 // Store exposes the in-memory data shape directly so scripts can coordinate a
 // transaction without a repository or domain-model abstraction.
 type Store struct {
-	Customers         map[string]Customer
-	Products          map[string]Product
-	Stocks            map[string]StockRecord
-	Quotes            map[string]Quote
-	Orders            map[string]Order
-	Payments          map[string]Payment
-	NextQuoteNumber   int
-	NextOrderNumber   int
-	NextPaymentNumber int
+	Customers          map[string]Customer
+	Products           map[string]Product
+	Stocks             map[string]StockRecord
+	Quotes             map[string]Quote
+	Orders             map[string]Order
+	Payments           map[string]Payment
+	Shipments          map[string]Shipment
+	NextQuoteNumber    int
+	NextOrderNumber    int
+	NextPaymentNumber  int
+	NextShipmentNumber int
 }
 
 func NewStore() *Store {
@@ -68,5 +70,6 @@ func NewStore() *Store {
 		Quotes:    make(map[string]Quote),
 		Orders:    make(map[string]Order),
 		Payments:  make(map[string]Payment),
+		Shipments: make(map[string]Shipment),
 	}
 }
