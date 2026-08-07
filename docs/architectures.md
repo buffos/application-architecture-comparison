@@ -9,4 +9,5 @@
 9. Transaction Script Architecture
 10. Active Record Architecture
 11. Rich Domain Model Architecture
-12. Rules Engine Architecture
+12. Blackboard Architecture
+13. Rules Engine / Knowledge-Based Architecture
