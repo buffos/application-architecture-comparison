@@ -59,6 +59,7 @@ func main() {
 	if err := product.ChangePrice(newCatalogPrice); err != nil {
 		log.Fatal(err)
 	}
+	approvalDecision := quoting.NewQuoteApprovalService().Evaluate(quote)
 
 	total, err := quote.Total()
 	if err != nil {
@@ -72,6 +73,7 @@ func main() {
 	fmt.Printf("customer domain object: id=%s tier=%s terms=%s active=%t\n", customerAggregate.ID(), customerAggregate.Tier(), customerAggregate.PaymentTerms(), customerAggregate.Active())
 	fmt.Printf("product domain object: sku=%s active=%t price=%d %s\n", product.SKU(), product.Active(), product.BasePrice().Cents(), product.BasePrice().Currency())
 	fmt.Printf("quote snapshot: sku=%s name=%s unit-price=%d %s\n", snapshot.ProductSKU(), snapshot.ProductName(), snapshot.UnitPrice().Cents(), snapshot.UnitPrice().Currency())
+	fmt.Printf("approval decision: required=%t reasons=%d\n", approvalDecision.Required, len(approvalDecision.Reasons))
 	fmt.Printf("domain aggregate: id=%s customer=%s status=%s lines=%d total=%d %s\n", quote.ID(), quote.CustomerID(), quote.Status(), len(quote.Lines()), total.Cents(), total.Currency())
 
 	if err := quote.Approve(); err != nil {
