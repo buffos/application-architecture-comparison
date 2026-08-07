@@ -1,6 +1,7 @@
 package scripts
 
 import (
+	"reflect"
 	"testing"
 
 	"transaction-script-architecture/internal/data"
@@ -32,7 +33,7 @@ func TestCreateDraftQuotePersistsDraft(t *testing.T) {
 	if !ok {
 		t.Fatalf("quote %q was not saved", got.ID)
 	}
-	if saved != got {
+	if !reflect.DeepEqual(saved, got) {
 		t.Fatalf("saved quote = %#v, want %#v", saved, got)
 	}
 }

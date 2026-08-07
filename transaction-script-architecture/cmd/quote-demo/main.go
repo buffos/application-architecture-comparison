@@ -14,18 +14,37 @@ func main() {
 		ID:     "customer-001",
 		Active: true,
 	}
+	store.Products["sku-001"] = data.Product{
+		SKU:       "sku-001",
+		Name:      "Desk",
+		Category:  "Standard",
+		Active:    true,
+		UnitPrice: 15000,
+	}
 
 	quote, err := scripts.CreateDraftQuote(store, "customer-001")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	_, saved := store.Quotes[quote.ID]
 	fmt.Printf(
-		"created draft quote: id=%s customer=%s status=%s saved=%t\n",
+		"created draft quote: id=%s customer=%s status=%s\n",
 		quote.ID,
 		quote.CustomerID,
 		quote.Status,
-		saved,
 	)
+
+	quote, err = scripts.AddQuoteLine(store, quote.ID, "sku-001", 2)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf(
+		"added quote line: quote=%s sku=%s quantity=%d total=%d\n",
+		quote.ID,
+		quote.Lines[0].SKU,
+		quote.Lines[0].Quantity,
+		quote.Lines[0].LineTotal,
+	)
+
 }
