@@ -12,6 +12,7 @@ const (
 	OrderStatusReadyForPayment     = "ReadyForPayment"
 	OrderStatusPaymentReview       = "PaymentReview"
 	OrderStatusReadyForFulfillment = "ReadyForFulfillment"
+	OrderStatusPartiallyShipped    = "PartiallyShipped"
 	OrderStatusShipped             = "Shipped"
 	OrderStatusCancelled           = "Cancelled"
 	PaymentStatusNotRequired       = "NotRequired"
@@ -25,19 +26,19 @@ const (
 )
 
 var (
-	ErrOrderIDRequired       = errors.New("order id is required")
-	ErrOrderNotFound         = errors.New("order not found")
-	ErrOrderNotReservable    = errors.New("order is not awaiting reservation")
-	ErrInsufficientStock     = errors.New("insufficient stock")
-	ErrOrderNotPayable       = errors.New("order is not ready for payment")
-	ErrPaymentOutcomeInvalid = errors.New("payment outcome is invalid")
-	ErrOrderNotShippable     = errors.New("order is not ready for fulfillment")
-	ErrNoShipmentLines       = errors.New("order has no remaining shippable lines")
-	ErrShippedByRequired     = errors.New("shipper is required")
-	ErrOrderNotCancellable   = errors.New("order cannot be cancelled")
-	ErrCancelledByRequired   = errors.New("cancelling actor is required")
+	ErrOrderIDRequired            = errors.New("order id is required")
+	ErrOrderNotFound              = errors.New("order not found")
+	ErrOrderNotReservable         = errors.New("order is not awaiting reservation")
+	ErrInsufficientStock          = errors.New("insufficient stock")
+	ErrOrderNotPayable            = errors.New("order is not ready for payment")
+	ErrPaymentOutcomeInvalid      = errors.New("payment outcome is invalid")
+	ErrOrderNotShippable          = errors.New("order is not ready for fulfillment")
+	ErrNoShipmentLines            = errors.New("order has no remaining shippable lines")
+	ErrShippedByRequired          = errors.New("shipper is required")
+	ErrOrderNotCancellable        = errors.New("order cannot be cancelled")
+	ErrCancelledByRequired        = errors.New("cancelling actor is required")
 	ErrCancellationReasonRequired = errors.New("cancellation reason is required")
-	ErrStockReleaseInvalid   = errors.New("reserved stock cannot be released")
+	ErrStockReleaseInvalid        = errors.New("reserved stock cannot be released")
 )
 
 // OrderLine is a committed product snapshot embedded in an Order Active
@@ -61,18 +62,116 @@ type OrderLine struct {
 type Order struct {
 	db *Database
 
-	ID            string
-	SourceQuoteID string
-	CustomerID    string
-	Status        string
-	RequestedBy   string
-	PaymentID     string
-	Lines         []OrderLine
-	Total         int
-	PaymentStatus string
-	ShippedAt     time.Time
-	CancelledBy   string
+	ID                 string
+	SourceQuoteID      string
+	CustomerID         string
+	Status             string
+	RequestedBy        string
+	PaymentID          string
+	Lines              []OrderLine
+	Total              int
+	PaymentStatus      string
+	ShippedAt          time.Time
+	CancelledBy        string
 	CancellationReason string
+}
+
+// RequestReturn validates shipped quantities and creates the passive return
+// and refund records. It does not restock inventory or complete the refund.
+func (order *Order) RequestReturn(lines []ReturnLine, reason string) (*ReturnRequest, error) {
+	if order == nil || order.db == nil {
+		return nil, ErrDatabaseRequired
+	}
+	if order.Status != OrderStatusShipped && order.Status != OrderStatusPartiallyShipped {
+		return nil, ErrOrderNotReturnable
+	}
+
+	requestLines := lines
+	if len(requestLines) == 0 {
+		requestLines = make([]ReturnLine, 0, len(order.Lines))
+		for _, orderLine := range order.Lines {
+			remaining := orderLine.ShippedQuantity - orderLine.ReturnedQuantity
+			if remaining <= 0 {
+				continue
+			}
+			requestLines = append(requestLines, ReturnLine{
+				OrderLineID:     orderLine.ID,
+				SKU:             orderLine.SKU,
+				ProductCategory: orderLine.ProductCategory,
+				Quantity:        remaining,
+				UnitPrice:       orderLine.UnitPrice,
+			})
+		}
+	}
+	if len(requestLines) == 0 {
+		return nil, ErrReturnLinesInvalid
+	}
+
+	normalizedLines := make([]ReturnLine, 0, len(requestLines))
+	seenLines := make(map[string]struct{}, len(requestLines))
+	refundAmount := 0
+	for _, requestedLine := range requestLines {
+		if requestedLine.Quantity <= 0 {
+			return nil, ErrReturnLinesInvalid
+		}
+		if _, seen := seenLines[requestedLine.OrderLineID]; seen {
+			return nil, ErrReturnLinesInvalid
+		}
+		seenLines[requestedLine.OrderLineID] = struct{}{}
+
+		matched := false
+		for _, orderLine := range order.Lines {
+			if orderLine.ID != requestedLine.OrderLineID {
+				continue
+			}
+			remaining := orderLine.ShippedQuantity - orderLine.ReturnedQuantity
+			if requestedLine.Quantity > remaining {
+				return nil, ErrReturnLinesInvalid
+			}
+			normalizedLines = append(normalizedLines, ReturnLine{
+				OrderLineID:     orderLine.ID,
+				SKU:             orderLine.SKU,
+				ProductCategory: orderLine.ProductCategory,
+				Quantity:        requestedLine.Quantity,
+				UnitPrice:       orderLine.UnitPrice,
+			})
+			refundAmount += requestedLine.Quantity * orderLine.UnitPrice
+			matched = true
+			break
+		}
+		if !matched {
+			return nil, ErrReturnLinesInvalid
+		}
+	}
+
+	request := &ReturnRequest{
+		db:           order.db,
+		ID:           order.db.nextReturnID(),
+		OrderID:      order.ID,
+		Status:       ReturnStatusRequested,
+		Reason:       reason,
+		Lines:        cloneReturnLines(normalizedLines),
+		RefundStatus: RefundStatusNotStarted,
+		RefundAmount: refundAmount,
+		RequestedAt:  time.Now(),
+	}
+	refund := &Refund{
+		db:              order.db,
+		ID:              order.db.nextRefundID(),
+		ReturnRequestID: request.ID,
+		OrderID:         order.ID,
+		Amount:          refundAmount,
+		Status:          RefundStatusNotStarted,
+	}
+	request.RefundID = refund.ID
+
+	if err := request.Save(); err != nil {
+		return nil, err
+	}
+	if err := refund.Save(); err != nil {
+		return nil, err
+	}
+	return request, nil
 }
 
 // Cancel stops an unshipped order and releases every outstanding stock
@@ -323,19 +422,19 @@ func FindOrder(db *Database, id string) (*Order, error) {
 	}
 
 	return &Order{
-		db:            db,
-		ID:            row.ID,
-		SourceQuoteID: row.SourceQuoteID,
-		CustomerID:    row.CustomerID,
-		Status:        row.Status,
-		RequestedBy:   row.RequestedBy,
-		PaymentID:     row.PaymentID,
-		PaymentStatus: row.PaymentStatus,
-		ShippedAt:     row.ShippedAt,
-		CancelledBy:   row.CancelledBy,
+		db:                 db,
+		ID:                 row.ID,
+		SourceQuoteID:      row.SourceQuoteID,
+		CustomerID:         row.CustomerID,
+		Status:             row.Status,
+		RequestedBy:        row.RequestedBy,
+		PaymentID:          row.PaymentID,
+		PaymentStatus:      row.PaymentStatus,
+		ShippedAt:          row.ShippedAt,
+		CancelledBy:        row.CancelledBy,
 		CancellationReason: row.CancellationReason,
-		Lines:         cloneOrderLines(row.Lines),
-		Total:         row.Total,
+		Lines:              cloneOrderLines(row.Lines),
+		Total:              row.Total,
 	}, nil
 }
 

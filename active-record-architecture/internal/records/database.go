@@ -73,6 +73,26 @@ type shipmentRow struct {
 	Lines     []ShipmentLine
 }
 
+type returnRow struct {
+	ID           string
+	OrderID      string
+	Status       string
+	Reason       string
+	Lines        []ReturnLine
+	RefundID     string
+	RefundStatus string
+	RefundAmount int
+	RequestedAt  time.Time
+}
+
+type refundRow struct {
+	ID              string
+	ReturnRequestID string
+	OrderID         string
+	Amount          int
+	Status          string
+}
+
 // Database is the small persistence boundary used by this lesson. Its tables
 // stay private so callers must use the Active Record operations instead of
 // reaching into storage directly.
@@ -84,10 +104,14 @@ type Database struct {
 	stocks             map[string]stockRow
 	payments           map[string]paymentRow
 	shipments          map[string]shipmentRow
+	returns            map[string]returnRow
+	refunds            map[string]refundRow
 	nextQuoteNumber    int
 	nextOrderNumber    int
 	nextPaymentNumber  int
 	nextShipmentNumber int
+	nextReturnNumber   int
+	nextRefundNumber   int
 }
 
 func NewDatabase() *Database {
@@ -99,6 +123,8 @@ func NewDatabase() *Database {
 		stocks:    make(map[string]stockRow),
 		payments:  make(map[string]paymentRow),
 		shipments: make(map[string]shipmentRow),
+		returns:   make(map[string]returnRow),
+		refunds:   make(map[string]refundRow),
 	}
 }
 
@@ -120,4 +146,14 @@ func (db *Database) nextPaymentID() string {
 func (db *Database) nextShipmentID() string {
 	db.nextShipmentNumber++
 	return fmt.Sprintf("shipment-%03d", db.nextShipmentNumber)
+}
+
+func (db *Database) nextReturnID() string {
+	db.nextReturnNumber++
+	return fmt.Sprintf("return-%03d", db.nextReturnNumber)
+}
+
+func (db *Database) nextRefundID() string {
+	db.nextRefundNumber++
+	return fmt.Sprintf("refund-%03d", db.nextRefundNumber)
 }
