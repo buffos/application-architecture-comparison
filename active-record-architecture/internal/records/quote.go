@@ -139,15 +139,20 @@ func (quote *Quote) AddLine(product *Product, quantity int) error {
 	if !product.Active {
 		return ErrProductInactive
 	}
+	unitPrice, discountAmount, lineTotal, err := PriceQuoteLine(quote.db, product, quantity)
+	if err != nil {
+		return err
+	}
 
 	quote.Lines = append(quote.Lines, QuoteLine{
 		ProductCategory:     product.Category,
 		SKU:                 product.SKU,
 		ProductNameSnapshot: product.Name,
 		Quantity:            quantity,
-		UnitPrice:           product.UnitPrice,
+		UnitPrice:           unitPrice,
+		DiscountAmount:      discountAmount,
 		ReturnWindowDays:    product.ReturnWindowDays,
-		LineTotal:           product.UnitPrice * quantity,
+		LineTotal:           lineTotal,
 	})
 	return nil
 }

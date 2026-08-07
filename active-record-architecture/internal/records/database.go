@@ -98,6 +98,14 @@ type refundRow struct {
 	ProcessedBy     string
 }
 
+type pluginRow struct {
+	Key     string
+	Type    string
+	Version string
+	Enabled bool
+	Config  map[string]string
+}
+
 // Database is the small persistence boundary used by this lesson. Its tables
 // stay private so callers must use the Active Record operations instead of
 // reaching into storage directly.
@@ -111,6 +119,7 @@ type Database struct {
 	shipments          map[string]shipmentRow
 	returns            map[string]returnRow
 	refunds            map[string]refundRow
+	plugins            map[string]pluginRow
 	idempotency        map[string]string
 	nextQuoteNumber    int
 	nextOrderNumber    int
@@ -131,6 +140,7 @@ func NewDatabase() *Database {
 		shipments:   make(map[string]shipmentRow),
 		returns:     make(map[string]returnRow),
 		refunds:     make(map[string]refundRow),
+		plugins:     make(map[string]pluginRow),
 		idempotency: make(map[string]string),
 	}
 }
