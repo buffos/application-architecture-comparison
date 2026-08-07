@@ -9,11 +9,12 @@ import (
 )
 
 var (
-	ErrOrderNotReturnable = errors.New("order is not shipped")
-	ErrReturnLinesInvalid = errors.New("return lines are invalid")
-	ErrReturnIDRequired   = errors.New("return id is required")
-	ErrReturnNotFound     = errors.New("return request not found")
-	ErrActorRequired      = errors.New("return actor is required")
+	ErrOrderNotReturnable     = errors.New("order is not shipped")
+	ErrReturnLinesInvalid     = errors.New("return lines are invalid")
+	ErrReturnIDRequired       = errors.New("return id is required")
+	ErrReturnNotFound         = errors.New("return request not found")
+	ErrActorRequired          = errors.New("return actor is required")
+	ErrIdempotencyKeyRequired = errors.New("idempotency key is required")
 )
 
 // RequestReturn creates a return request after checking the order's shipped

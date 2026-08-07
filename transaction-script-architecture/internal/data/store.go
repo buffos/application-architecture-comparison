@@ -60,6 +60,7 @@ type Store struct {
 	Shipments          map[string]Shipment
 	Returns            map[string]ReturnRequest
 	Refunds            map[string]Refund
+	Idempotency        map[string]string
 	NextQuoteNumber    int
 	NextOrderNumber    int
 	NextPaymentNumber  int
@@ -70,14 +71,15 @@ type Store struct {
 
 func NewStore() *Store {
 	return &Store{
-		Customers: make(map[string]Customer),
-		Products:  make(map[string]Product),
-		Stocks:    make(map[string]StockRecord),
-		Quotes:    make(map[string]Quote),
-		Orders:    make(map[string]Order),
-		Payments:  make(map[string]Payment),
-		Shipments: make(map[string]Shipment),
-		Returns:   make(map[string]ReturnRequest),
-		Refunds:   make(map[string]Refund),
+		Customers:   make(map[string]Customer),
+		Products:    make(map[string]Product),
+		Stocks:      make(map[string]StockRecord),
+		Quotes:      make(map[string]Quote),
+		Orders:      make(map[string]Order),
+		Payments:    make(map[string]Payment),
+		Shipments:   make(map[string]Shipment),
+		Returns:     make(map[string]ReturnRequest),
+		Refunds:     make(map[string]Refund),
+		Idempotency: make(map[string]string),
 	}
 }

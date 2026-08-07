@@ -19,12 +19,12 @@ var (
 
 // AcceptReturn records the review decision. It intentionally performs no
 // financial or inventory side effect until CompleteRefund runs.
-func AcceptReturn(store *data.Store, returnID string, reviewedBy string) (data.ReturnRequest, error) {
-	return AcceptReturnAt(store, returnID, time.Now(), reviewedBy)
+func AcceptReturn(store *data.Store, returnID string, reviewedBy string, idempotencyKey string) (data.ReturnRequest, error) {
+	return AcceptReturnAt(store, returnID, time.Now(), reviewedBy, idempotencyKey)
 }
 
 // AcceptReturnAt is the deterministic form used by tests and demonstrations.
-func AcceptReturnAt(store *data.Store, returnID string, now time.Time, reviewedBy string) (data.ReturnRequest, error) {
+func AcceptReturnAt(store *data.Store, returnID string, now time.Time, reviewedBy string, idempotencyKey string) (data.ReturnRequest, error) {
 	if store == nil {
 		return data.ReturnRequest{}, ErrStoreRequired
 	}
@@ -35,6 +35,14 @@ func AcceptReturnAt(store *data.Store, returnID string, now time.Time, reviewedB
 
 	if reviewedBy == "" {
 		return data.ReturnRequest{}, ErrActorRequired
+	}
+
+	if idempotencyKey == "" {
+		return data.ReturnRequest{}, ErrIdempotencyKeyRequired
+	}
+
+	if existing, found := findIdempotentReturn(store, "accept-return", idempotencyKey); found {
+		return existing, nil
 	}
 
 	request, ok := store.Returns[returnID]
@@ -57,13 +65,14 @@ func AcceptReturnAt(store *data.Store, returnID string, now time.Time, reviewedB
 	request.Status = data.ReturnStatusAccepted
 	request.ReviewedBy = reviewedBy
 	store.Returns[request.ID] = request
+	saveIdempotentReturn(store, "accept-return", idempotencyKey, request)
 
 	return request, nil
 }
 
 // RejectReturn records a negative review decision and blocks later refund
 // processing.
-func RejectReturn(store *data.Store, returnID string, reviewedBy string, reviewNote string) (data.ReturnRequest, error) {
+func RejectReturn(store *data.Store, returnID string, reviewedBy string, reviewNote string, idempotencyKey string) (data.ReturnRequest, error) {
 	if store == nil {
 		return data.ReturnRequest{}, ErrStoreRequired
 	}
@@ -74,6 +83,14 @@ func RejectReturn(store *data.Store, returnID string, reviewedBy string, reviewN
 
 	if reviewedBy == "" {
 		return data.ReturnRequest{}, ErrActorRequired
+	}
+
+	if idempotencyKey == "" {
+		return data.ReturnRequest{}, ErrIdempotencyKeyRequired
+	}
+
+	if existing, found := findIdempotentReturn(store, "reject-return", idempotencyKey); found {
+		return existing, nil
 	}
 
 	request, ok := store.Returns[returnID]
@@ -89,13 +106,14 @@ func RejectReturn(store *data.Store, returnID string, reviewedBy string, reviewN
 	request.ReviewedBy = reviewedBy
 	request.ReviewNote = reviewNote
 	store.Returns[request.ID] = request
+	saveIdempotentReturn(store, "reject-return", idempotencyKey, request)
 
 	return request, nil
 }
 
 // CompleteRefund applies the accepted return's order, inventory, and refund
 // writes as one procedural transaction.
-func CompleteRefund(store *data.Store, returnID string, processedBy string) (data.ReturnRequest, error) {
+func CompleteRefund(store *data.Store, returnID string, processedBy string, idempotencyKey string) (data.ReturnRequest, error) {
 	if store == nil {
 		return data.ReturnRequest{}, ErrStoreRequired
 	}
@@ -106,6 +124,14 @@ func CompleteRefund(store *data.Store, returnID string, processedBy string) (dat
 
 	if processedBy == "" {
 		return data.ReturnRequest{}, ErrActorRequired
+	}
+
+	if idempotencyKey == "" {
+		return data.ReturnRequest{}, ErrIdempotencyKeyRequired
+	}
+
+	if existing, found := findIdempotentReturn(store, "complete-refund", idempotencyKey); found {
+		return existing, nil
 	}
 
 	request, ok := store.Returns[returnID]
@@ -176,6 +202,7 @@ func CompleteRefund(store *data.Store, returnID string, processedBy string) (dat
 	store.Orders[order.ID] = order
 	store.Refunds[refund.ID] = refund
 	store.Returns[request.ID] = request
+	saveIdempotentReturn(store, "complete-refund", idempotencyKey, request)
 
 	return request, nil
 }
