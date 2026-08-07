@@ -36,6 +36,7 @@ var (
 	ErrPaymentOutcomeInvalid      = errors.New("payment outcome is invalid")
 	ErrOrderNotShippable          = errors.New("order is not ready for fulfillment")
 	ErrNoShipmentLines            = errors.New("order has no remaining shippable lines")
+	ErrShipmentLinesInvalid       = errors.New("shipment lines are invalid")
 	ErrShippedByRequired          = errors.New("shipper is required")
 	ErrOrderNotCancellable        = errors.New("order cannot be cancelled")
 	ErrCancelledByRequired        = errors.New("cancelling actor is required")
@@ -334,38 +335,88 @@ func (order *Order) ResolvePaymentReview(reviewedBy string, decision string, com
 	return nil
 }
 
-// CreateShipment creates and saves a full shipment, consumes the reserved
-// stock rows, and updates the order's shipped quantities.
+// CreateShipment creates a full shipment by delegating to the partial-shipment
+// operation with no explicit line selection.
 func (order *Order) CreateShipment(shippedBy string) (*Shipment, error) {
+	return order.CreatePartialShipment(shippedBy, nil)
+}
+
+// CreatePartialShipment creates a shipment for selected remaining quantities,
+// consumes the matching reservations, and derives the aggregate order status.
+// An empty selection means all remaining quantities.
+func (order *Order) CreatePartialShipment(shippedBy string, requestedLines []ShipmentLine) (*Shipment, error) {
 	if order == nil || order.db == nil {
 		return nil, ErrDatabaseRequired
 	}
 	if shippedBy == "" {
 		return nil, ErrShippedByRequired
 	}
-	if order.Status != OrderStatusReadyForFulfillment {
+	if order.Status != OrderStatusReadyForFulfillment && order.Status != OrderStatusPartiallyShipped {
 		return nil, ErrOrderNotShippable
 	}
 
-	shipmentLines := make([]ShipmentLine, 0, len(order.Lines))
-	for _, line := range order.Lines {
-		remaining := line.ReservedQuantity - line.ShippedQuantity
-		if remaining <= 0 {
-			continue
+	if len(requestedLines) == 0 {
+		requestedLines = make([]ShipmentLine, 0, len(order.Lines))
+		for _, line := range order.Lines {
+			remaining := line.ReservedQuantity - line.ShippedQuantity
+			if remaining <= 0 {
+				continue
+			}
+			requestedLines = append(requestedLines, ShipmentLine{OrderLineID: line.ID, SKU: line.SKU, Quantity: remaining})
 		}
-		shipmentLines = append(shipmentLines, ShipmentLine{OrderLineID: line.ID, SKU: line.SKU, Quantity: remaining})
 	}
-	if len(shipmentLines) == 0 {
+	if len(requestedLines) == 0 {
 		return nil, ErrNoShipmentLines
 	}
 
-	for _, shipmentLine := range shipmentLines {
-		stock, err := FindStock(order.db, shipmentLine.SKU)
-		if err != nil || stock.Reserved < shipmentLine.Quantity || stock.OnHand < shipmentLine.Quantity {
-			return nil, ErrInsufficientStock
+	type selectedLine struct {
+		orderLineIndex int
+		shipmentLine   ShipmentLine
+	}
+	selected := make([]selectedLine, 0, len(requestedLines))
+	selectedByOrderLine := make(map[int]int, len(requestedLines))
+	plannedBySKU := make(map[string]int)
+	for _, requestedLine := range requestedLines {
+		if requestedLine.OrderLineID == "" || requestedLine.Quantity <= 0 {
+			return nil, ErrShipmentLinesInvalid
 		}
+		orderLineIndex := -1
+		for index, orderLine := range order.Lines {
+			if orderLine.ID == requestedLine.OrderLineID {
+				orderLineIndex = index
+				break
+			}
+		}
+		if orderLineIndex < 0 || selectedByOrderLine[orderLineIndex] > 0 {
+			return nil, ErrShipmentLinesInvalid
+		}
+		remaining := order.Lines[orderLineIndex].ReservedQuantity - order.Lines[orderLineIndex].ShippedQuantity
+		if requestedLine.Quantity > remaining {
+			return nil, ErrShipmentLinesInvalid
+		}
+		canonicalLine := ShipmentLine{
+			OrderLineID: requestedLine.OrderLineID,
+			SKU:         order.Lines[orderLineIndex].SKU,
+			Quantity:    requestedLine.Quantity,
+		}
+		selected = append(selected, selectedLine{orderLineIndex: orderLineIndex, shipmentLine: canonicalLine})
+		selectedByOrderLine[orderLineIndex] = requestedLine.Quantity
+		plannedBySKU[canonicalLine.SKU] += requestedLine.Quantity
 	}
 
+	stockBySKU := make(map[string]*StockRecord, len(plannedBySKU))
+	for sku, quantity := range plannedBySKU {
+		stock, err := FindStock(order.db, sku)
+		if err != nil || stock.Reserved < quantity || stock.OnHand < quantity {
+			return nil, ErrInsufficientStock
+		}
+		stockBySKU[sku] = stock
+	}
+
+	shipmentLines := make([]ShipmentLine, 0, len(selected))
+	for _, item := range selected {
+		shipmentLines = append(shipmentLines, item.shipmentLine)
+	}
 	shipment := &Shipment{
 		db:        order.db,
 		ID:        order.db.nextShipmentID(),
@@ -376,28 +427,35 @@ func (order *Order) CreateShipment(shippedBy string) (*Shipment, error) {
 		Lines:     cloneShipmentLines(shipmentLines),
 	}
 
-	for _, shipmentLine := range shipmentLines {
-		for index := range order.Lines {
-			if order.Lines[index].ID != shipmentLine.OrderLineID {
-				continue
-			}
-			order.Lines[index].ShippedQuantity += shipmentLine.Quantity
-			stock, err := FindStock(order.db, shipmentLine.SKU)
-			if err != nil {
-				return nil, err
-			}
-			if err := stock.Consume(shipmentLine.Quantity); err != nil {
-				return nil, err
-			}
-			if err := stock.Save(); err != nil {
-				return nil, err
-			}
-			break
+	for _, item := range selected {
+		order.Lines[item.orderLineIndex].ShippedQuantity += item.shipmentLine.Quantity
+	}
+	for sku, quantity := range plannedBySKU {
+		stock := stockBySKU[sku]
+		if err := stock.Consume(quantity); err != nil {
+			return nil, err
+		}
+		if err := stock.Save(); err != nil {
+			return nil, err
 		}
 	}
 
-	order.Status = OrderStatusShipped
-	order.ShippedAt = shipment.ShippedAt
+	fullyShipped := true
+	for _, line := range order.Lines {
+		remaining := line.ReservedQuantity - line.ShippedQuantity
+		if remaining > 0 {
+			fullyShipped = false
+			break
+		}
+	}
+	if fullyShipped {
+		order.Status = OrderStatusShipped
+	} else {
+		order.Status = OrderStatusPartiallyShipped
+	}
+	if order.ShippedAt.IsZero() {
+		order.ShippedAt = shipment.ShippedAt
+	}
 	if err := shipment.Save(); err != nil {
 		return nil, err
 	}

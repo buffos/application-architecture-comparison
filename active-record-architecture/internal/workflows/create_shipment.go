@@ -2,10 +2,15 @@ package workflows
 
 import "active-record-architecture/internal/records"
 
-// CreateShipment loads an order, invokes its full-shipment behavior, and
-// persists the changed order. Shipment and stock records save themselves from
-// the model operation.
+// CreateShipment is the full-shipment convenience workflow. It delegates to
+// CreatePartialShipment with no explicit line selection.
 func CreateShipment(db *records.Database, orderID string, shippedBy string) (*records.Shipment, error) {
+	return CreatePartialShipment(db, orderID, shippedBy, nil)
+}
+
+// CreatePartialShipment loads an order, invokes its selected-quantity
+// behavior, and persists the changed order.
+func CreatePartialShipment(db *records.Database, orderID string, shippedBy string, lines []records.ShipmentLine) (*records.Shipment, error) {
 	if db == nil {
 		return nil, records.ErrDatabaseRequired
 	}
@@ -14,7 +19,7 @@ func CreateShipment(db *records.Database, orderID string, shippedBy string) (*re
 	if err != nil {
 		return nil, err
 	}
-	shipment, err := order.CreateShipment(shippedBy)
+	shipment, err := order.CreatePartialShipment(shippedBy, lines)
 	if err != nil {
 		return nil, err
 	}
