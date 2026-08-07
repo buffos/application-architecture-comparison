@@ -6,6 +6,7 @@ import (
 	"time"
 
 	applicationorders "rich-domain-model-architecture/internal/application/orders"
+	applicationshipments "rich-domain-model-architecture/internal/application/shipments"
 	"rich-domain-model-architecture/internal/domain/catalog"
 	"rich-domain-model-architecture/internal/domain/customer"
 	"rich-domain-model-architecture/internal/domain/fulfillment"
@@ -152,6 +153,13 @@ func main() {
 	}
 	fmt.Printf("shipment aggregate: id=%s status=%s lines=%d\n", shipment.ID(), shipment.Status(), len(shipment.Lines()))
 	fmt.Printf("shipped order aggregate: id=%s status=%s\n", order.ID(), order.Status())
+	shipmentReader := applicationshipments.NewInMemoryReader()
+	shipmentReader.Save(shipment)
+	shipmentDetails, err := shipmentReader.GetShipment(string(shipment.ID()))
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("shipment query: id=%s status=%s lines=%d\n", shipmentDetails.ShipmentID, shipmentDetails.Status, len(shipmentDetails.Lines))
 	if err := order.Cancel(); err != nil {
 		fmt.Printf("cancellation blocked: order=%s reason=%s\n", order.ID(), err)
 	}
