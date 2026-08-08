@@ -45,8 +45,15 @@ type PaymentReviewFact struct {
 	ReviewedBy string
 }
 
+type ShipmentLineFact struct {
+	ProductID              string
+	OrderedQuantity        int
+	AlreadyShippedQuantity int
+}
+
 type ShipmentRequestFact struct {
 	Requested bool
+	Lines     []ShipmentLineFact
 }
 
 type OrderStatus string

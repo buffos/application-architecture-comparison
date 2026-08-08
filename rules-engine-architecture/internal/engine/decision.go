@@ -28,9 +28,10 @@ const (
 type ShipmentAction string
 
 const (
-	ShipmentNotRequested ShipmentAction = "not-requested"
-	ShipmentAllowed      ShipmentAction = "allowed"
-	ShipmentBlocked      ShipmentAction = "blocked"
+	ShipmentNotRequested     ShipmentAction = "not-requested"
+	ShipmentAllowed          ShipmentAction = "allowed"
+	ShipmentPartiallyAllowed ShipmentAction = "partial"
+	ShipmentBlocked          ShipmentAction = "blocked"
 )
 
 type CancellationAction string
@@ -134,6 +135,8 @@ func DecisionFromFindings(findings []Finding) PolicyDecision {
 			decision.Outcome = OutcomeRejected
 		case "shipment-allowed":
 			decision.ShipmentAction = ShipmentAllowed
+		case "shipment-partial":
+			decision.ShipmentAction = ShipmentPartiallyAllowed
 		case "shipment-blocked":
 			decision.ShipmentAction = ShipmentBlocked
 		case "cancellation-allowed":

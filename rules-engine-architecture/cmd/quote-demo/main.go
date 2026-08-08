@@ -36,6 +36,11 @@ func main() {
 		false,
 		"request shipment for the quote",
 	)
+	simulatePartialShipment := flag.Bool(
+		"simulate-partial-shipment",
+		false,
+		"request shipment after one unit has already shipped",
+	)
 	simulatePaymentFailure := flag.Bool(
 		"simulate-payment-failure",
 		false,
@@ -147,6 +152,17 @@ func main() {
 	}
 	workingMemory.Payment = engine.PaymentFact{Status: paymentStatus}
 	workingMemory.Shipment = engine.ShipmentRequestFact{Requested: *simulateShipment}
+	if *simulatePartialShipment {
+		workingMemory.Shipment = engine.ShipmentRequestFact{
+			Requested: true,
+			Lines: []engine.ShipmentLineFact{{
+				ProductID:              "PRD-002",
+				OrderedQuantity:        2,
+				AlreadyShippedQuantity: 1,
+			}},
+		}
+		fmt.Println("Configuration: simulated partial shipment for PRD-002")
+	}
 	orderStatus := engine.OrderConfirmed
 	if *simulateShippedOrder {
 		orderStatus = engine.OrderShipped
@@ -196,6 +212,7 @@ func main() {
 	ruleEngine.Register(rules.PreferredDiscountEligibilityRule{})
 	ruleEngine.Register(rules.InventoryShortageRule{})
 	ruleEngine.Register(rules.ShipmentPaymentGuardRule{})
+	ruleEngine.Register(rules.PartialShipmentRule{})
 	ruleEngine.Register(rules.CancellationGuardRule{})
 	ruleEngine.Register(rules.ReturnPolicyRule{})
 	ruleEngine.Register(rules.ApprovalWorkflowGateRule{})
@@ -395,10 +412,11 @@ func main() {
 	if workingMemory.Shipment.Requested {
 		shipmentView := readmodel.ProjectShipment(workingMemory, decision)
 		fmt.Printf(
-			"Shipment query view: order=%s requested=%t action=%s payment=%s invoice-terms=%t reason=%s\n",
+			"Shipment query view: order=%s requested=%t action=%s partial=%t payment=%s invoice-terms=%t reason=%s\n",
 			shipmentView.OrderID,
 			shipmentView.Requested,
 			shipmentView.Action,
+			shipmentView.Partial,
 			shipmentView.PaymentStatus,
 			shipmentView.InvoiceTerms,
 			shipmentView.Reason,

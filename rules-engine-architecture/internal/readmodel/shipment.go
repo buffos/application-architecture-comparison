@@ -9,6 +9,7 @@ type ShipmentView struct {
 	PaymentStatus engine.PaymentStatus
 	InvoiceTerms  bool
 	Action        engine.ShipmentAction
+	Partial       bool
 	Reason        string
 }
 
@@ -22,6 +23,7 @@ func ProjectShipment(
 		PaymentStatus: memory.Payment.Status,
 		InvoiceTerms:  memory.Customer.InvoiceTerms,
 		Action:        decision.ShipmentAction,
+		Partial:       decision.ShipmentAction == engine.ShipmentPartiallyAllowed,
 	}
 
 	for _, reason := range decision.Reasons {
