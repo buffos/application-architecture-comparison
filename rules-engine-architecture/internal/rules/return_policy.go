@@ -28,6 +28,11 @@ func (ReturnPolicyRule) Evaluate(memory *engine.WorkingMemory) bool {
 
 func (rule ReturnPolicyRule) Execute(memory *engine.WorkingMemory) error {
 	request := memory.ReturnRequest
+	if request.RequestedBy.ID == "" || request.RequestedBy.Role == "" {
+		returnReject(memory, "Return request must include the requester identity and role")
+		return nil
+	}
+
 	if memory.Order.Status != engine.OrderShipped {
 		returnReject(memory, "A return requires an order that has already shipped")
 		return nil
@@ -74,7 +79,11 @@ func (rule ReturnPolicyRule) Execute(memory *engine.WorkingMemory) error {
 	memory.AddFinding(engine.Finding{
 		RuleName: rule.Name(),
 		Severity: "return-allowed",
-		Message:  fmt.Sprintf("Product %s is eligible for return", product.ID),
+		Message: fmt.Sprintf(
+			"Product %s is eligible for return; requested by %s",
+			product.ID,
+			request.RequestedBy.ID,
+		),
 	})
 	return nil
 }

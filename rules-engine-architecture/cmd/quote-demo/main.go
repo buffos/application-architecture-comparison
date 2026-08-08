@@ -133,6 +133,10 @@ func main() {
 			ShippedQuantity:   1,
 			DaysSinceShipment: 5,
 			ReturnWindowDays:  30,
+			RequestedBy: engine.ActorFact{
+				ID:   "warehouse-clerk-001",
+				Role: "warehouse-clerk",
+			},
 		}
 	}
 	if *simulateManagerApproval {

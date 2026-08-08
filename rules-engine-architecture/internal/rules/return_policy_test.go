@@ -14,6 +14,10 @@ func TestReturnPolicyAllowsEligibleReturn(t *testing.T) {
 		ShippedQuantity:   2,
 		DaysSinceShipment: 5,
 		ReturnWindowDays:  30,
+		RequestedBy: engine.ActorFact{
+			ID:   "warehouse-clerk-001",
+			Role: "warehouse-clerk",
+		},
 	})
 	rule := ReturnPolicyRule{}
 
@@ -46,6 +50,20 @@ func TestReturnPolicyRejectsUnshippedOrder(t *testing.T) {
 	}
 	if decision.Outcome != engine.OutcomeRejected {
 		t.Fatalf("expected rejected outcome, got %s", decision.Outcome)
+	}
+}
+
+func TestReturnPolicyRejectsMissingActor(t *testing.T) {
+	request := validReturnRequest()
+	request.RequestedBy = engine.ActorFact{}
+	memory := returnMemory(engine.OrderShipped, "Standard", request)
+
+	if err := (ReturnPolicyRule{}).Execute(memory); err != nil {
+		t.Fatalf("execute rule: %v", err)
+	}
+
+	if memory.Findings[0].Severity != "return-rejected" {
+		t.Fatalf("expected return rejection finding, got %+v", memory.Findings)
 	}
 }
 
@@ -106,6 +124,10 @@ func validReturnRequest() engine.ReturnRequestFact {
 		ShippedQuantity:   2,
 		ReturnWindowDays:  30,
 		DaysSinceShipment: 5,
+		RequestedBy: engine.ActorFact{
+			ID:   "warehouse-clerk-001",
+			Role: "warehouse-clerk",
+		},
 	}
 }
 

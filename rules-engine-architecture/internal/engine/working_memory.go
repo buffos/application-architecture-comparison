@@ -54,6 +54,11 @@ type CancellationRequestFact struct {
 	Requested bool
 }
 
+type ActorFact struct {
+	ID   string
+	Role string
+}
+
 type ReturnRequestFact struct {
 	Requested                  bool
 	ProductID                  string
@@ -62,6 +67,7 @@ type ReturnRequestFact struct {
 	PreviouslyReturnedQuantity int
 	DaysSinceShipment          int
 	ReturnWindowDays           int
+	RequestedBy                ActorFact
 }
 
 type StockShortagePolicy string
