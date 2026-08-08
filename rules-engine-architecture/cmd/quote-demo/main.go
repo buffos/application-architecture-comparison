@@ -76,6 +76,11 @@ func main() {
 		false,
 		"send the same return command twice",
 	)
+	lowStockThreshold := flag.Int(
+		"low-stock-threshold",
+		3,
+		"report products with stock below this quantity",
+	)
 	flag.Parse()
 
 	customer := engine.CustomerFact{
@@ -299,6 +304,15 @@ func main() {
 			formatCents(productView.UnitPriceCents),
 			productView.AvailableQuantity,
 			productView.ShortagePolicy,
+		)
+	}
+	for _, row := range reporting.BuildLowStockReport(workingMemory.Products, *lowStockThreshold) {
+		fmt.Printf(
+			"Low-stock report: product=%s category=%s stock=%d threshold=%d\n",
+			row.ProductID,
+			row.ProductCategory,
+			row.AvailableQuantity,
+			row.Threshold,
 		)
 	}
 	for _, customerView := range readmodel.ProjectCustomers([]engine.CustomerFact{workingMemory.Customer}) {
