@@ -1,6 +1,9 @@
 package engine
 
-const ManagerApprovalRequiredFact = "manager-approval-required"
+const (
+	ManagerApprovalRequiredFact   = "manager-approval-required"
+	PreferredDiscountEligibleFact = "preferred-discount-eligible"
+)
 
 // DerivedFact is knowledge produced by one Rule for later Rules to consume.
 type DerivedFact struct {

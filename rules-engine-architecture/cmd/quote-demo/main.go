@@ -69,6 +69,7 @@ func main() {
 	ruleEngine.Register(rules.DiscountRejectionRule{})
 	ruleEngine.Register(rules.CustomBuildApprovalRule{})
 	ruleEngine.Register(rules.NewHighValuePaymentReviewRule(100000))
+	ruleEngine.Register(rules.PreferredDiscountEligibilityRule{})
 	ruleEngine.Register(rules.ApprovalWorkflowGateRule{})
 	if *disableCustomBuild {
 		if !ruleEngine.SetRuleEnabled("Custom Build Approval Rule", false) {
@@ -167,5 +168,8 @@ func main() {
 		fmt.Printf("Policy decision after recomputation: %s\n", decision.Outcome)
 		fmt.Printf("Findings after recomputation: %d\n", len(workingMemory.Findings))
 		fmt.Printf("Derived facts after recomputation: %d\n", len(workingMemory.DerivedFacts))
+		for _, fact := range workingMemory.DerivedFacts {
+			fmt.Printf("- fresh fact: %s = %s\n", fact.Name, fact.Value)
+		}
 	}
 }
