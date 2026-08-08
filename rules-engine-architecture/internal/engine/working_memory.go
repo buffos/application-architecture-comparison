@@ -32,6 +32,19 @@ type PaymentFact struct {
 	Status PaymentStatus
 }
 
+type PaymentReviewStatus string
+
+const (
+	PaymentReviewPending  PaymentReviewStatus = "pending"
+	PaymentReviewApproved PaymentReviewStatus = "approved"
+	PaymentReviewRejected PaymentReviewStatus = "rejected"
+)
+
+type PaymentReviewFact struct {
+	Status     PaymentReviewStatus
+	ReviewedBy string
+}
+
 type ShipmentRequestFact struct {
 	Requested bool
 }
@@ -116,6 +129,7 @@ type WorkingMemory struct {
 	Quote           QuoteFact
 	Products        []ProductFact
 	Payment         PaymentFact
+	PaymentReview   PaymentReviewFact
 	Shipment        ShipmentRequestFact
 	Order           OrderFact
 	Cancellation    CancellationRequestFact
@@ -134,6 +148,7 @@ func NewWorkingMemory(customer CustomerFact, quote QuoteFact, products []Product
 		Customer:        customer,
 		Quote:           quoteCopy,
 		Products:        append([]ProductFact(nil), products...),
+		PaymentReview:   PaymentReviewFact{Status: PaymentReviewPending},
 		ManagerApproval: ApprovalFact{Status: ApprovalPending},
 		Findings:        []Finding{},
 		DerivedFacts:    []DerivedFact{},

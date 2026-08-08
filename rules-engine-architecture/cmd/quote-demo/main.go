@@ -56,6 +56,16 @@ func main() {
 		false,
 		"load an approved manager-approval Fact",
 	)
+	simulatePaymentReviewApproved := flag.Bool(
+		"simulate-payment-review-approved",
+		false,
+		"load an approved high-value payment-review Fact",
+	)
+	simulatePaymentReviewRejected := flag.Bool(
+		"simulate-payment-review-rejected",
+		false,
+		"load a rejected high-value payment-review Fact",
+	)
 	simulateReturn := flag.Bool(
 		"simulate-return",
 		false,
@@ -163,6 +173,21 @@ func main() {
 			ApprovedBy: "demo-manager",
 		}
 	}
+	if *simulatePaymentReviewApproved && *simulatePaymentReviewRejected {
+		panic("payment review cannot be both approved and rejected")
+	}
+	if *simulatePaymentReviewApproved {
+		workingMemory.PaymentReview = engine.PaymentReviewFact{
+			Status:     engine.PaymentReviewApproved,
+			ReviewedBy: "payment-manager",
+		}
+	}
+	if *simulatePaymentReviewRejected {
+		workingMemory.PaymentReview = engine.PaymentReviewFact{
+			Status:     engine.PaymentReviewRejected,
+			ReviewedBy: "payment-manager",
+		}
+	}
 	ruleEngine := engine.NewEngine()
 	ruleEngine.Register(rules.DiscountApprovalRule{})
 	ruleEngine.Register(rules.DiscountRejectionRule{})
@@ -224,6 +249,7 @@ func main() {
 		workingMemory.Customer.Tier,
 	)
 	fmt.Printf("Manager approval: %s\n", workingMemory.ManagerApproval.Status)
+	fmt.Printf("Payment review: %s\n", workingMemory.PaymentReview.Status)
 	fmt.Printf("Quote: %s for customer %s, status %s, discount %d%%\n",
 		workingMemory.Quote.ID,
 		workingMemory.Quote.CustomerID,

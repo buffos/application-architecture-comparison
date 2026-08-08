@@ -118,6 +118,8 @@ func DecisionFromFindings(findings []Finding) PolicyDecision {
 				decision.RequiredReviews,
 				ReviewPayment,
 			)
+		case "payment-review-rejected":
+			decision.Outcome = OutcomeRejected
 		case "conversion-blocked":
 			decision.RequiredReviews = appendReviewRequirement(
 				decision.RequiredReviews,

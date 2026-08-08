@@ -29,19 +29,30 @@ func (HighValuePaymentReviewRule) ConflictGroup() string {
 }
 
 func (rule HighValuePaymentReviewRule) Evaluate(memory *engine.WorkingMemory) bool {
-	return quoteSubtotal(memory) > rule.thresholdCents
+	return quoteSubtotal(memory) > rule.thresholdCents &&
+		memory.PaymentReview.Status != engine.PaymentReviewApproved
 }
 
 func (rule HighValuePaymentReviewRule) Execute(memory *engine.WorkingMemory) error {
 	subtotal := quoteSubtotal(memory)
+	severity := "payment-review"
+	message := fmt.Sprintf(
+		"Quote subtotal of %s exceeds payment review threshold of %s",
+		formatCents(subtotal),
+		formatCents(rule.thresholdCents),
+	)
+	if memory.PaymentReview.Status == engine.PaymentReviewRejected {
+		severity = "payment-review-rejected"
+		message = fmt.Sprintf(
+			"Payment review was rejected for quote subtotal of %s",
+			formatCents(subtotal),
+		)
+	}
+
 	memory.AddFinding(engine.Finding{
 		RuleName: rule.Name(),
-		Severity: "payment-review",
-		Message: fmt.Sprintf(
-			"Quote subtotal of %s exceeds payment review threshold of %s",
-			formatCents(subtotal),
-			formatCents(rule.thresholdCents),
-		),
+		Severity: severity,
+		Message:  message,
 	})
 	return nil
 }
