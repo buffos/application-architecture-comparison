@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 
+	"rules-engine-architecture/internal/application"
 	"rules-engine-architecture/internal/engine"
 	"rules-engine-architecture/internal/rules"
 )
@@ -62,6 +63,16 @@ func main() {
 		"simulate-clearance-return",
 		false,
 		"make the simulated return product clearance",
+	)
+	returnCommandKey := flag.String(
+		"return-command-key",
+		"",
+		"evaluate the return through an idempotent command key",
+	)
+	simulateReturnRetry := flag.Bool(
+		"simulate-return-retry",
+		false,
+		"send the same return command twice",
 	)
 	flag.Parse()
 
@@ -163,7 +174,37 @@ func main() {
 		fmt.Println("Configuration: CustomBuild approval Rule disabled")
 	}
 	fmt.Println("Executing registered Rules")
-	decision, cycles, err := ruleEngine.DecideUntilStable(workingMemory, 5)
+	var decision engine.PolicyDecision
+	var cycles int
+	var err error
+	if *returnCommandKey != "" {
+		service := application.NewReturnDecisionService(
+			ruleEngine,
+			application.NewIdempotencyStore(),
+		)
+		var replayed bool
+		decision, cycles, replayed, err = service.Evaluate(*returnCommandKey, workingMemory, 5)
+		if err == nil {
+			fmt.Printf("Idempotency replayed: %t\n", replayed)
+		}
+		if err == nil && *simulateReturnRetry {
+			var retryDecision engine.PolicyDecision
+			var retryCycles int
+			var retryReplayed bool
+			retryDecision, retryCycles, retryReplayed, err = service.Evaluate(
+				*returnCommandKey,
+				workingMemory,
+				5,
+			)
+			if err == nil {
+				decision = retryDecision
+				fmt.Printf("Retry idempotency replayed: %t\n", retryReplayed)
+				fmt.Printf("Retry inference cycles: %d\n", retryCycles)
+			}
+		}
+	} else {
+		decision, cycles, err = ruleEngine.DecideUntilStable(workingMemory, 5)
+	}
 	if err != nil {
 		panic(err)
 	}
