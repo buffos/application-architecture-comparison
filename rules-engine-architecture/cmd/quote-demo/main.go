@@ -54,6 +54,7 @@ func main() {
 	ruleEngine := engine.NewEngine()
 	ruleEngine.Register(rules.DiscountApprovalRule{})
 	ruleEngine.Register(rules.DiscountRejectionRule{})
+	ruleEngine.Register(rules.CustomBuildApprovalRule{})
 	fmt.Println("Executing registered Rules")
 	if err := ruleEngine.ExecuteAll(workingMemory); err != nil {
 		panic(err)

@@ -56,3 +56,31 @@ func TestEngineUsesHigherPriorityRuleForConflictGroup(t *testing.T) {
 		t.Fatalf("expected rejection rule, got %q", memory.Findings[0].RuleName)
 	}
 }
+
+func TestEngineRunsIndependentRulesTogether(t *testing.T) {
+	memory := engine.NewWorkingMemory(
+		engine.CustomerFact{ID: "CUST-001"},
+		engine.QuoteFact{
+			ID:              "Q-1001",
+			CustomerID:      "CUST-001",
+			DiscountPercent: 20,
+			Lines: []engine.QuoteLineFact{
+				{ProductID: "PRD-002", Quantity: 1},
+			},
+		},
+		[]engine.ProductFact{
+			{ID: "PRD-002", Category: "CustomBuild"},
+		},
+	)
+
+	ruleEngine := engine.NewEngine()
+	ruleEngine.Register(rules.DiscountApprovalRule{})
+	ruleEngine.Register(rules.CustomBuildApprovalRule{})
+
+	if err := ruleEngine.ExecuteAll(memory); err != nil {
+		t.Fatalf("execute rules: %v", err)
+	}
+	if len(memory.Findings) != 2 {
+		t.Fatalf("expected two independent findings, got %d", len(memory.Findings))
+	}
+}
