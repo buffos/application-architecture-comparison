@@ -7,6 +7,7 @@ import (
 	"rules-engine-architecture/internal/application"
 	"rules-engine-architecture/internal/engine"
 	"rules-engine-architecture/internal/readmodel"
+	"rules-engine-architecture/internal/reporting"
 	"rules-engine-architecture/internal/rules"
 )
 
@@ -309,6 +310,13 @@ func main() {
 			customerView.InvoiceTerms,
 		)
 	}
+	conversionReport := reporting.BuildQuoteConversionReport([]engine.QuoteFact{workingMemory.Quote})
+	fmt.Printf(
+		"Quote conversion report: converted=%d/%d rate=%.2f%%\n",
+		conversionReport.ConvertedQuotes,
+		conversionReport.TotalQuotes,
+		conversionReport.ConversionRatePercent,
+	)
 	if workingMemory.Shipment.Requested {
 		shipmentView := readmodel.ProjectShipment(workingMemory, decision)
 		fmt.Printf(
