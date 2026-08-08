@@ -38,6 +38,16 @@ func main() {
 		false,
 		"set the payment status to failed",
 	)
+	simulateCancellation := flag.Bool(
+		"simulate-cancellation",
+		false,
+		"request cancellation for the order",
+	)
+	simulateShippedOrder := flag.Bool(
+		"simulate-shipped-order",
+		false,
+		"set the order status to shipped",
+	)
 	flag.Parse()
 
 	customer := engine.CustomerFact{
@@ -90,6 +100,12 @@ func main() {
 	}
 	workingMemory.Payment = engine.PaymentFact{Status: paymentStatus}
 	workingMemory.Shipment = engine.ShipmentRequestFact{Requested: *simulateShipment}
+	orderStatus := engine.OrderConfirmed
+	if *simulateShippedOrder {
+		orderStatus = engine.OrderShipped
+	}
+	workingMemory.Order = engine.OrderFact{ID: "ORD-1001", Status: orderStatus}
+	workingMemory.Cancellation = engine.CancellationRequestFact{Requested: *simulateCancellation}
 	ruleEngine := engine.NewEngine()
 	ruleEngine.Register(rules.DiscountApprovalRule{})
 	ruleEngine.Register(rules.DiscountRejectionRule{})
@@ -98,6 +114,7 @@ func main() {
 	ruleEngine.Register(rules.PreferredDiscountEligibilityRule{})
 	ruleEngine.Register(rules.InventoryShortageRule{})
 	ruleEngine.Register(rules.ShipmentPaymentGuardRule{})
+	ruleEngine.Register(rules.CancellationGuardRule{})
 	ruleEngine.Register(rules.ApprovalWorkflowGateRule{})
 	if *disableCustomBuild {
 		if !ruleEngine.SetRuleEnabled("Custom Build Approval Rule", false) {
@@ -150,6 +167,7 @@ func main() {
 	fmt.Printf("Policy decision: %s\n", decision.Outcome)
 	fmt.Printf("Fulfillment action: %s\n", decision.FulfillmentAction)
 	fmt.Printf("Shipment action: %s\n", decision.ShipmentAction)
+	fmt.Printf("Cancellation action: %s\n", decision.CancellationAction)
 	fmt.Println("Required reviews:")
 	for _, review := range decision.RequiredReviews {
 		fmt.Printf("- %s\n", review)

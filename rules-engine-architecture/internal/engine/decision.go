@@ -33,13 +33,22 @@ const (
 	ShipmentBlocked      ShipmentAction = "blocked"
 )
 
+type CancellationAction string
+
+const (
+	CancellationNotRequested CancellationAction = "not-requested"
+	CancellationAllowed      CancellationAction = "allowed"
+	CancellationBlocked      CancellationAction = "blocked"
+)
+
 // PolicyDecision is the application-facing result of one Rule Engine cycle.
 type PolicyDecision struct {
-	Outcome           DecisionOutcome
-	FulfillmentAction FulfillmentAction
-	ShipmentAction    ShipmentAction
-	Reasons           []Finding
-	RequiredReviews   []ReviewRequirement
+	Outcome            DecisionOutcome
+	FulfillmentAction  FulfillmentAction
+	ShipmentAction     ShipmentAction
+	CancellationAction CancellationAction
+	Reasons            []Finding
+	RequiredReviews    []ReviewRequirement
 }
 
 func (engine *Engine) Decide(memory *WorkingMemory) (PolicyDecision, error) {
@@ -78,10 +87,11 @@ func (engine *Engine) RecomputeDecision(
 
 func DecisionFromFindings(findings []Finding) PolicyDecision {
 	decision := PolicyDecision{
-		Outcome:           OutcomeAllowed,
-		FulfillmentAction: FulfillmentNone,
-		ShipmentAction:    ShipmentNotRequested,
-		Reasons:           append([]Finding(nil), findings...),
+		Outcome:            OutcomeAllowed,
+		FulfillmentAction:  FulfillmentNone,
+		ShipmentAction:     ShipmentNotRequested,
+		CancellationAction: CancellationNotRequested,
+		Reasons:            append([]Finding(nil), findings...),
 	}
 
 	for _, finding := range findings {
@@ -114,6 +124,10 @@ func DecisionFromFindings(findings []Finding) PolicyDecision {
 			decision.ShipmentAction = ShipmentAllowed
 		case "shipment-blocked":
 			decision.ShipmentAction = ShipmentBlocked
+		case "cancellation-allowed":
+			decision.CancellationAction = CancellationAllowed
+		case "cancellation-blocked":
+			decision.CancellationAction = CancellationBlocked
 		}
 	}
 

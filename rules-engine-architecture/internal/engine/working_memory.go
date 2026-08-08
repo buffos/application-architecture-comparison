@@ -24,6 +24,24 @@ type ShipmentRequestFact struct {
 	Requested bool
 }
 
+type OrderStatus string
+
+const (
+	OrderDraft     OrderStatus = "draft"
+	OrderConfirmed OrderStatus = "confirmed"
+	OrderShipped   OrderStatus = "shipped"
+	OrderCancelled OrderStatus = "cancelled"
+)
+
+type OrderFact struct {
+	ID     string
+	Status OrderStatus
+}
+
+type CancellationRequestFact struct {
+	Requested bool
+}
+
 type StockShortagePolicy string
 
 const (
@@ -71,6 +89,8 @@ type WorkingMemory struct {
 	Products     []ProductFact
 	Payment      PaymentFact
 	Shipment     ShipmentRequestFact
+	Order        OrderFact
+	Cancellation CancellationRequestFact
 	Findings     []Finding
 	DerivedFacts []DerivedFact
 	Trace        []RuleTrace
