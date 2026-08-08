@@ -46,6 +46,7 @@ type WorkingMemory struct {
 	Quote    QuoteFact
 	Products []ProductFact
 	Findings []Finding
+	Trace    []RuleTrace
 }
 
 func NewWorkingMemory(customer CustomerFact, quote QuoteFact, products []ProductFact) *WorkingMemory {
@@ -57,6 +58,7 @@ func NewWorkingMemory(customer CustomerFact, quote QuoteFact, products []Product
 		Quote:    quoteCopy,
 		Products: append([]ProductFact(nil), products...),
 		Findings: []Finding{},
+		Trace:    []RuleTrace{},
 	}
 }
 

@@ -120,4 +120,18 @@ func main() {
 	for _, reason := range decision.Reasons {
 		fmt.Printf("- %s\n", reason.Message)
 	}
+	fmt.Println("Rule trace:")
+	for _, trace := range workingMemory.Trace {
+		fmt.Printf(
+			"- %s: evaluated=%t matched=%t executed=%t",
+			trace.RuleName,
+			trace.Evaluated,
+			trace.Matched,
+			trace.Executed,
+		)
+		if trace.SkippedReason != "" {
+			fmt.Printf(" (%s)", trace.SkippedReason)
+		}
+		fmt.Println()
+	}
 }

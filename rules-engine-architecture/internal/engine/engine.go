@@ -44,22 +44,44 @@ func (engine *Engine) ExecuteAll(memory *WorkingMemory) error {
 
 	resolvedGroups := map[string]bool{}
 	for _, registered := range orderedRules {
-		if !registered.enabled {
-			continue
-		}
-
 		rule := registered.rule
 		group := rule.ConflictGroup()
-		if group != "" && resolvedGroups[group] {
-			continue
+		trace := RuleTrace{
+			RuleName:      rule.Name(),
+			Priority:      rule.Priority(),
+			ConflictGroup: group,
+			Enabled:       registered.enabled,
 		}
-		if !rule.Evaluate(memory) {
+
+		if !registered.enabled {
+			trace.SkippedReason = "disabled by configuration"
+			memory.AddTrace(trace)
 			continue
 		}
 
+		if group != "" && resolvedGroups[group] {
+			trace.SkippedReason = "conflict group already resolved"
+			memory.AddTrace(trace)
+			continue
+		}
+
+		trace.Evaluated = true
+		if !rule.Evaluate(memory) {
+			trace.SkippedReason = "condition did not match"
+			memory.AddTrace(trace)
+			continue
+		}
+
+		trace.Matched = true
+
 		if err := rule.Execute(memory); err != nil {
+			trace.SkippedReason = "execution failed"
+			memory.AddTrace(trace)
 			return fmt.Errorf("execute rule %q: %w", rule.Name(), err)
 		}
+
+		trace.Executed = true
+		memory.AddTrace(trace)
 		if group != "" {
 			resolvedGroups[group] = true
 		}

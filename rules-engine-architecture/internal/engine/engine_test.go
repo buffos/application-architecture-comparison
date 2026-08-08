@@ -55,6 +55,12 @@ func TestEngineUsesHigherPriorityRuleForConflictGroup(t *testing.T) {
 	if memory.Findings[0].RuleName != "Discount Rejection Rule" {
 		t.Fatalf("expected rejection rule, got %q", memory.Findings[0].RuleName)
 	}
+	if len(memory.Trace) != 2 {
+		t.Fatalf("expected two trace records, got %d", len(memory.Trace))
+	}
+	if memory.Trace[1].SkippedReason != "conflict group already resolved" {
+		t.Fatalf("expected lower-priority Rule to be conflict-skipped, got %q", memory.Trace[1].SkippedReason)
+	}
 }
 
 func TestEngineRunsIndependentRulesTogether(t *testing.T) {
@@ -224,5 +230,42 @@ func TestEngineDecisionIncludesPaymentReviewRequirement(t *testing.T) {
 	}
 	if decision.RequiredReviews[1] != engine.ReviewPayment {
 		t.Fatalf("expected payment review requirement, got %v", decision.RequiredReviews)
+	}
+}
+
+func TestEngineRecordsRuleExecutionTrace(t *testing.T) {
+	memory := engine.NewWorkingMemory(
+		engine.CustomerFact{ID: "CUST-001"},
+		engine.QuoteFact{
+			ID:              "Q-1001",
+			CustomerID:      "CUST-001",
+			DiscountPercent: 20,
+			Lines: []engine.QuoteLineFact{
+				{ProductID: "PRD-002", Quantity: 1, UnitPriceCents: 125000},
+			},
+		},
+		[]engine.ProductFact{
+			{ID: "PRD-002", Category: "CustomBuild"},
+		},
+	)
+
+	ruleEngine := engine.NewEngine()
+	ruleEngine.Register(rules.DiscountRejectionRule{})
+	ruleEngine.Register(rules.DiscountApprovalRule{})
+	ruleEngine.Register(rules.CustomBuildApprovalRule{})
+	ruleEngine.Register(rules.NewHighValuePaymentReviewRule(100000))
+
+	if err := ruleEngine.ExecuteAll(memory); err != nil {
+		t.Fatalf("execute rules: %v", err)
+	}
+	if len(memory.Trace) != 4 {
+		t.Fatalf("expected four trace records, got %d", len(memory.Trace))
+	}
+
+	if memory.Trace[0].RuleName != "Discount Rejection Rule" || memory.Trace[0].Matched {
+		t.Fatalf("expected first trace to be a non-matching rejection Rule, got %+v", memory.Trace[0])
+	}
+	if !memory.Trace[1].Executed || !memory.Trace[2].Executed || !memory.Trace[3].Executed {
+		t.Fatalf("expected the remaining Rules to execute, got %+v", memory.Trace)
 	}
 }
