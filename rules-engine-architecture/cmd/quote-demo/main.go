@@ -317,6 +317,28 @@ func main() {
 		conversionReport.TotalQuotes,
 		conversionReport.ConversionRatePercent,
 	)
+	if workingMemory.ReturnRequest.Requested {
+		category := "Unknown"
+		for _, product := range workingMemory.Products {
+			if product.ID == workingMemory.ReturnRequest.ProductID {
+				category = product.Category
+				break
+			}
+		}
+		returnRateRows := reporting.BuildReturnRateByCategory([]reporting.ReturnRecord{{
+			ProductCategory: category,
+			Accepted:        decision.ReturnAction == engine.ReturnAllowed,
+		}})
+		for _, row := range returnRateRows {
+			fmt.Printf(
+				"Return rate report: category=%s accepted=%d/%d rate=%.2f%%\n",
+				row.ProductCategory,
+				row.AcceptedReturns,
+				row.AttemptedReturns,
+				row.ReturnRatePercent,
+			)
+		}
+	}
 	if workingMemory.Shipment.Requested {
 		shipmentView := readmodel.ProjectShipment(workingMemory, decision)
 		fmt.Printf(
