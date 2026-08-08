@@ -275,6 +275,21 @@ func main() {
 		orderView.ReturnAction,
 		orderView.Outcome,
 	)
+	quoteList := readmodel.ProjectQuoteList([]readmodel.EvaluatedQuote{{
+		Memory:   workingMemory,
+		Decision: decision,
+	}})
+	for _, quoteSummary := range quoteList {
+		fmt.Printf(
+			"Quote list view: id=%s customer=%s status=%s subtotal=%s discount=%d%% outcome=%s\n",
+			quoteSummary.ID,
+			quoteSummary.CustomerID,
+			quoteSummary.Status,
+			formatCents(quoteSummary.SubtotalCents),
+			quoteSummary.DiscountPercent,
+			quoteSummary.Outcome,
+		)
+	}
 	if workingMemory.Shipment.Requested {
 		shipmentView := readmodel.ProjectShipment(workingMemory, decision)
 		fmt.Printf(
