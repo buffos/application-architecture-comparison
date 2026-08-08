@@ -309,6 +309,62 @@ func TestEngineChainsDerivedFactsUntilStable(t *testing.T) {
 	}
 }
 
+func TestEngineClearsApprovalRequirementAfterManagerApproval(t *testing.T) {
+	memory := engine.NewWorkingMemory(
+		engine.CustomerFact{ID: "CUST-001"},
+		engine.QuoteFact{
+			ID:              "Q-1001",
+			DiscountPercent: 20,
+			Lines: []engine.QuoteLineFact{
+				{ProductID: "PRD-002", Quantity: 1},
+			},
+		},
+		[]engine.ProductFact{
+			{ID: "PRD-002", Category: "CustomBuild"},
+		},
+	)
+
+	ruleEngine := engine.NewEngine()
+	ruleEngine.Register(rules.ApprovalWorkflowGateRule{})
+	ruleEngine.Register(rules.DiscountApprovalRule{})
+	ruleEngine.Register(rules.CustomBuildApprovalRule{})
+
+	decision, _, err := ruleEngine.DecideUntilStable(memory, 5)
+	if err != nil {
+		t.Fatalf("initial decision: %v", err)
+	}
+	if decision.Outcome != engine.OutcomeNeedsApproval {
+		t.Fatalf("expected pending approval, got %s", decision.Outcome)
+	}
+	if len(decision.RequiredReviews) != 1 || decision.RequiredReviews[0] != engine.ReviewManagerApproval {
+		t.Fatalf("expected manager approval requirement, got %v", decision.RequiredReviews)
+	}
+
+	memory.ManagerApproval = engine.ApprovalFact{
+		Status:     engine.ApprovalApproved,
+		ApprovedBy: "manager-001",
+	}
+	decision, cycles, err := ruleEngine.RecomputeDecision(memory, 5)
+	if err != nil {
+		t.Fatalf("decision after approval: %v", err)
+	}
+	if cycles != 1 {
+		t.Fatalf("expected one stable cycle after approval, got %d", cycles)
+	}
+	if decision.Outcome != engine.OutcomeAllowed {
+		t.Fatalf("expected allowed decision after approval, got %s", decision.Outcome)
+	}
+	if len(decision.RequiredReviews) != 0 {
+		t.Fatalf("expected no remaining reviews, got %v", decision.RequiredReviews)
+	}
+	if len(memory.Findings) != 0 {
+		t.Fatalf("expected approval findings to disappear, got %d", len(memory.Findings))
+	}
+	if memory.HasDerivedFact(engine.ManagerApprovalRequiredFact) {
+		t.Fatal("expected the pending approval fact to disappear after recomputation")
+	}
+}
+
 func TestEngineRecomputesAfterSourceFactChange(t *testing.T) {
 	memory := engine.NewWorkingMemory(
 		engine.CustomerFact{ID: "CUST-001"},

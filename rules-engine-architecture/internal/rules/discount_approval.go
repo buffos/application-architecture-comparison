@@ -23,7 +23,8 @@ func (DiscountApprovalRule) ConflictGroup() string {
 }
 
 func (DiscountApprovalRule) Evaluate(memory *engine.WorkingMemory) bool {
-	return memory.Quote.DiscountPercent > 15
+	return memory.Quote.DiscountPercent > 15 &&
+		memory.ManagerApproval.Status != engine.ApprovalApproved
 }
 
 func (rule DiscountApprovalRule) Execute(memory *engine.WorkingMemory) error {

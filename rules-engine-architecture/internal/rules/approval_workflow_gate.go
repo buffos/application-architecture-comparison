@@ -19,7 +19,8 @@ func (ApprovalWorkflowGateRule) ConflictGroup() string {
 }
 
 func (ApprovalWorkflowGateRule) Evaluate(memory *engine.WorkingMemory) bool {
-	return memory.HasDerivedFact(engine.ManagerApprovalRequiredFact)
+	return memory.ManagerApproval.Status != engine.ApprovalApproved &&
+		memory.HasDerivedFact(engine.ManagerApprovalRequiredFact)
 }
 
 func (rule ApprovalWorkflowGateRule) Execute(memory *engine.WorkingMemory) error {

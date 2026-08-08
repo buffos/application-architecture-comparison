@@ -48,6 +48,11 @@ func main() {
 		false,
 		"set the order status to shipped",
 	)
+	simulateManagerApproval := flag.Bool(
+		"simulate-manager-approval",
+		false,
+		"load an approved manager-approval Fact",
+	)
 	flag.Parse()
 
 	customer := engine.CustomerFact{
@@ -106,6 +111,12 @@ func main() {
 	}
 	workingMemory.Order = engine.OrderFact{ID: "ORD-1001", Status: orderStatus}
 	workingMemory.Cancellation = engine.CancellationRequestFact{Requested: *simulateCancellation}
+	if *simulateManagerApproval {
+		workingMemory.ManagerApproval = engine.ApprovalFact{
+			Status:     engine.ApprovalApproved,
+			ApprovedBy: "demo-manager",
+		}
+	}
 	ruleEngine := engine.NewEngine()
 	ruleEngine.Register(rules.DiscountApprovalRule{})
 	ruleEngine.Register(rules.DiscountRejectionRule{})
@@ -135,6 +146,7 @@ func main() {
 		workingMemory.Customer.ID,
 		workingMemory.Customer.Tier,
 	)
+	fmt.Printf("Manager approval: %s\n", workingMemory.ManagerApproval.Status)
 	fmt.Printf("Quote: %s for customer %s, status %s, discount %d%%\n",
 		workingMemory.Quote.ID,
 		workingMemory.Quote.CustomerID,

@@ -8,6 +8,18 @@ type CustomerFact struct {
 	InvoiceTerms bool
 }
 
+type ApprovalStatus string
+
+const (
+	ApprovalPending  ApprovalStatus = "pending"
+	ApprovalApproved ApprovalStatus = "approved"
+)
+
+type ApprovalFact struct {
+	Status     ApprovalStatus
+	ApprovedBy string
+}
+
 type PaymentStatus string
 
 const (
@@ -84,16 +96,17 @@ type Finding struct {
 
 // WorkingMemory is the shared fact container used by the future Rule Engine.
 type WorkingMemory struct {
-	Customer     CustomerFact
-	Quote        QuoteFact
-	Products     []ProductFact
-	Payment      PaymentFact
-	Shipment     ShipmentRequestFact
-	Order        OrderFact
-	Cancellation CancellationRequestFact
-	Findings     []Finding
-	DerivedFacts []DerivedFact
-	Trace        []RuleTrace
+	Customer        CustomerFact
+	Quote           QuoteFact
+	Products        []ProductFact
+	Payment         PaymentFact
+	Shipment        ShipmentRequestFact
+	Order           OrderFact
+	Cancellation    CancellationRequestFact
+	ManagerApproval ApprovalFact
+	Findings        []Finding
+	DerivedFacts    []DerivedFact
+	Trace           []RuleTrace
 }
 
 func NewWorkingMemory(customer CustomerFact, quote QuoteFact, products []ProductFact) *WorkingMemory {
@@ -101,12 +114,13 @@ func NewWorkingMemory(customer CustomerFact, quote QuoteFact, products []Product
 	quoteCopy.Lines = append([]QuoteLineFact(nil), quote.Lines...)
 
 	return &WorkingMemory{
-		Customer:     customer,
-		Quote:        quoteCopy,
-		Products:     append([]ProductFact(nil), products...),
-		Findings:     []Finding{},
-		DerivedFacts: []DerivedFact{},
-		Trace:        []RuleTrace{},
+		Customer:        customer,
+		Quote:           quoteCopy,
+		Products:        append([]ProductFact(nil), products...),
+		ManagerApproval: ApprovalFact{Status: ApprovalPending},
+		Findings:        []Finding{},
+		DerivedFacts:    []DerivedFact{},
+		Trace:           []RuleTrace{},
 	}
 }
 

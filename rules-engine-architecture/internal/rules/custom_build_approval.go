@@ -22,6 +22,10 @@ func (CustomBuildApprovalRule) ConflictGroup() string {
 }
 
 func (CustomBuildApprovalRule) Evaluate(memory *engine.WorkingMemory) bool {
+	if memory.ManagerApproval.Status == engine.ApprovalApproved {
+		return false
+	}
+
 	for _, line := range memory.Quote.Lines {
 		for _, product := range memory.Products {
 			if line.ProductID == product.ID && product.Category == "CustomBuild" {
