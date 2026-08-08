@@ -61,6 +61,17 @@ func (engine *Engine) ExecuteUntilStable(memory *WorkingMemory, maxCycles int) (
 	return maxCycles, fmt.Errorf("rule engine did not converge after %d cycles", maxCycles)
 }
 
+// RecomputeUntilStable discards the previous inference session and evaluates
+// the current source Facts from scratch.
+func (engine *Engine) RecomputeUntilStable(memory *WorkingMemory, maxCycles int) (int, error) {
+	if maxCycles < 1 {
+		return 0, fmt.Errorf("max cycles must be at least 1")
+	}
+
+	memory.ResetInferences()
+	return engine.ExecuteUntilStable(memory, maxCycles)
+}
+
 func (engine *Engine) executeCycle(memory *WorkingMemory, cycle int) error {
 	orderedRules := append([]registeredRule(nil), engine.rules...)
 	sort.SliceStable(orderedRules, func(left, right int) bool {

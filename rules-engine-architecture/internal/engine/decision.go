@@ -44,6 +44,20 @@ func (engine *Engine) DecideUntilStable(
 	return DecisionFromFindings(memory.Findings), cycles, nil
 }
 
+// RecomputeDecision starts a fresh inference session for the current source
+// Facts and returns the resulting policy decision.
+func (engine *Engine) RecomputeDecision(
+	memory *WorkingMemory,
+	maxCycles int,
+) (PolicyDecision, int, error) {
+	cycles, err := engine.RecomputeUntilStable(memory, maxCycles)
+	if err != nil {
+		return PolicyDecision{}, cycles, err
+	}
+
+	return DecisionFromFindings(memory.Findings), cycles, nil
+}
+
 func DecisionFromFindings(findings []Finding) PolicyDecision {
 	decision := PolicyDecision{
 		Outcome: OutcomeAllowed,

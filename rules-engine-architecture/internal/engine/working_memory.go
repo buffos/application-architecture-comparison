@@ -75,3 +75,10 @@ func (memory *WorkingMemory) AddFinding(finding Finding) {
 
 	memory.Findings = append(memory.Findings, finding)
 }
+
+// ResetInferences starts a fresh inference session while preserving source Facts.
+func (memory *WorkingMemory) ResetInferences() {
+	memory.Findings = []Finding{}
+	memory.DerivedFacts = []DerivedFact{}
+	memory.Trace = []RuleTrace{}
+}

@@ -308,3 +308,61 @@ func TestEngineChainsDerivedFactsUntilStable(t *testing.T) {
 		t.Fatalf("expected needs-approval, got %s", decision.Outcome)
 	}
 }
+
+func TestEngineRecomputesAfterSourceFactChange(t *testing.T) {
+	memory := engine.NewWorkingMemory(
+		engine.CustomerFact{ID: "CUST-001"},
+		engine.QuoteFact{
+			ID: "Q-1001",
+			Lines: []engine.QuoteLineFact{
+				{ProductID: "PRD-002", Quantity: 1},
+			},
+		},
+		[]engine.ProductFact{
+			{ID: "PRD-001", Category: "Standard"},
+			{ID: "PRD-002", Category: "CustomBuild"},
+		},
+	)
+
+	ruleEngine := engine.NewEngine()
+	ruleEngine.Register(rules.ApprovalWorkflowGateRule{})
+	ruleEngine.Register(rules.CustomBuildApprovalRule{})
+
+	decision, cycles, err := ruleEngine.RecomputeDecision(memory, 5)
+	if err != nil {
+		t.Fatalf("initial recompute: %v", err)
+	}
+	if cycles != 3 {
+		t.Fatalf("expected three cycles for the initial inference, got %d", cycles)
+	}
+	if decision.Outcome != engine.OutcomeNeedsApproval {
+		t.Fatalf("expected initial needs-approval decision, got %s", decision.Outcome)
+	}
+	if !memory.HasDerivedFact(engine.ManagerApprovalRequiredFact) {
+		t.Fatal("expected the initial CustomBuild inference")
+	}
+
+	memory.Quote.Lines = []engine.QuoteLineFact{
+		{ProductID: "PRD-001", Quantity: 1},
+	}
+
+	decision, cycles, err = ruleEngine.RecomputeDecision(memory, 5)
+	if err != nil {
+		t.Fatalf("recompute after quote change: %v", err)
+	}
+	if cycles != 1 {
+		t.Fatalf("expected one stable cycle after removing CustomBuild, got %d", cycles)
+	}
+	if decision.Outcome != engine.OutcomeAllowed {
+		t.Fatalf("expected allowed decision after recomputation, got %s", decision.Outcome)
+	}
+	if memory.HasDerivedFact(engine.ManagerApprovalRequiredFact) {
+		t.Fatal("expected the stale approval fact to be removed by recomputation")
+	}
+	if len(memory.Findings) != 0 {
+		t.Fatalf("expected no stale findings after recomputation, got %d", len(memory.Findings))
+	}
+	if len(memory.Trace) != 2 {
+		t.Fatalf("expected the trace to contain only the fresh cycle, got %d records", len(memory.Trace))
+	}
+}

@@ -18,6 +18,11 @@ func main() {
 		false,
 		"disable the CustomBuild approval Rule",
 	)
+	simulateQuoteEdit := flag.Bool(
+		"simulate-quote-edit",
+		false,
+		"edit the quote to a Standard product and recompute the decision",
+	)
 	flag.Parse()
 
 	customer := engine.CustomerFact{
@@ -140,5 +145,27 @@ func main() {
 			fmt.Printf(" (%s)", trace.SkippedReason)
 		}
 		fmt.Println()
+	}
+
+	if *simulateQuoteEdit {
+		fmt.Println("\n=== Simulated Quote Edit ===")
+		fmt.Println("Quote edit: PRD-002 (CustomBuild) -> PRD-001 (Standard), discount 20% -> 0%")
+		workingMemory.Quote.Lines = []engine.QuoteLineFact{
+			{
+				ProductID:      "PRD-001",
+				Quantity:       1,
+				UnitPriceCents: 65000,
+			},
+		}
+		workingMemory.Quote.DiscountPercent = 0
+
+		decision, cycles, err = ruleEngine.RecomputeDecision(workingMemory, 5)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("Inference cycles after recomputation: %d\n", cycles)
+		fmt.Printf("Policy decision after recomputation: %s\n", decision.Outcome)
+		fmt.Printf("Findings after recomputation: %d\n", len(workingMemory.Findings))
+		fmt.Printf("Derived facts after recomputation: %d\n", len(workingMemory.DerivedFacts))
 	}
 }
