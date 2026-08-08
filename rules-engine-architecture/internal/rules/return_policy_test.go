@@ -53,6 +53,43 @@ func TestReturnPolicyRejectsUnshippedOrder(t *testing.T) {
 	}
 }
 
+func TestReturnPolicyAllowsPartialReturnByLine(t *testing.T) {
+	memory := engine.NewWorkingMemory(
+		engine.CustomerFact{ID: "CUST-001"},
+		engine.QuoteFact{ID: "Q-1001"},
+		[]engine.ProductFact{
+			{ID: "PRD-001", Category: "Standard"},
+			{ID: "PRD-002", Category: "Standard"},
+		},
+	)
+	memory.Order = engine.OrderFact{ID: "ORD-1001", Status: engine.OrderShipped}
+	memory.ReturnRequest = engine.ReturnRequestFact{
+		Requested:         true,
+		DaysSinceShipment: 5,
+		ReturnWindowDays:  30,
+		RequestedBy: engine.ActorFact{
+			ID:   "warehouse-clerk-001",
+			Role: "warehouse-clerk",
+		},
+		Lines: []engine.ReturnLineFact{
+			{ProductID: "PRD-001", Quantity: 1, ShippedQuantity: 1},
+			{ProductID: "PRD-002", Quantity: 2, ShippedQuantity: 1},
+		},
+	}
+
+	if err := (ReturnPolicyRule{}).Execute(memory); err != nil {
+		t.Fatalf("execute rule: %v", err)
+	}
+
+	decision := engine.DecisionFromFindings(memory.Findings)
+	if decision.ReturnAction != engine.ReturnPartiallyAllowed {
+		t.Fatalf("expected partial return action, got %s", decision.ReturnAction)
+	}
+	if decision.Outcome != engine.OutcomeAllowed {
+		t.Fatalf("expected partial return to remain allowed, got %s", decision.Outcome)
+	}
+}
+
 func TestReturnPolicyRejectsMissingActor(t *testing.T) {
 	request := validReturnRequest()
 	request.RequestedBy = engine.ActorFact{}

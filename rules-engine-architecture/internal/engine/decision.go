@@ -45,9 +45,10 @@ const (
 type ReturnAction string
 
 const (
-	ReturnNotRequested ReturnAction = "not-requested"
-	ReturnAllowed      ReturnAction = "allowed"
-	ReturnRejected     ReturnAction = "rejected"
+	ReturnNotRequested     ReturnAction = "not-requested"
+	ReturnAllowed          ReturnAction = "allowed"
+	ReturnPartiallyAllowed ReturnAction = "partial"
+	ReturnRejected         ReturnAction = "rejected"
 )
 
 // PolicyDecision is the application-facing result of one Rule Engine cycle.
@@ -145,6 +146,8 @@ func DecisionFromFindings(findings []Finding) PolicyDecision {
 			decision.CancellationAction = CancellationBlocked
 		case "return-allowed":
 			decision.ReturnAction = ReturnAllowed
+		case "return-partial":
+			decision.ReturnAction = ReturnPartiallyAllowed
 		case "return-rejected":
 			decision.ReturnAction = ReturnRejected
 			decision.Outcome = OutcomeRejected

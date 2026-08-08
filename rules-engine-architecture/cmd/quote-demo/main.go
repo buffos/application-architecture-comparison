@@ -81,6 +81,11 @@ func main() {
 		false,
 		"make the simulated return product clearance",
 	)
+	simulatePartialReturn := flag.Bool(
+		"simulate-partial-return",
+		false,
+		"request a return with one accepted and one rejected line",
+	)
 	returnCommandKey := flag.String(
 		"return-command-key",
 		"",
@@ -182,6 +187,22 @@ func main() {
 				Role: "warehouse-clerk",
 			},
 		}
+	}
+	if *simulatePartialReturn {
+		workingMemory.ReturnRequest = engine.ReturnRequestFact{
+			Requested:         true,
+			DaysSinceShipment: 5,
+			ReturnWindowDays:  30,
+			RequestedBy: engine.ActorFact{
+				ID:   "warehouse-clerk-001",
+				Role: "warehouse-clerk",
+			},
+			Lines: []engine.ReturnLineFact{
+				{ProductID: "PRD-002", Quantity: 1, ShippedQuantity: 1},
+				{ProductID: "PRD-001", Quantity: 2, ShippedQuantity: 1},
+			},
+		}
+		fmt.Println("Configuration: simulated partial return")
 	}
 	if *simulateManagerApproval {
 		workingMemory.ManagerApproval = engine.ApprovalFact{
@@ -304,10 +325,12 @@ func main() {
 	if workingMemory.ReturnRequest.Requested {
 		returnView := readmodel.ProjectReturn(workingMemory, decision)
 		fmt.Printf(
-			"Return query view: order=%s product=%s action=%s requester=%s remaining=%d reason=%s\n",
+			"Return query view: order=%s product=%s lines=%d action=%s partial=%t requester=%s remaining=%d reason=%s\n",
 			returnView.OrderID,
 			returnView.ProductID,
+			returnView.LineCount,
 			returnView.Action,
+			returnView.Partial,
 			returnView.RequesterID,
 			returnView.RemainingQuantity,
 			returnView.Reason,
@@ -376,8 +399,12 @@ func main() {
 	)
 	if workingMemory.ReturnRequest.Requested {
 		category := "Unknown"
+		productID := workingMemory.ReturnRequest.ProductID
+		if productID == "" && len(workingMemory.ReturnRequest.Lines) > 0 {
+			productID = workingMemory.ReturnRequest.Lines[0].ProductID
+		}
 		for _, product := range workingMemory.Products {
-			if product.ID == workingMemory.ReturnRequest.ProductID {
+			if product.ID == productID {
 				category = product.Category
 				break
 			}

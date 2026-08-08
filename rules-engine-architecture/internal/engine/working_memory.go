@@ -79,6 +79,13 @@ type ActorFact struct {
 	Role string
 }
 
+type ReturnLineFact struct {
+	ProductID                  string
+	Quantity                   int
+	ShippedQuantity            int
+	PreviouslyReturnedQuantity int
+}
+
 type ReturnRequestFact struct {
 	Requested                  bool
 	ProductID                  string
@@ -88,6 +95,7 @@ type ReturnRequestFact struct {
 	DaysSinceShipment          int
 	ReturnWindowDays           int
 	RequestedBy                ActorFact
+	Lines                      []ReturnLineFact
 }
 
 type StockShortagePolicy string
