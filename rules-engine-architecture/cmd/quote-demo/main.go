@@ -70,7 +70,8 @@ func main() {
 		fmt.Println("Configuration: CustomBuild approval Rule disabled")
 	}
 	fmt.Println("Executing registered Rules")
-	if err := ruleEngine.ExecuteAll(workingMemory); err != nil {
+	decision, err := ruleEngine.Decide(workingMemory)
+	if err != nil {
 		panic(err)
 	}
 
@@ -108,5 +109,10 @@ func main() {
 	fmt.Printf("Rule findings: %d\n", len(workingMemory.Findings))
 	for _, finding := range workingMemory.Findings {
 		fmt.Printf("- [%s] %s: %s\n", finding.Severity, finding.RuleName, finding.Message)
+	}
+	fmt.Printf("Policy decision: %s\n", decision.Outcome)
+	fmt.Println("Decision reasons:")
+	for _, reason := range decision.Reasons {
+		fmt.Printf("- %s\n", reason.Message)
 	}
 }

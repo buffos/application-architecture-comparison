@@ -122,3 +122,68 @@ func TestEngineCanDisableARegisteredRule(t *testing.T) {
 		t.Fatalf("expected discount finding, got %q", memory.Findings[0].RuleName)
 	}
 }
+
+func TestEngineDecideReturnsApprovalWithReasons(t *testing.T) {
+	memory := engine.NewWorkingMemory(
+		engine.CustomerFact{ID: "CUST-001"},
+		engine.QuoteFact{
+			ID:              "Q-1001",
+			CustomerID:      "CUST-001",
+			DiscountPercent: 20,
+			Lines: []engine.QuoteLineFact{
+				{ProductID: "PRD-002", Quantity: 1},
+			},
+		},
+		[]engine.ProductFact{
+			{ID: "PRD-002", Category: "CustomBuild"},
+		},
+	)
+
+	ruleEngine := engine.NewEngine()
+	ruleEngine.Register(rules.DiscountApprovalRule{})
+	ruleEngine.Register(rules.CustomBuildApprovalRule{})
+
+	decision, err := ruleEngine.Decide(memory)
+	if err != nil {
+		t.Fatalf("decide: %v", err)
+	}
+	if decision.Outcome != engine.OutcomeNeedsApproval {
+		t.Fatalf("expected needs-approval, got %s", decision.Outcome)
+	}
+	if len(decision.Reasons) != 2 {
+		t.Fatalf("expected two decision reasons, got %d", len(decision.Reasons))
+	}
+}
+
+func TestEngineDecisionRejectsBeforeApproval(t *testing.T) {
+	memory := engine.NewWorkingMemory(
+		engine.CustomerFact{ID: "CUST-001"},
+		engine.QuoteFact{
+			ID:              "Q-1001",
+			CustomerID:      "CUST-001",
+			DiscountPercent: 30,
+			Lines: []engine.QuoteLineFact{
+				{ProductID: "PRD-002", Quantity: 1},
+			},
+		},
+		[]engine.ProductFact{
+			{ID: "PRD-002", Category: "CustomBuild"},
+		},
+	)
+
+	ruleEngine := engine.NewEngine()
+	ruleEngine.Register(rules.DiscountApprovalRule{})
+	ruleEngine.Register(rules.DiscountRejectionRule{})
+	ruleEngine.Register(rules.CustomBuildApprovalRule{})
+
+	decision, err := ruleEngine.Decide(memory)
+	if err != nil {
+		t.Fatalf("decide: %v", err)
+	}
+	if decision.Outcome != engine.OutcomeRejected {
+		t.Fatalf("expected rejected, got %s", decision.Outcome)
+	}
+	if len(decision.Reasons) != 2 {
+		t.Fatalf("expected rejection and CustomBuild reasons, got %d", len(decision.Reasons))
+	}
+}
