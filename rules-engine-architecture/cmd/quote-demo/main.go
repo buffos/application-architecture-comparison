@@ -23,6 +23,11 @@ func main() {
 		false,
 		"edit the quote to a Standard product and recompute the decision",
 	)
+	simulateStockShortage := flag.Bool(
+		"simulate-stock-shortage",
+		false,
+		"set the CustomBuild product stock below the requested quantity",
+	)
 	flag.Parse()
 
 	customer := engine.CustomerFact{
@@ -46,7 +51,12 @@ func main() {
 			Category:          "CustomBuild",
 			UnitPriceCents:    125000,
 			AvailableQuantity: 2,
+			ShortagePolicy:    engine.StockShortageBackorder,
 		},
+	}
+	if *simulateStockShortage {
+		products[1].AvailableQuantity = 0
+		fmt.Println("Configuration: simulated stock shortage for PRD-002")
 	}
 
 	quote := engine.QuoteFact{
@@ -70,6 +80,7 @@ func main() {
 	ruleEngine.Register(rules.CustomBuildApprovalRule{})
 	ruleEngine.Register(rules.NewHighValuePaymentReviewRule(100000))
 	ruleEngine.Register(rules.PreferredDiscountEligibilityRule{})
+	ruleEngine.Register(rules.InventoryShortageRule{})
 	ruleEngine.Register(rules.ApprovalWorkflowGateRule{})
 	if *disableCustomBuild {
 		if !ruleEngine.SetRuleEnabled("Custom Build Approval Rule", false) {
@@ -120,6 +131,7 @@ func main() {
 		fmt.Printf("- [%s] %s: %s\n", finding.Severity, finding.RuleName, finding.Message)
 	}
 	fmt.Printf("Policy decision: %s\n", decision.Outcome)
+	fmt.Printf("Fulfillment action: %s\n", decision.FulfillmentAction)
 	fmt.Println("Required reviews:")
 	for _, review := range decision.RequiredReviews {
 		fmt.Printf("- %s\n", review)

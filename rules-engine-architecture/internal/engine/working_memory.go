@@ -8,6 +8,13 @@ type CustomerFact struct {
 	InvoiceTerms bool
 }
 
+type StockShortagePolicy string
+
+const (
+	StockShortageBackorder StockShortagePolicy = "backorder"
+	StockShortageReject    StockShortagePolicy = "reject"
+)
+
 // ProductFact describes a product and its current inventory information.
 type ProductFact struct {
 	ID                string
@@ -15,6 +22,7 @@ type ProductFact struct {
 	Category          string
 	UnitPriceCents    int64
 	AvailableQuantity int
+	ShortagePolicy    StockShortagePolicy
 }
 
 // QuoteLineFact is a data-only line inside a QuoteFact.

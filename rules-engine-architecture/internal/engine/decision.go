@@ -17,11 +17,20 @@ const (
 	ReviewPayment         ReviewRequirement = "payment-review"
 )
 
+type FulfillmentAction string
+
+const (
+	FulfillmentNone      FulfillmentAction = "none"
+	FulfillmentBackorder FulfillmentAction = "backorder"
+	FulfillmentReject    FulfillmentAction = "reject"
+)
+
 // PolicyDecision is the application-facing result of one Rule Engine cycle.
 type PolicyDecision struct {
-	Outcome         DecisionOutcome
-	Reasons         []Finding
-	RequiredReviews []ReviewRequirement
+	Outcome           DecisionOutcome
+	FulfillmentAction FulfillmentAction
+	Reasons           []Finding
+	RequiredReviews   []ReviewRequirement
 }
 
 func (engine *Engine) Decide(memory *WorkingMemory) (PolicyDecision, error) {
@@ -60,8 +69,9 @@ func (engine *Engine) RecomputeDecision(
 
 func DecisionFromFindings(findings []Finding) PolicyDecision {
 	decision := PolicyDecision{
-		Outcome: OutcomeAllowed,
-		Reasons: append([]Finding(nil), findings...),
+		Outcome:           OutcomeAllowed,
+		FulfillmentAction: FulfillmentNone,
+		Reasons:           append([]Finding(nil), findings...),
 	}
 
 	for _, finding := range findings {
@@ -83,6 +93,13 @@ func DecisionFromFindings(findings []Finding) PolicyDecision {
 				decision.RequiredReviews,
 				ReviewManagerApproval,
 			)
+		case "inventory-backorder":
+			if decision.FulfillmentAction != FulfillmentReject {
+				decision.FulfillmentAction = FulfillmentBackorder
+			}
+		case "inventory-rejected":
+			decision.FulfillmentAction = FulfillmentReject
+			decision.Outcome = OutcomeRejected
 		}
 	}
 
