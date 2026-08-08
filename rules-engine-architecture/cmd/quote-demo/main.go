@@ -300,6 +300,15 @@ func main() {
 			productView.ShortagePolicy,
 		)
 	}
+	for _, customerView := range readmodel.ProjectCustomers([]engine.CustomerFact{workingMemory.Customer}) {
+		fmt.Printf(
+			"Customer query view: id=%s name=%s tier=%s invoice-terms=%t\n",
+			customerView.ID,
+			customerView.Name,
+			customerView.Tier,
+			customerView.InvoiceTerms,
+		)
+	}
 	if workingMemory.Shipment.Requested {
 		shipmentView := readmodel.ProjectShipment(workingMemory, decision)
 		fmt.Printf(
