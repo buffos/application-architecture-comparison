@@ -353,6 +353,19 @@ func main() {
 			)
 		}
 	}
+	approvalRows := reporting.BuildOrdersAwaitingApprovalReport([]readmodel.EvaluatedQuote{{
+		Memory:   workingMemory,
+		Decision: decision,
+	}})
+	for _, row := range approvalRows {
+		fmt.Printf(
+			"Approval queue: quote=%s customer=%s reviews=%v reasons=%d\n",
+			row.QuoteID,
+			row.CustomerID,
+			row.RequiredReviews,
+			len(row.Reasons),
+		)
+	}
 	if workingMemory.Shipment.Requested {
 		shipmentView := readmodel.ProjectShipment(workingMemory, decision)
 		fmt.Printf(
