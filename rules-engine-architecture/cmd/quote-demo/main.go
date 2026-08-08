@@ -6,6 +6,7 @@ import (
 
 	"rules-engine-architecture/internal/application"
 	"rules-engine-architecture/internal/engine"
+	"rules-engine-architecture/internal/plugins"
 	"rules-engine-architecture/internal/readmodel"
 	"rules-engine-architecture/internal/reporting"
 	"rules-engine-architecture/internal/rules"
@@ -85,6 +86,11 @@ func main() {
 		"simulate-partial-return",
 		false,
 		"request a return with one accepted and one rejected line",
+	)
+	enableSeasonalPlugin := flag.Bool(
+		"enable-seasonal-plugin",
+		false,
+		"register the optional seasonal surcharge Rule plugin",
 	)
 	returnCommandKey := flag.String(
 		"return-command-key",
@@ -237,6 +243,10 @@ func main() {
 	ruleEngine.Register(rules.CancellationGuardRule{})
 	ruleEngine.Register(rules.ReturnPolicyRule{})
 	ruleEngine.Register(rules.ApprovalWorkflowGateRule{})
+	if *enableSeasonalPlugin {
+		ruleEngine.Register(plugins.NewSeasonalSurchargeRule("CustomBuild", 5))
+		fmt.Println("Configuration: seasonal surcharge plugin enabled")
+	}
 	if *disableCustomBuild {
 		if !ruleEngine.SetRuleEnabled("Custom Build Approval Rule", false) {
 			panic("Custom Build Approval Rule was not registered")
@@ -322,6 +332,7 @@ func main() {
 	fmt.Printf("Shipment action: %s\n", decision.ShipmentAction)
 	fmt.Printf("Cancellation action: %s\n", decision.CancellationAction)
 	fmt.Printf("Return action: %s\n", decision.ReturnAction)
+	fmt.Printf("Pricing adjustment: %s\n", formatCents(decision.PricingAdjustmentCents))
 	if workingMemory.ReturnRequest.Requested {
 		returnView := readmodel.ProjectReturn(workingMemory, decision)
 		fmt.Printf(

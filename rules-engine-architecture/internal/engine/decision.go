@@ -53,13 +53,14 @@ const (
 
 // PolicyDecision is the application-facing result of one Rule Engine cycle.
 type PolicyDecision struct {
-	Outcome            DecisionOutcome
-	FulfillmentAction  FulfillmentAction
-	ShipmentAction     ShipmentAction
-	CancellationAction CancellationAction
-	ReturnAction       ReturnAction
-	Reasons            []Finding
-	RequiredReviews    []ReviewRequirement
+	Outcome                DecisionOutcome
+	FulfillmentAction      FulfillmentAction
+	ShipmentAction         ShipmentAction
+	CancellationAction     CancellationAction
+	ReturnAction           ReturnAction
+	PricingAdjustmentCents int64
+	Reasons                []Finding
+	RequiredReviews        []ReviewRequirement
 }
 
 func (engine *Engine) Decide(memory *WorkingMemory) (PolicyDecision, error) {
@@ -151,6 +152,8 @@ func DecisionFromFindings(findings []Finding) PolicyDecision {
 		case "return-rejected":
 			decision.ReturnAction = ReturnRejected
 			decision.Outcome = OutcomeRejected
+		case "pricing-surcharge":
+			decision.PricingAdjustmentCents += finding.AdjustmentCents
 		}
 	}
 

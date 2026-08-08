@@ -133,9 +133,10 @@ type QuoteFact struct {
 
 // Finding is a future output of a Rule evaluation.
 type Finding struct {
-	RuleName string
-	Severity string
-	Message  string
+	RuleName        string
+	Severity        string
+	Message         string
+	AdjustmentCents int64
 }
 
 // WorkingMemory is the shared fact container used by the future Rule Engine.
