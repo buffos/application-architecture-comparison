@@ -25,10 +25,19 @@ const (
 	FulfillmentReject    FulfillmentAction = "reject"
 )
 
+type ShipmentAction string
+
+const (
+	ShipmentNotRequested ShipmentAction = "not-requested"
+	ShipmentAllowed      ShipmentAction = "allowed"
+	ShipmentBlocked      ShipmentAction = "blocked"
+)
+
 // PolicyDecision is the application-facing result of one Rule Engine cycle.
 type PolicyDecision struct {
 	Outcome           DecisionOutcome
 	FulfillmentAction FulfillmentAction
+	ShipmentAction    ShipmentAction
 	Reasons           []Finding
 	RequiredReviews   []ReviewRequirement
 }
@@ -71,6 +80,7 @@ func DecisionFromFindings(findings []Finding) PolicyDecision {
 	decision := PolicyDecision{
 		Outcome:           OutcomeAllowed,
 		FulfillmentAction: FulfillmentNone,
+		ShipmentAction:    ShipmentNotRequested,
 		Reasons:           append([]Finding(nil), findings...),
 	}
 
@@ -100,6 +110,10 @@ func DecisionFromFindings(findings []Finding) PolicyDecision {
 		case "inventory-rejected":
 			decision.FulfillmentAction = FulfillmentReject
 			decision.Outcome = OutcomeRejected
+		case "shipment-allowed":
+			decision.ShipmentAction = ShipmentAllowed
+		case "shipment-blocked":
+			decision.ShipmentAction = ShipmentBlocked
 		}
 	}
 

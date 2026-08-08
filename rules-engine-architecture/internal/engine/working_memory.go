@@ -8,6 +8,22 @@ type CustomerFact struct {
 	InvoiceTerms bool
 }
 
+type PaymentStatus string
+
+const (
+	PaymentPending  PaymentStatus = "pending"
+	PaymentAccepted PaymentStatus = "accepted"
+	PaymentFailed   PaymentStatus = "failed"
+)
+
+type PaymentFact struct {
+	Status PaymentStatus
+}
+
+type ShipmentRequestFact struct {
+	Requested bool
+}
+
 type StockShortagePolicy string
 
 const (
@@ -53,6 +69,8 @@ type WorkingMemory struct {
 	Customer     CustomerFact
 	Quote        QuoteFact
 	Products     []ProductFact
+	Payment      PaymentFact
+	Shipment     ShipmentRequestFact
 	Findings     []Finding
 	DerivedFacts []DerivedFact
 	Trace        []RuleTrace

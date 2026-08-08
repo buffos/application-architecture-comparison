@@ -28,6 +28,16 @@ func main() {
 		false,
 		"set the CustomBuild product stock below the requested quantity",
 	)
+	simulateShipment := flag.Bool(
+		"simulate-shipment",
+		false,
+		"request shipment for the quote",
+	)
+	simulatePaymentFailure := flag.Bool(
+		"simulate-payment-failure",
+		false,
+		"set the payment status to failed",
+	)
 	flag.Parse()
 
 	customer := engine.CustomerFact{
@@ -74,6 +84,12 @@ func main() {
 	}
 
 	workingMemory := engine.NewWorkingMemory(customer, quote, products)
+	paymentStatus := engine.PaymentAccepted
+	if *simulatePaymentFailure {
+		paymentStatus = engine.PaymentFailed
+	}
+	workingMemory.Payment = engine.PaymentFact{Status: paymentStatus}
+	workingMemory.Shipment = engine.ShipmentRequestFact{Requested: *simulateShipment}
 	ruleEngine := engine.NewEngine()
 	ruleEngine.Register(rules.DiscountApprovalRule{})
 	ruleEngine.Register(rules.DiscountRejectionRule{})
@@ -81,6 +97,7 @@ func main() {
 	ruleEngine.Register(rules.NewHighValuePaymentReviewRule(100000))
 	ruleEngine.Register(rules.PreferredDiscountEligibilityRule{})
 	ruleEngine.Register(rules.InventoryShortageRule{})
+	ruleEngine.Register(rules.ShipmentPaymentGuardRule{})
 	ruleEngine.Register(rules.ApprovalWorkflowGateRule{})
 	if *disableCustomBuild {
 		if !ruleEngine.SetRuleEnabled("Custom Build Approval Rule", false) {
@@ -132,6 +149,7 @@ func main() {
 	}
 	fmt.Printf("Policy decision: %s\n", decision.Outcome)
 	fmt.Printf("Fulfillment action: %s\n", decision.FulfillmentAction)
+	fmt.Printf("Shipment action: %s\n", decision.ShipmentAction)
 	fmt.Println("Required reviews:")
 	for _, review := range decision.RequiredReviews {
 		fmt.Printf("- %s\n", review)
