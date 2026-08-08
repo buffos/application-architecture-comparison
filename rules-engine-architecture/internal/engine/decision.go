@@ -41,12 +41,21 @@ const (
 	CancellationBlocked      CancellationAction = "blocked"
 )
 
+type ReturnAction string
+
+const (
+	ReturnNotRequested ReturnAction = "not-requested"
+	ReturnAllowed      ReturnAction = "allowed"
+	ReturnRejected     ReturnAction = "rejected"
+)
+
 // PolicyDecision is the application-facing result of one Rule Engine cycle.
 type PolicyDecision struct {
 	Outcome            DecisionOutcome
 	FulfillmentAction  FulfillmentAction
 	ShipmentAction     ShipmentAction
 	CancellationAction CancellationAction
+	ReturnAction       ReturnAction
 	Reasons            []Finding
 	RequiredReviews    []ReviewRequirement
 }
@@ -91,6 +100,7 @@ func DecisionFromFindings(findings []Finding) PolicyDecision {
 		FulfillmentAction:  FulfillmentNone,
 		ShipmentAction:     ShipmentNotRequested,
 		CancellationAction: CancellationNotRequested,
+		ReturnAction:       ReturnNotRequested,
 		Reasons:            append([]Finding(nil), findings...),
 	}
 
@@ -128,6 +138,11 @@ func DecisionFromFindings(findings []Finding) PolicyDecision {
 			decision.CancellationAction = CancellationAllowed
 		case "cancellation-blocked":
 			decision.CancellationAction = CancellationBlocked
+		case "return-allowed":
+			decision.ReturnAction = ReturnAllowed
+		case "return-rejected":
+			decision.ReturnAction = ReturnRejected
+			decision.Outcome = OutcomeRejected
 		}
 	}
 

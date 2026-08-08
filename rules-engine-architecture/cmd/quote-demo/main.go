@@ -53,6 +53,16 @@ func main() {
 		false,
 		"load an approved manager-approval Fact",
 	)
+	simulateReturn := flag.Bool(
+		"simulate-return",
+		false,
+		"request a return for the order",
+	)
+	simulateClearanceReturn := flag.Bool(
+		"simulate-clearance-return",
+		false,
+		"make the simulated return product clearance",
+	)
 	flag.Parse()
 
 	customer := engine.CustomerFact{
@@ -83,6 +93,10 @@ func main() {
 		products[1].AvailableQuantity = 0
 		fmt.Println("Configuration: simulated stock shortage for PRD-002")
 	}
+	if *simulateClearanceReturn {
+		products[1].Category = "Clearance"
+		fmt.Println("Configuration: simulated return product is Clearance")
+	}
 
 	quote := engine.QuoteFact{
 		ID:              "Q-1001",
@@ -111,6 +125,16 @@ func main() {
 	}
 	workingMemory.Order = engine.OrderFact{ID: "ORD-1001", Status: orderStatus}
 	workingMemory.Cancellation = engine.CancellationRequestFact{Requested: *simulateCancellation}
+	if *simulateReturn {
+		workingMemory.ReturnRequest = engine.ReturnRequestFact{
+			Requested:         true,
+			ProductID:         "PRD-002",
+			Quantity:          1,
+			ShippedQuantity:   1,
+			DaysSinceShipment: 5,
+			ReturnWindowDays:  30,
+		}
+	}
 	if *simulateManagerApproval {
 		workingMemory.ManagerApproval = engine.ApprovalFact{
 			Status:     engine.ApprovalApproved,
@@ -126,6 +150,7 @@ func main() {
 	ruleEngine.Register(rules.InventoryShortageRule{})
 	ruleEngine.Register(rules.ShipmentPaymentGuardRule{})
 	ruleEngine.Register(rules.CancellationGuardRule{})
+	ruleEngine.Register(rules.ReturnPolicyRule{})
 	ruleEngine.Register(rules.ApprovalWorkflowGateRule{})
 	if *disableCustomBuild {
 		if !ruleEngine.SetRuleEnabled("Custom Build Approval Rule", false) {
@@ -180,6 +205,7 @@ func main() {
 	fmt.Printf("Fulfillment action: %s\n", decision.FulfillmentAction)
 	fmt.Printf("Shipment action: %s\n", decision.ShipmentAction)
 	fmt.Printf("Cancellation action: %s\n", decision.CancellationAction)
+	fmt.Printf("Return action: %s\n", decision.ReturnAction)
 	fmt.Println("Required reviews:")
 	for _, review := range decision.RequiredReviews {
 		fmt.Printf("- %s\n", review)

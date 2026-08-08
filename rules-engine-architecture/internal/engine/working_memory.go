@@ -54,6 +54,16 @@ type CancellationRequestFact struct {
 	Requested bool
 }
 
+type ReturnRequestFact struct {
+	Requested                  bool
+	ProductID                  string
+	Quantity                   int
+	ShippedQuantity            int
+	PreviouslyReturnedQuantity int
+	DaysSinceShipment          int
+	ReturnWindowDays           int
+}
+
 type StockShortagePolicy string
 
 const (
@@ -103,6 +113,7 @@ type WorkingMemory struct {
 	Shipment        ShipmentRequestFact
 	Order           OrderFact
 	Cancellation    CancellationRequestFact
+	ReturnRequest   ReturnRequestFact
 	ManagerApproval ApprovalFact
 	Findings        []Finding
 	DerivedFacts    []DerivedFact
