@@ -275,6 +275,18 @@ func main() {
 		orderView.ReturnAction,
 		orderView.Outcome,
 	)
+	if workingMemory.Shipment.Requested {
+		shipmentView := readmodel.ProjectShipment(workingMemory, decision)
+		fmt.Printf(
+			"Shipment query view: order=%s requested=%t action=%s payment=%s invoice-terms=%t reason=%s\n",
+			shipmentView.OrderID,
+			shipmentView.Requested,
+			shipmentView.Action,
+			shipmentView.PaymentStatus,
+			shipmentView.InvoiceTerms,
+			shipmentView.Reason,
+		)
+	}
 	fmt.Println("Required reviews:")
 	for _, review := range decision.RequiredReviews {
 		fmt.Printf("- %s\n", review)
