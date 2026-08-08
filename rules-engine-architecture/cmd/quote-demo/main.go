@@ -63,6 +63,7 @@ func main() {
 	ruleEngine.Register(rules.DiscountApprovalRule{})
 	ruleEngine.Register(rules.DiscountRejectionRule{})
 	ruleEngine.Register(rules.CustomBuildApprovalRule{})
+	ruleEngine.Register(rules.NewHighValuePaymentReviewRule(100000))
 	if *disableCustomBuild {
 		if !ruleEngine.SetRuleEnabled("Custom Build Approval Rule", false) {
 			panic("Custom Build Approval Rule was not registered")
@@ -111,6 +112,10 @@ func main() {
 		fmt.Printf("- [%s] %s: %s\n", finding.Severity, finding.RuleName, finding.Message)
 	}
 	fmt.Printf("Policy decision: %s\n", decision.Outcome)
+	fmt.Println("Required reviews:")
+	for _, review := range decision.RequiredReviews {
+		fmt.Printf("- %s\n", review)
+	}
 	fmt.Println("Decision reasons:")
 	for _, reason := range decision.Reasons {
 		fmt.Printf("- %s\n", reason.Message)

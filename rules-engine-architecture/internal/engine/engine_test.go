@@ -153,6 +153,9 @@ func TestEngineDecideReturnsApprovalWithReasons(t *testing.T) {
 	if len(decision.Reasons) != 2 {
 		t.Fatalf("expected two decision reasons, got %d", len(decision.Reasons))
 	}
+	if len(decision.RequiredReviews) != 1 || decision.RequiredReviews[0] != engine.ReviewManagerApproval {
+		t.Fatalf("expected manager approval requirement, got %v", decision.RequiredReviews)
+	}
 }
 
 func TestEngineDecisionRejectsBeforeApproval(t *testing.T) {
@@ -185,5 +188,41 @@ func TestEngineDecisionRejectsBeforeApproval(t *testing.T) {
 	}
 	if len(decision.Reasons) != 2 {
 		t.Fatalf("expected rejection and CustomBuild reasons, got %d", len(decision.Reasons))
+	}
+	if len(decision.RequiredReviews) != 0 {
+		t.Fatalf("expected no review requirements after rejection, got %v", decision.RequiredReviews)
+	}
+}
+
+func TestEngineDecisionIncludesPaymentReviewRequirement(t *testing.T) {
+	memory := engine.NewWorkingMemory(
+		engine.CustomerFact{ID: "CUST-001"},
+		engine.QuoteFact{
+			ID:              "Q-1001",
+			CustomerID:      "CUST-001",
+			DiscountPercent: 20,
+			Lines: []engine.QuoteLineFact{
+				{ProductID: "PRD-002", Quantity: 1, UnitPriceCents: 125000},
+			},
+		},
+		nil,
+	)
+
+	ruleEngine := engine.NewEngine()
+	ruleEngine.Register(rules.DiscountApprovalRule{})
+	ruleEngine.Register(rules.NewHighValuePaymentReviewRule(100000))
+
+	decision, err := ruleEngine.Decide(memory)
+	if err != nil {
+		t.Fatalf("decide: %v", err)
+	}
+	if decision.Outcome != engine.OutcomeNeedsReview {
+		t.Fatalf("expected needs-review, got %s", decision.Outcome)
+	}
+	if len(decision.RequiredReviews) != 2 {
+		t.Fatalf("expected manager approval and payment review, got %v", decision.RequiredReviews)
+	}
+	if decision.RequiredReviews[1] != engine.ReviewPayment {
+		t.Fatalf("expected payment review requirement, got %v", decision.RequiredReviews)
 	}
 }
