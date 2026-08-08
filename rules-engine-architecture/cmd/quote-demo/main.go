@@ -64,6 +64,7 @@ func main() {
 	ruleEngine.Register(rules.DiscountRejectionRule{})
 	ruleEngine.Register(rules.CustomBuildApprovalRule{})
 	ruleEngine.Register(rules.NewHighValuePaymentReviewRule(100000))
+	ruleEngine.Register(rules.ApprovalWorkflowGateRule{})
 	if *disableCustomBuild {
 		if !ruleEngine.SetRuleEnabled("Custom Build Approval Rule", false) {
 			panic("Custom Build Approval Rule was not registered")
@@ -71,10 +72,11 @@ func main() {
 		fmt.Println("Configuration: CustomBuild approval Rule disabled")
 	}
 	fmt.Println("Executing registered Rules")
-	decision, err := ruleEngine.Decide(workingMemory)
+	decision, cycles, err := ruleEngine.DecideUntilStable(workingMemory, 5)
 	if err != nil {
 		panic(err)
 	}
+	fmt.Printf("Inference cycles: %d\n", cycles)
 
 	fmt.Println("=== Working Memory ===")
 	fmt.Printf("Customer: %s (%s, tier %s)\n",
@@ -120,10 +122,15 @@ func main() {
 	for _, reason := range decision.Reasons {
 		fmt.Printf("- %s\n", reason.Message)
 	}
+	fmt.Println("Derived facts:")
+	for _, fact := range workingMemory.DerivedFacts {
+		fmt.Printf("- %s = %s\n", fact.Name, fact.Value)
+	}
 	fmt.Println("Rule trace:")
 	for _, trace := range workingMemory.Trace {
 		fmt.Printf(
-			"- %s: evaluated=%t matched=%t executed=%t",
+			"- cycle %d, %s: evaluated=%t matched=%t executed=%t",
+			trace.Cycle,
 			trace.RuleName,
 			trace.Evaluated,
 			trace.Matched,

@@ -32,6 +32,18 @@ func (engine *Engine) Decide(memory *WorkingMemory) (PolicyDecision, error) {
 	return DecisionFromFindings(memory.Findings), nil
 }
 
+func (engine *Engine) DecideUntilStable(
+	memory *WorkingMemory,
+	maxCycles int,
+) (PolicyDecision, int, error) {
+	cycles, err := engine.ExecuteUntilStable(memory, maxCycles)
+	if err != nil {
+		return PolicyDecision{}, cycles, err
+	}
+
+	return DecisionFromFindings(memory.Findings), cycles, nil
+}
+
 func DecisionFromFindings(findings []Finding) PolicyDecision {
 	decision := PolicyDecision{
 		Outcome: OutcomeAllowed,
@@ -51,6 +63,11 @@ func DecisionFromFindings(findings []Finding) PolicyDecision {
 			decision.RequiredReviews = appendReviewRequirement(
 				decision.RequiredReviews,
 				ReviewPayment,
+			)
+		case "conversion-blocked":
+			decision.RequiredReviews = appendReviewRequirement(
+				decision.RequiredReviews,
+				ReviewManagerApproval,
 			)
 		}
 	}

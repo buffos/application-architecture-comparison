@@ -2,6 +2,7 @@ package engine
 
 // RuleTrace records one Rule's path through an Engine cycle.
 type RuleTrace struct {
+	Cycle         int
 	RuleName      string
 	Priority      int
 	ConflictGroup string

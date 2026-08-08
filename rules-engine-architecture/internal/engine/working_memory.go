@@ -42,11 +42,12 @@ type Finding struct {
 
 // WorkingMemory is the shared fact container used by the future Rule Engine.
 type WorkingMemory struct {
-	Customer CustomerFact
-	Quote    QuoteFact
-	Products []ProductFact
-	Findings []Finding
-	Trace    []RuleTrace
+	Customer     CustomerFact
+	Quote        QuoteFact
+	Products     []ProductFact
+	Findings     []Finding
+	DerivedFacts []DerivedFact
+	Trace        []RuleTrace
 }
 
 func NewWorkingMemory(customer CustomerFact, quote QuoteFact, products []ProductFact) *WorkingMemory {
@@ -54,14 +55,23 @@ func NewWorkingMemory(customer CustomerFact, quote QuoteFact, products []Product
 	quoteCopy.Lines = append([]QuoteLineFact(nil), quote.Lines...)
 
 	return &WorkingMemory{
-		Customer: customer,
-		Quote:    quoteCopy,
-		Products: append([]ProductFact(nil), products...),
-		Findings: []Finding{},
-		Trace:    []RuleTrace{},
+		Customer:     customer,
+		Quote:        quoteCopy,
+		Products:     append([]ProductFact(nil), products...),
+		Findings:     []Finding{},
+		DerivedFacts: []DerivedFact{},
+		Trace:        []RuleTrace{},
 	}
 }
 
 func (memory *WorkingMemory) AddFinding(finding Finding) {
+	for _, existing := range memory.Findings {
+		if existing.RuleName == finding.RuleName &&
+			existing.Severity == finding.Severity &&
+			existing.Message == finding.Message {
+			return
+		}
+	}
+
 	memory.Findings = append(memory.Findings, finding)
 }

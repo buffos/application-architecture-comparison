@@ -32,11 +32,12 @@ func (CustomBuildApprovalRule) Evaluate(memory *engine.WorkingMemory) bool {
 	return false
 }
 
-func (rule CustomBuildApprovalRule) Execute(memory *engine.WorkingMemory) error {
-	memory.AddFinding(engine.Finding{
-		RuleName: rule.Name(),
-		Severity: "approval-required",
-		Message:  "Quote contains a CustomBuild product and requires manager approval",
+func (CustomBuildApprovalRule) Execute(memory *engine.WorkingMemory) error {
+	// This Rule is a fact producer. The workflow consequence is intentionally
+	// left to ApprovalWorkflowGateRule, which consumes the derived Fact.
+	memory.AddDerivedFact(engine.DerivedFact{
+		Name:  engine.ManagerApprovalRequiredFact,
+		Value: memory.Quote.ID,
 	})
 	return nil
 }

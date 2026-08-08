@@ -71,17 +71,15 @@ func TestEngineRunsIndependentRulesTogether(t *testing.T) {
 			CustomerID:      "CUST-001",
 			DiscountPercent: 20,
 			Lines: []engine.QuoteLineFact{
-				{ProductID: "PRD-002", Quantity: 1},
+				{ProductID: "PRD-002", Quantity: 1, UnitPriceCents: 125000},
 			},
 		},
-		[]engine.ProductFact{
-			{ID: "PRD-002", Category: "CustomBuild"},
-		},
+		nil,
 	)
 
 	ruleEngine := engine.NewEngine()
 	ruleEngine.Register(rules.DiscountApprovalRule{})
-	ruleEngine.Register(rules.CustomBuildApprovalRule{})
+	ruleEngine.Register(rules.NewHighValuePaymentReviewRule(100000))
 
 	if err := ruleEngine.ExecuteAll(memory); err != nil {
 		t.Fatalf("execute rules: %v", err)
@@ -156,8 +154,8 @@ func TestEngineDecideReturnsApprovalWithReasons(t *testing.T) {
 	if decision.Outcome != engine.OutcomeNeedsApproval {
 		t.Fatalf("expected needs-approval, got %s", decision.Outcome)
 	}
-	if len(decision.Reasons) != 2 {
-		t.Fatalf("expected two decision reasons, got %d", len(decision.Reasons))
+	if len(decision.Reasons) != 1 {
+		t.Fatalf("expected the discount decision reason, got %d", len(decision.Reasons))
 	}
 	if len(decision.RequiredReviews) != 1 || decision.RequiredReviews[0] != engine.ReviewManagerApproval {
 		t.Fatalf("expected manager approval requirement, got %v", decision.RequiredReviews)
@@ -192,8 +190,8 @@ func TestEngineDecisionRejectsBeforeApproval(t *testing.T) {
 	if decision.Outcome != engine.OutcomeRejected {
 		t.Fatalf("expected rejected, got %s", decision.Outcome)
 	}
-	if len(decision.Reasons) != 2 {
-		t.Fatalf("expected rejection and CustomBuild reasons, got %d", len(decision.Reasons))
+	if len(decision.Reasons) != 1 {
+		t.Fatalf("expected only the rejection reason, got %d", len(decision.Reasons))
 	}
 	if len(decision.RequiredReviews) != 0 {
 		t.Fatalf("expected no review requirements after rejection, got %v", decision.RequiredReviews)
@@ -267,5 +265,46 @@ func TestEngineRecordsRuleExecutionTrace(t *testing.T) {
 	}
 	if !memory.Trace[1].Executed || !memory.Trace[2].Executed || !memory.Trace[3].Executed {
 		t.Fatalf("expected the remaining Rules to execute, got %+v", memory.Trace)
+	}
+}
+
+func TestEngineChainsDerivedFactsUntilStable(t *testing.T) {
+	memory := engine.NewWorkingMemory(
+		engine.CustomerFact{ID: "CUST-001"},
+		engine.QuoteFact{
+			ID: "Q-1001",
+			Lines: []engine.QuoteLineFact{
+				{ProductID: "PRD-002", Quantity: 1},
+			},
+		},
+		[]engine.ProductFact{
+			{ID: "PRD-002", Category: "CustomBuild"},
+		},
+	)
+
+	ruleEngine := engine.NewEngine()
+	// The gate has higher priority and therefore observes the derived Fact
+	// only on the cycle after CustomBuildApprovalRule publishes it.
+	ruleEngine.Register(rules.ApprovalWorkflowGateRule{})
+	ruleEngine.Register(rules.CustomBuildApprovalRule{})
+
+	decision, cycles, err := ruleEngine.DecideUntilStable(memory, 5)
+	if err != nil {
+		t.Fatalf("decide until stable: %v", err)
+	}
+	if cycles != 3 {
+		t.Fatalf("expected two productive cycles plus a stable confirmation, got %d", cycles)
+	}
+	if !memory.HasDerivedFact(engine.ManagerApprovalRequiredFact) {
+		t.Fatal("expected the CustomBuild Rule to publish a derived approval Fact")
+	}
+	if len(memory.Findings) != 1 {
+		t.Fatalf("expected only the consumer workflow finding, got %d", len(memory.Findings))
+	}
+	if memory.Findings[0].RuleName != "Approval Workflow Gate Rule" {
+		t.Fatalf("expected the workflow gate to add the finding, got %q", memory.Findings[0].RuleName)
+	}
+	if decision.Outcome != engine.OutcomeNeedsApproval {
+		t.Fatalf("expected needs-approval, got %s", decision.Outcome)
 	}
 }

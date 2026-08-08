@@ -37,6 +37,31 @@ func (engine *Engine) SetRuleEnabled(ruleName string, enabled bool) bool {
 }
 
 func (engine *Engine) ExecuteAll(memory *WorkingMemory) error {
+	return engine.executeCycle(memory, 1)
+}
+
+func (engine *Engine) ExecuteUntilStable(memory *WorkingMemory, maxCycles int) (int, error) {
+	if maxCycles < 1 {
+		return 0, fmt.Errorf("max cycles must be at least 1")
+	}
+
+	for cycle := 1; cycle <= maxCycles; cycle++ {
+		findingsBefore := len(memory.Findings)
+		derivedFactsBefore := len(memory.DerivedFacts)
+
+		if err := engine.executeCycle(memory, cycle); err != nil {
+			return cycle, err
+		}
+
+		if len(memory.Findings) == findingsBefore && len(memory.DerivedFacts) == derivedFactsBefore {
+			return cycle, nil
+		}
+	}
+
+	return maxCycles, fmt.Errorf("rule engine did not converge after %d cycles", maxCycles)
+}
+
+func (engine *Engine) executeCycle(memory *WorkingMemory, cycle int) error {
 	orderedRules := append([]registeredRule(nil), engine.rules...)
 	sort.SliceStable(orderedRules, func(left, right int) bool {
 		return orderedRules[left].rule.Priority() > orderedRules[right].rule.Priority()
@@ -47,6 +72,7 @@ func (engine *Engine) ExecuteAll(memory *WorkingMemory) error {
 		rule := registered.rule
 		group := rule.ConflictGroup()
 		trace := RuleTrace{
+			Cycle:         cycle,
 			RuleName:      rule.Name(),
 			Priority:      rule.Priority(),
 			ConflictGroup: group,

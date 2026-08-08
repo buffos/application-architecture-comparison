@@ -6,7 +6,7 @@ import (
 	"rules-engine-architecture/internal/engine"
 )
 
-func TestCustomBuildApprovalRuleActivatesForCustomBuildLine(t *testing.T) {
+func TestCustomBuildApprovalRulePublishesApprovalFactForCustomBuildLine(t *testing.T) {
 	memory := engine.NewWorkingMemory(
 		engine.CustomerFact{ID: "CUST-001"},
 		engine.QuoteFact{
@@ -27,7 +27,10 @@ func TestCustomBuildApprovalRuleActivatesForCustomBuildLine(t *testing.T) {
 	if err := rule.Execute(memory); err != nil {
 		t.Fatalf("execute rule: %v", err)
 	}
-	if len(memory.Findings) != 1 {
-		t.Fatalf("expected one finding, got %d", len(memory.Findings))
+	if len(memory.Findings) != 0 {
+		t.Fatalf("expected the producer to add no decision finding, got %d", len(memory.Findings))
+	}
+	if !memory.HasDerivedFact(engine.ManagerApprovalRequiredFact) {
+		t.Fatal("expected the producer to publish the manager approval fact")
 	}
 }
