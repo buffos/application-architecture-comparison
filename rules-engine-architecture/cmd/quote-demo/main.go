@@ -290,6 +290,16 @@ func main() {
 			quoteSummary.Outcome,
 		)
 	}
+	for _, productView := range readmodel.ProjectProducts(workingMemory.Products) {
+		fmt.Printf(
+			"Product query view: id=%s category=%s price=%s stock=%d shortage-policy=%s\n",
+			productView.ID,
+			productView.Category,
+			formatCents(productView.UnitPriceCents),
+			productView.AvailableQuantity,
+			productView.ShortagePolicy,
+		)
+	}
 	if workingMemory.Shipment.Requested {
 		shipmentView := readmodel.ProjectShipment(workingMemory, decision)
 		fmt.Printf(
