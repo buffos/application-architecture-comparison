@@ -6,6 +6,7 @@ import (
 
 	"rules-engine-architecture/internal/application"
 	"rules-engine-architecture/internal/engine"
+	"rules-engine-architecture/internal/readmodel"
 	"rules-engine-architecture/internal/rules"
 )
 
@@ -251,6 +252,18 @@ func main() {
 	fmt.Printf("Shipment action: %s\n", decision.ShipmentAction)
 	fmt.Printf("Cancellation action: %s\n", decision.CancellationAction)
 	fmt.Printf("Return action: %s\n", decision.ReturnAction)
+	if workingMemory.ReturnRequest.Requested {
+		returnView := readmodel.ProjectReturn(workingMemory, decision)
+		fmt.Printf(
+			"Return query view: order=%s product=%s action=%s requester=%s remaining=%d reason=%s\n",
+			returnView.OrderID,
+			returnView.ProductID,
+			returnView.Action,
+			returnView.RequesterID,
+			returnView.RemainingQuantity,
+			returnView.Reason,
+		)
+	}
 	fmt.Println("Required reviews:")
 	for _, review := range decision.RequiredReviews {
 		fmt.Printf("- %s\n", review)
