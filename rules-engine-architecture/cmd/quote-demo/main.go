@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 
 	"rules-engine-architecture/internal/engine"
@@ -12,6 +13,13 @@ func formatCents(amountCents int64) string {
 }
 
 func main() {
+	disableCustomBuild := flag.Bool(
+		"disable-custom-build",
+		false,
+		"disable the CustomBuild approval Rule",
+	)
+	flag.Parse()
+
 	customer := engine.CustomerFact{
 		ID:           "CUST-001",
 		Name:         "Alexandros Papadopoulos",
@@ -55,6 +63,12 @@ func main() {
 	ruleEngine.Register(rules.DiscountApprovalRule{})
 	ruleEngine.Register(rules.DiscountRejectionRule{})
 	ruleEngine.Register(rules.CustomBuildApprovalRule{})
+	if *disableCustomBuild {
+		if !ruleEngine.SetRuleEnabled("Custom Build Approval Rule", false) {
+			panic("Custom Build Approval Rule was not registered")
+		}
+		fmt.Println("Configuration: CustomBuild approval Rule disabled")
+	}
 	fmt.Println("Executing registered Rules")
 	if err := ruleEngine.ExecuteAll(workingMemory); err != nil {
 		panic(err)
